@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "tirocks",
+    "tirocks-sys",
+    "xtask",
+]
+
+[patch.crates-io]
+snappy-sys = { git = "https://github.com/busyjay/rust-snappy.git", branch = "static-link" }
