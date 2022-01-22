@@ -1,7 +1,3 @@
-pub type __int32_t = libc::c_int;
-pub type __uint32_t = libc::c_uint;
-pub type __int64_t = libc::c_long;
-pub type __uint64_t = libc::c_ulong;
 #[repr(C)]
 #[derive(Debug)]
 pub struct crocksdb_cloud_envoptions_t {

@@ -12,6 +12,7 @@ const NO_JEMALLOC_TARGETS: &[&str] = &["android", "dragonfly", "musl", "darwin"]
 
 // Generate the bindings to rocksdb C-API.
 // Try to disable the generation of platform-related bindings.
+#[cfg(feature = "update-bindings")]
 fn bindgen_rocksdb(file_path: &Path) {
     println!("cargo:rerun-if-env-changed=TEST_BIND");
     let gen_tests = env::var("TEST_BIND").map_or(false, |s| s == "1");
@@ -30,6 +31,7 @@ fn bindgen_rocksdb(file_path: &Path) {
         .whitelist_type(r"\bcrocksdb_.*")
         .whitelist_function(r"\bctitandb_.*")
         .whitelist_type(r"\bctitandb_.*")
+        .blacklist_type(r"\b__.*")
         .derive_copy(false)
         .opaque_type(r"\bcrocksdb_.*")
         .opaque_type(r"\bctitandb_.*")
@@ -50,38 +52,20 @@ fn bindgen_rocksdb(file_path: &Path) {
         .expect("unable to write rocksdb bindings");
 }
 
-// Determine if need to update bindings. Supported platforms do not
-// need to be updated by default unless the UPDATE_BIND is specified.
-// Other platforms use bindgen to generate the bindings every time.
+/// Determine if need to update bindings. When `update-bindings` feature
+/// is enabled, it will regenerate the bindings.
 fn config_binding_path() {
-    let target = env::var("TARGET").unwrap();
-    let file_path: PathBuf = match &*target {
-        "x86_64-unknown-linux-gnu" | "aarch64-unknown-linux-gnu" => {
-            // Cargo treats nonexistent files changed, so we only emit the rerun-if-changed
-            // directive when we expect the target-specific pre-generated binding file to be
-            // present.
-            println!("cargo:rerun-if-changed=bindings/{}-bindings.rs", &target);
+    // Cargo treats nonexistent files changed, so we only emit the rerun-if-changed
+    // directive when we expect the target-specific pre-generated binding file to be
+    // present.
+    println!("cargo:rerun-if-changed=bindings/bindings.rs");
 
-            let file_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
-                .join("bindings")
-                .join(format!("{}-bindings.rs", &target));
+    let file_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
+        .join("bindings")
+        .join(format!("bindings.rs"));
 
-            #[cfg(feature = "use-bindgen")]
-            if env::var("UPDATE_BIND").is_ok() {
-                bindgen_rocksdb(&file_path);
-            }
-
-            file_path
-        }
-        _ => {
-            let file_path = PathBuf::from(env::var("OUT_DIR").unwrap()).join("rocksdb-bindings.rs");
-
-            #[cfg(feature = "use-bindgen")]
-            bindgen_rocksdb(&file_path);
-
-            file_path
-        }
-    };
+    #[cfg(feature = "update-bindings")]
+    bindgen_rocksdb(&file_path);
 
     println!(
         "cargo:rustc-env=BINDING_PATH={}",

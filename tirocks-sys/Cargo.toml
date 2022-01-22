@@ -19,7 +19,7 @@ lz4-sys = "1.9"
 snappy-sys = "0.1"
 
 [features]
-default = ["use-bindgen"]
+default = []
 encryption = ["openssl-sys"]
 jemalloc = ["tikv-jemalloc-sys"]
 sse = []
@@ -28,10 +28,8 @@ static_libcpp = []
 # portable doesn't require static link, though it's meaningless
 # when not using with static-link right now in this crate.
 portable = []
-# If this feature is disabled, bindgen will not be used and the previously generated bindings will
-# be compiled instead. This only work for the supported targets and will make compilation fails for
-# the other ones.
-use-bindgen = ["bindgen"]
+# If this feature is enabled, bindings will be regenerated.
+update-bindings = ["bindgen"]
 
 [build-dependencies]
 cc = "1.0"
