@@ -103,7 +103,7 @@ fn link_cpp(build: &mut Build) {
     // remove lib prefix and .a postfix.
     let libname = &stdlib[3..stdlib.len() - 2];
     // optional static linking
-    if cfg!(feature = "static_libcpp") {
+    if cfg!(feature = "static-libcpp") {
         println!("cargo:rustc-link-lib=static={}", &libname);
     } else {
         println!("cargo:rustc-link-lib=dylib={}", &libname);

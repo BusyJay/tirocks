@@ -23,7 +23,7 @@ default = []
 encryption = ["openssl-sys"]
 jemalloc = ["tikv-jemalloc-sys"]
 sse = []
-static_libcpp = []
+static-libcpp = []
 
 # portable doesn't require static link, though it's meaningless
 # when not using with static-link right now in this crate.
