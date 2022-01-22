@@ -6,4 +6,5 @@ members = [
 ]
 
 [patch.crates-io]
+# Use cmake to build the binary, so it can be compiled on all supported platform.
 snappy-sys = { git = "https://github.com/busyjay/rust-snappy.git", branch = "static-link" }
