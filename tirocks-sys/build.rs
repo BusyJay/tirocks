@@ -38,7 +38,6 @@ fn bindgen_rocksdb(file_path: &Path) {
         .whitelist_type(r"\brocksdb::Histograms")
         .blacklist_type(r"\b__.*")
         .derive_copy(false)
-        .opaque_type(r"\bcrocksdb_.*")
         .opaque_type(r"\bctitandb_.*")
         .size_t_is_usize(true)
         .disable_header_comment()
@@ -65,9 +64,8 @@ fn config_binding_path() {
     // present.
     println!("cargo:rerun-if-changed=bindings/bindings.rs");
 
-    let file_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
-        .join("bindings")
-        .join(format!("bindings.rs"));
+    let file_path =
+        PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("bindings/bindings.rs");
 
     #[cfg(feature = "update-bindings")]
     bindgen_rocksdb(&file_path);

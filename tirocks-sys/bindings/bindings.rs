@@ -349,149 +349,156 @@ pub struct crocksdb_writestallinfo_t {
 pub struct crocksdb_writestallcondition_t {
     _unused: [u8; 0],
 }
-extern "C" {
-    pub static crocksdb_property_name_num_files_at_level_prefix: *const libc::c_char;
+#[doc = " This is not a safe type. The lifetime of data is up to context."]
+#[repr(C)]
+#[derive(Debug)]
+pub struct crocksdb_slice_t {
+    pub data: *const libc::c_char,
+    pub size: usize,
 }
 extern "C" {
-    pub static crocksdb_property_name_compression_ratio_at_level_prefix: *const libc::c_char;
+    pub static crocksdb_property_name_num_files_at_level_prefix: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_stats: *const libc::c_char;
+    pub static crocksdb_property_name_compression_ratio_at_level_prefix: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_ss_tables: *const libc::c_char;
+    pub static crocksdb_property_name_stats: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_cf_stats: *const libc::c_char;
+    pub static crocksdb_property_name_ss_tables: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_cf_stats_no_file_histogram: *const libc::c_char;
+    pub static crocksdb_property_name_cf_stats: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_cf_file_histogram: *const libc::c_char;
+    pub static crocksdb_property_name_cf_stats_no_file_histogram: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_db_stats: *const libc::c_char;
+    pub static crocksdb_property_name_cf_file_histogram: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_level_stats: *const libc::c_char;
+    pub static crocksdb_property_name_db_stats: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_immutable_mem_table: *const libc::c_char;
+    pub static crocksdb_property_name_level_stats: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_immutable_mem_table_flushed: *const libc::c_char;
+    pub static crocksdb_property_name_num_immutable_mem_table: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_mem_table_flush_pending: *const libc::c_char;
+    pub static crocksdb_property_name_num_immutable_mem_table_flushed: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_running_flushes: *const libc::c_char;
+    pub static crocksdb_property_name_mem_table_flush_pending: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_compaction_pending: *const libc::c_char;
+    pub static crocksdb_property_name_num_running_flushes: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_running_compactions: *const libc::c_char;
+    pub static crocksdb_property_name_compaction_pending: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_background_errors: *const libc::c_char;
+    pub static crocksdb_property_name_num_running_compactions: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_cur_size_active_mem_table: *const libc::c_char;
+    pub static crocksdb_property_name_background_errors: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_cur_size_all_mem_tables: *const libc::c_char;
+    pub static crocksdb_property_name_cur_size_active_mem_table: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_size_all_mem_tables: *const libc::c_char;
+    pub static crocksdb_property_name_cur_size_all_mem_tables: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_entries_active_mem_table: *const libc::c_char;
+    pub static crocksdb_property_name_size_all_mem_tables: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_entries_imm_mem_tables: *const libc::c_char;
+    pub static crocksdb_property_name_num_entries_active_mem_table: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_deletes_active_mem_table: *const libc::c_char;
+    pub static crocksdb_property_name_num_entries_imm_mem_tables: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_deletes_imm_mem_tables: *const libc::c_char;
+    pub static crocksdb_property_name_num_deletes_active_mem_table: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_estimate_num_keys: *const libc::c_char;
+    pub static crocksdb_property_name_num_deletes_imm_mem_tables: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_estimate_table_readers_mem: *const libc::c_char;
+    pub static crocksdb_property_name_estimate_num_keys: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_is_file_deletions_enabled: *const libc::c_char;
+    pub static crocksdb_property_name_estimate_table_readers_mem: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_snapshots: *const libc::c_char;
+    pub static crocksdb_property_name_is_file_deletions_enabled: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_oldest_snapshot_time: *const libc::c_char;
+    pub static crocksdb_property_name_num_snapshots: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_oldest_snapshot_sequence: *const libc::c_char;
+    pub static crocksdb_property_name_oldest_snapshot_time: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_live_versions: *const libc::c_char;
+    pub static crocksdb_property_name_oldest_snapshot_sequence: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_current_super_version_number: *const libc::c_char;
+    pub static crocksdb_property_name_num_live_versions: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_estimate_live_data_size: *const libc::c_char;
+    pub static crocksdb_property_name_current_super_version_number: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_min_log_number_to_keep: *const libc::c_char;
+    pub static crocksdb_property_name_estimate_live_data_size: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_min_obsolete_sst_number_to_keep: *const libc::c_char;
+    pub static crocksdb_property_name_min_log_number_to_keep: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_total_sst_files_size: *const libc::c_char;
+    pub static crocksdb_property_name_min_obsolete_sst_number_to_keep: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_live_sst_files_size: *const libc::c_char;
+    pub static crocksdb_property_name_total_sst_files_size: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_base_level: *const libc::c_char;
+    pub static crocksdb_property_name_live_sst_files_size: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_estimate_pending_compaction_bytes: *const libc::c_char;
+    pub static crocksdb_property_name_base_level: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_aggregated_table_properties: *const libc::c_char;
+    pub static crocksdb_property_name_estimate_pending_compaction_bytes: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_aggregated_table_properties_at_level: *const libc::c_char;
+    pub static crocksdb_property_name_aggregated_table_properties: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_actual_delayed_write_rate: *const libc::c_char;
+    pub static crocksdb_property_name_aggregated_table_properties_at_level: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_is_write_stopped: *const libc::c_char;
+    pub static crocksdb_property_name_actual_delayed_write_rate: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_is_write_stalled: *const libc::c_char;
+    pub static crocksdb_property_name_is_write_stopped: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_estimate_oldest_key_time: *const libc::c_char;
+    pub static crocksdb_property_name_is_write_stalled: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_block_cache_capacity: *const libc::c_char;
+    pub static crocksdb_property_name_estimate_oldest_key_time: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_block_cache_usage: *const libc::c_char;
+    pub static crocksdb_property_name_block_cache_capacity: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_block_cache_pinned_usage: *const libc::c_char;
+    pub static crocksdb_property_name_block_cache_usage: crocksdb_slice_t;
 }
 extern "C" {
-    pub static crocksdb_property_name_options_statistics: *const libc::c_char;
+    pub static crocksdb_property_name_block_cache_pinned_usage: crocksdb_slice_t;
+}
+extern "C" {
+    pub static crocksdb_property_name_options_statistics: crocksdb_slice_t;
 }
 #[repr(C)]
 #[derive(Debug)]
@@ -1936,7 +1943,13 @@ pub type on_background_error_cb = ::std::option::Option<
 pub type on_stall_conditions_changed_cb = ::std::option::Option<
     unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: *const crocksdb_writestallinfo_t),
 >;
-pub type crocksdb_logger_logv_cb = u64;
+pub type crocksdb_logger_logv_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        arg1: *mut libc::c_void,
+        log_level: libc::c_int,
+        arg2: *const libc::c_char,
+    ),
+>;
 extern "C" {
     pub fn crocksdb_eventlistener_create(
         state_: *mut libc::c_void,
@@ -3399,8 +3412,20 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_sequential_file_destroy(arg1: *mut crocksdb_sequential_file_t);
 }
-pub type crocksdb_file_system_inspector_read_cb = u64;
-pub type crocksdb_file_system_inspector_write_cb = u64;
+pub type crocksdb_file_system_inspector_read_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        state: *mut libc::c_void,
+        len: usize,
+        errptr: *mut *mut libc::c_char,
+    ) -> usize,
+>;
+pub type crocksdb_file_system_inspector_write_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        state: *mut libc::c_void,
+        len: usize,
+        errptr: *mut *mut libc::c_char,
+    ) -> usize,
+>;
 extern "C" {
     pub fn crocksdb_file_system_inspector_create(
         state: *mut libc::c_void,
@@ -4616,8 +4641,21 @@ extern "C" {
         current_output_file_size: u64,
     );
 }
-pub type crocksdb_sst_partitioner_should_partition_cb = u64;
-pub type crocksdb_sst_partitioner_can_do_trivial_move_cb = u64;
+pub type crocksdb_sst_partitioner_should_partition_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        underlying: *mut libc::c_void,
+        req: *mut crocksdb_sst_partitioner_request_t,
+    ) -> crocksdb_sst_partitioner_result_t,
+>;
+pub type crocksdb_sst_partitioner_can_do_trivial_move_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        underlying: *mut libc::c_void,
+        smallest_user_key: *const libc::c_char,
+        smallest_user_key_len: usize,
+        largest_user_key: *const libc::c_char,
+        largest_user_key_len: usize,
+    ) -> libc::c_uchar,
+>;
 extern "C" {
     pub fn crocksdb_sst_partitioner_create(
         underlying: *mut libc::c_void,
@@ -4711,8 +4749,15 @@ extern "C" {
         key_len: usize,
     );
 }
-pub type crocksdb_sst_partitioner_factory_name_cb = u64;
-pub type crocksdb_sst_partitioner_factory_create_partitioner_cb = u64;
+pub type crocksdb_sst_partitioner_factory_name_cb = ::std::option::Option<
+    unsafe extern "C" fn(underlying: *mut libc::c_void) -> *const libc::c_char,
+>;
+pub type crocksdb_sst_partitioner_factory_create_partitioner_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        underlying: *mut libc::c_void,
+        context: *mut crocksdb_sst_partitioner_context_t,
+    ) -> *mut crocksdb_sst_partitioner_t,
+>;
 extern "C" {
     pub fn crocksdb_sst_partitioner_factory_create(
         underlying: *mut libc::c_void,

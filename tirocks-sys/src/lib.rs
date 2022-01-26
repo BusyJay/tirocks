@@ -15,14 +15,18 @@ mod bindings {
 
 pub use bindings::*;
 
+impl crocksdb_slice_t {
+    pub fn to_bytes(&self) -> &[u8] {
+        unsafe { std::slice::from_raw_parts(self.data as _, self.size) }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use std::ffi::CStr;
-
     #[test]
     fn test_smoke() {
-        assert_eq!(Ok("rocksdb.cfstats-no-file-histogram"), unsafe {
-            CStr::from_ptr(super::crocksdb_property_name_cf_stats_no_file_histogram).to_str()
+        assert_eq!(b"rocksdb.cfstats-no-file-histogram", unsafe {
+            super::crocksdb_property_name_cf_stats_no_file_histogram.to_bytes()
         });
     }
 }
