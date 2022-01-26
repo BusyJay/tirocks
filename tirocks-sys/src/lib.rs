@@ -17,6 +17,12 @@ pub use bindings::*;
 
 #[cfg(test)]
 mod tests {
+    use std::ffi::CStr;
+
     #[test]
-    fn test_smoke() {}
+    fn test_smoke() {
+        assert_eq!(Ok("rocksdb.cfstats-no-file-histogram"), unsafe {
+            CStr::from_ptr(super::crocksdb_property_name_cf_stats_no_file_histogram).to_str()
+        });
+    }
 }

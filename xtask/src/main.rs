@@ -1,10 +1,6 @@
-use std::fs::{self, File};
+use std::fs;
 use std::process::{self, Command};
-use std::{
-    env,
-    io::{Read, Write},
-    str,
-};
+use std::{env, str};
 
 fn print_help() {
     eprintln!("cargo xtask [subcommand]");
@@ -32,40 +28,15 @@ fn exec(c: &mut Command) {
     }
 }
 
-fn remove_match(data: &str, pattern: impl Fn(&str) -> bool) -> String {
-    let mut target = String::with_capacity(data.len());
-    for l in data.lines() {
-        if pattern(l) {
-            continue;
-        }
-        target.push_str(l);
-        target.push('\n');
-    }
-    target
-}
-
 fn bindgen() {
     fs::create_dir_all("tirocks-sys/bindings").unwrap();
-    exec(
-        cargo()
-            .env("UPDATE_BIND", "1")
-            .args(&["build", "-p", "tirocks-sys", "--features", "update-bindings"]),
-    );
-    for f in fs::read_dir("tirocks-sys/bindings").unwrap() {
-        let p = f.unwrap().path();
-        let mut content = String::new();
-        File::open(&p)
-            .unwrap()
-            .read_to_string(&mut content)
-            .unwrap();
-        let content = remove_match(&content, |l| {
-            l.starts_with("pub type ") && l.contains("= ::std::os::raw::")
-        });
-        File::create(&p)
-            .unwrap()
-            .write_all(content.as_bytes())
-            .unwrap();
-    }
+    exec(cargo().args(&[
+        "build",
+        "-p",
+        "tirocks-sys",
+        "--features",
+        "update-bindings",
+    ]));
 }
 
 fn cmd(c: &str) -> Command {

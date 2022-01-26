@@ -24,13 +24,18 @@ fn bindgen_rocksdb(file_path: &Path) {
     }
     let builder = builder
         .header("crocksdb/crocksdb/c.h")
+        .header("rocksdb/include/rocksdb/statistics.h")
         .clang_arg("-xc++")
+        .clang_arg("-Irocksdb/include")
         .clang_arg("-std=c++11")
         .rustfmt_bindings(true)
         .whitelist_function(r"\bcrocksdb_.*")
         .whitelist_type(r"\bcrocksdb_.*")
+        .whitelist_var(r"\bcrocksdb_.*")
         .whitelist_function(r"\bctitandb_.*")
         .whitelist_type(r"\bctitandb_.*")
+        .whitelist_type(r"\brocksdb::Tickers")
+        .whitelist_type(r"\brocksdb::Histograms")
         .blacklist_type(r"\b__.*")
         .derive_copy(false)
         .opaque_type(r"\bcrocksdb_.*")
