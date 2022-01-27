@@ -25,6 +25,7 @@ fn bindgen_rocksdb(file_path: &Path) {
     let builder = builder
         .header("crocksdb/crocksdb/c.h")
         .header("rocksdb/include/rocksdb/statistics.h")
+        .header("titan/include/titan/statistics.h")
         .clang_arg("-xc++")
         .clang_arg("-Irocksdb/include")
         .clang_arg("-std=c++11")
@@ -36,6 +37,8 @@ fn bindgen_rocksdb(file_path: &Path) {
         .whitelist_type(r"\bctitandb_.*")
         .whitelist_type(r"\brocksdb::Tickers")
         .whitelist_type(r"\brocksdb::Histograms")
+        .whitelist_type(r"\brocksdb::titandb::TickerType")
+        .whitelist_type(r"\brocksdb::titandb::HistogramType")
         .blacklist_type(r"\b__.*")
         .derive_copy(false)
         .opaque_type(r"\bctitandb_.*")
