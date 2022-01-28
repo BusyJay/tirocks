@@ -8,6 +8,7 @@ fn print_help() {
     eprintln!("Supported subcommands are:");
     eprintln!("\tbindgen\tGenerate rust-bindgen for tirocks-sys package");
     eprintln!("\tsubmodule\tInit necessary submodules for compilation");
+    eprintln!("\t\t\tYou can use environment variables {{TITAN,ROCKSDB}}_{{REPO,BRANCH}} to control what remote ref to use.");
     eprintln!("\tformat\tFormat all code, including C/CPP");
 }
 
@@ -44,7 +45,25 @@ fn cmd(c: &str) -> Command {
 }
 
 fn submodule() {
-    exec(cmd("git").args(&["submodule", "update", "--init"]));
+    for submodule in &["rocksdb", "titan"] {
+        let upper = submodule.to_ascii_uppercase();
+        let mut remote_changed = false;
+        let path = format!("tirocks-sys/{}", submodule);
+        if let Ok(repo) = env::var(&format!("{}_REPO", upper)) {
+            exec(cmd("git").args(&["config", "--file=.gitmodules", &format!("submodule.\"{}\".url", path), &format!("https://github.com/{}/{}.git", repo, submodule)]));
+            remote_changed = true;
+        }
+        if let Ok(branch) = env::var(&format!("{}_BRANCH", upper)) {
+            exec(cmd("git").args(&["config", "--file=.gitmodules", &format!("submodule.\"{}\".branch", path), &branch]));
+            remote_changed = true;
+        }
+        if remote_changed {
+            exec(cmd("git").args(&["submodule", "sync", &path]));
+            exec(cmd("git").args(&["submodule", "update", "--init", "--remote", &path]));
+        } else {
+            exec(cmd("git").args(&["submodule", "update", "--init", &path]));
+        }
+    }
 }
 
 fn format() {
