@@ -8,7 +8,7 @@ fn print_help() {
     eprintln!("Supported subcommands are:");
     eprintln!("\tbindgen\tGenerate rust-bindgen for tirocks-sys package");
     eprintln!("\tsubmodule\tInit necessary submodules for compilation");
-    eprintln!("\tclang-format\tFormat cpp code in tiocks-sys package");
+    eprintln!("\tformat\tFormat all code, including C/CPP");
 }
 
 fn cargo() -> Command {
@@ -47,12 +47,13 @@ fn submodule() {
     exec(cmd("git").args(&["submodule", "update", "--init"]));
 }
 
-fn clang_format() {
+fn format() {
     exec(cmd("clang-format").args(&[
         "-i",
         "tirocks-sys/crocksdb/c.cc",
         "tirocks-sys/crocksdb/crocksdb/c.h",
     ]));
+    exec(cargo().args(&["fmt", "--all"]));
 }
 
 fn main() {
@@ -66,7 +67,7 @@ fn main() {
     match &*subcommand {
         "bindgen" => bindgen(),
         "submodule" => submodule(),
-        "clang-format" => clang_format(),
+        "format" => format(),
         _ => print_help(),
     }
 }

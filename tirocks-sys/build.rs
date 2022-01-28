@@ -41,7 +41,6 @@ fn bindgen_rocksdb(file_path: &Path) {
         .whitelist_type(r"\brocksdb::titandb::HistogramType")
         .blacklist_type(r"\b__.*")
         .derive_copy(false)
-        .opaque_type(r"\bctitandb_.*")
         .size_t_is_usize(true)
         .disable_header_comment()
         .ctypes_prefix("libc")

@@ -4797,10 +4797,10 @@ extern "C" {
     );
 }
 #[repr(C)]
-#[repr(align(8))]
-#[derive(Debug)]
 pub struct ctitandb_blob_index_t {
-    pub _bindgen_opaque_blob: [u64; 3usize],
+    pub file_number: u64,
+    pub blob_offset: u64,
+    pub blob_size: u64,
 }
 #[repr(C)]
 #[derive(Debug)]

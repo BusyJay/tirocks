@@ -161,14 +161,15 @@ typedef struct crocksdb_writestallcondition_t crocksdb_writestallcondition_t;
 /** This is not a safe type. The lifetime of data is up to context.
  */
 typedef struct crocksdb_slice_t {
-    const char* data;
-    size_t size;
+  const char* data;
+  size_t size;
 } crocksdb_slice_t;
-// Following names are defined as static const std::string in DB::Properties. bindgen
-// can parse std string directly, but it can introduce a lot of complexity. So defining
-// them as c string instead.
+// Following names are defined as static const std::string in DB::Properties.
+// bindgen can parse std string directly, but it can introduce a lot of
+// complexity. So defining them as c string instead.
 extern crocksdb_slice_t const crocksdb_property_name_num_files_at_level_prefix;
-extern crocksdb_slice_t const crocksdb_property_name_compression_ratio_at_level_prefix;
+extern crocksdb_slice_t const
+    crocksdb_property_name_compression_ratio_at_level_prefix;
 extern crocksdb_slice_t const crocksdb_property_name_stats;
 extern crocksdb_slice_t const crocksdb_property_name_ss_tables;
 extern crocksdb_slice_t const crocksdb_property_name_cf_stats;
@@ -177,7 +178,8 @@ extern crocksdb_slice_t const crocksdb_property_name_cf_file_histogram;
 extern crocksdb_slice_t const crocksdb_property_name_db_stats;
 extern crocksdb_slice_t const crocksdb_property_name_level_stats;
 extern crocksdb_slice_t const crocksdb_property_name_num_immutable_mem_table;
-extern crocksdb_slice_t const crocksdb_property_name_num_immutable_mem_table_flushed;
+extern crocksdb_slice_t const
+    crocksdb_property_name_num_immutable_mem_table_flushed;
 extern crocksdb_slice_t const crocksdb_property_name_mem_table_flush_pending;
 extern crocksdb_slice_t const crocksdb_property_name_num_running_flushes;
 extern crocksdb_slice_t const crocksdb_property_name_compaction_pending;
@@ -186,9 +188,11 @@ extern crocksdb_slice_t const crocksdb_property_name_background_errors;
 extern crocksdb_slice_t const crocksdb_property_name_cur_size_active_mem_table;
 extern crocksdb_slice_t const crocksdb_property_name_cur_size_all_mem_tables;
 extern crocksdb_slice_t const crocksdb_property_name_size_all_mem_tables;
-extern crocksdb_slice_t const crocksdb_property_name_num_entries_active_mem_table;
+extern crocksdb_slice_t const
+    crocksdb_property_name_num_entries_active_mem_table;
 extern crocksdb_slice_t const crocksdb_property_name_num_entries_imm_mem_tables;
-extern crocksdb_slice_t const crocksdb_property_name_num_deletes_active_mem_table;
+extern crocksdb_slice_t const
+    crocksdb_property_name_num_deletes_active_mem_table;
 extern crocksdb_slice_t const crocksdb_property_name_num_deletes_imm_mem_tables;
 extern crocksdb_slice_t const crocksdb_property_name_estimate_num_keys;
 extern crocksdb_slice_t const crocksdb_property_name_estimate_table_readers_mem;
@@ -197,16 +201,21 @@ extern crocksdb_slice_t const crocksdb_property_name_num_snapshots;
 extern crocksdb_slice_t const crocksdb_property_name_oldest_snapshot_time;
 extern crocksdb_slice_t const crocksdb_property_name_oldest_snapshot_sequence;
 extern crocksdb_slice_t const crocksdb_property_name_num_live_versions;
-extern crocksdb_slice_t const crocksdb_property_name_current_super_version_number;
+extern crocksdb_slice_t const
+    crocksdb_property_name_current_super_version_number;
 extern crocksdb_slice_t const crocksdb_property_name_estimate_live_data_size;
 extern crocksdb_slice_t const crocksdb_property_name_min_log_number_to_keep;
-extern crocksdb_slice_t const crocksdb_property_name_min_obsolete_sst_number_to_keep;
+extern crocksdb_slice_t const
+    crocksdb_property_name_min_obsolete_sst_number_to_keep;
 extern crocksdb_slice_t const crocksdb_property_name_total_sst_files_size;
 extern crocksdb_slice_t const crocksdb_property_name_live_sst_files_size;
 extern crocksdb_slice_t const crocksdb_property_name_base_level;
-extern crocksdb_slice_t const crocksdb_property_name_estimate_pending_compaction_bytes;
-extern crocksdb_slice_t const crocksdb_property_name_aggregated_table_properties;
-extern crocksdb_slice_t const crocksdb_property_name_aggregated_table_properties_at_level;
+extern crocksdb_slice_t const
+    crocksdb_property_name_estimate_pending_compaction_bytes;
+extern crocksdb_slice_t const
+    crocksdb_property_name_aggregated_table_properties;
+extern crocksdb_slice_t const
+    crocksdb_property_name_aggregated_table_properties_at_level;
 extern crocksdb_slice_t const crocksdb_property_name_actual_delayed_write_rate;
 extern crocksdb_slice_t const crocksdb_property_name_is_write_stopped;
 extern crocksdb_slice_t const crocksdb_property_name_is_write_stalled;
