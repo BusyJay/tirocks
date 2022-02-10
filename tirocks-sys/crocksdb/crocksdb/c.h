@@ -60,6 +60,17 @@
 #define C_ROCKSDB_LIBRARY_API
 #endif
 
+#include "rocksdb/encryption.h"
+#include "rocksdb/env.h"
+#include "rocksdb/listener.h"
+#include "rocksdb/options.h"
+#include "rocksdb/perf_level.h"
+#include "rocksdb/rate_limiter.h"
+#include "rocksdb/sst_partitioner.h"
+#include "rocksdb/table.h"
+#include "rocksdb/types.h"
+#include "titan/options.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -80,12 +91,6 @@ typedef struct crocksdb_lru_cache_options_t crocksdb_lru_cache_options_t;
 typedef struct crocksdb_cache_t crocksdb_cache_t;
 typedef struct crocksdb_memory_allocator_t crocksdb_memory_allocator_t;
 typedef struct crocksdb_compactionfilter_t crocksdb_compactionfilter_t;
-enum {
-  crocksdb_table_file_creation_reason_flush = 0,
-  crocksdb_table_file_creation_reason_compaction = 1,
-  crocksdb_table_file_creation_reason_recovery = 2,
-  crocksdb_table_file_creation_reason_misc = 3,
-};
 typedef struct crocksdb_compactionfiltercontext_t
     crocksdb_compactionfiltercontext_t;
 typedef struct crocksdb_compactionfilterfactory_t
@@ -226,12 +231,6 @@ extern crocksdb_slice_t const crocksdb_property_name_block_cache_pinned_usage;
 extern crocksdb_slice_t const crocksdb_property_name_options_statistics;
 typedef struct crocksdb_map_property_t crocksdb_map_property_t;
 typedef struct crocksdb_writebatch_iterator_t crocksdb_writebatch_iterator_t;
-
-typedef enum crocksdb_sst_partitioner_result_t {
-  kNotRequired = 0,
-  kRequired = 1,
-} crocksdb_sst_partitioner_result_t;
-
 typedef struct crocksdb_sst_partitioner_t crocksdb_sst_partitioner_t;
 typedef struct crocksdb_sst_partitioner_request_t
     crocksdb_sst_partitioner_request_t;
@@ -260,28 +259,7 @@ typedef enum crocksdb_table_property_t {
   kCompressionName = 17,
 } crocksdb_table_property_t;
 
-typedef enum crocksdb_ratelimiter_mode_t {
-  kReadsOnly = 1,
-  kWritesOnly = 2,
-  kAllIo = 3,
-} crocksdb_ratelimiter_mode_t;
-
-typedef enum crocksdb_backgrounderrorreason_t {
-  kFlush = 1,
-  kCompaction = 2,
-  kWriteCallback = 3,
-  kMemTable = 4,
-} crocksdb_backgrounderrorreason_t;
-
 #ifdef OPENSSL
-typedef enum crocksdb_encryption_method_t {
-  kUnknown = 0,
-  kPlaintext = 1,
-  kAES128_CTR = 2,
-  kAES192_CTR = 3,
-  kAES256_CTR = 4,
-} crocksdb_encryption_method_t;
-
 typedef struct crocksdb_file_encryption_info_t crocksdb_file_encryption_info_t;
 typedef struct crocksdb_encryption_key_manager_t
     crocksdb_encryption_key_manager_t;
@@ -820,13 +798,9 @@ crocksdb_block_based_options_set_whole_key_filtering(
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_block_based_options_set_format_version(
     crocksdb_block_based_table_options_t*, int);
-enum {
-  crocksdb_block_based_table_index_type_binary_search = 0,
-  crocksdb_block_based_table_index_type_hash_search = 1,
-  crocksdb_block_based_table_index_type_two_level_index_search = 2,
-};
 extern C_ROCKSDB_LIBRARY_API void crocksdb_block_based_options_set_index_type(
-    crocksdb_block_based_table_options_t*, int);  // uses one of the above enums
+    crocksdb_block_based_table_options_t*,
+    rocksdb::BlockBasedTableOptions::IndexType);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_block_based_options_set_hash_index_allow_collision(
     crocksdb_block_based_table_options_t*, unsigned char);
@@ -968,11 +942,12 @@ typedef void (*on_subcompaction_completed_cb)(
     void*, const crocksdb_subcompactionjobinfo_t*);
 typedef void (*on_external_file_ingested_cb)(
     void*, crocksdb_t*, const crocksdb_externalfileingestioninfo_t*);
-typedef void (*on_background_error_cb)(void*, crocksdb_backgrounderrorreason_t,
+typedef void (*on_background_error_cb)(void*, rocksdb::BackgroundErrorReason,
                                        crocksdb_status_ptr_t*);
 typedef void (*on_stall_conditions_changed_cb)(
     void*, const crocksdb_writestallinfo_t*);
-typedef void (*crocksdb_logger_logv_cb)(void*, int log_level, const char*);
+typedef void (*crocksdb_logger_logv_cb)(void*, rocksdb::InfoLogLevel log_level,
+                                        const char*);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_eventlistener_t*
 crocksdb_eventlistener_create(
@@ -1046,13 +1021,14 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_comparator(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_merge_operator(
     crocksdb_options_t*, crocksdb_mergeoperator_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_compression_per_level(
-    crocksdb_options_t* opt, int* level_values, size_t num_levels);
+    crocksdb_options_t* opt, rocksdb::CompressionType* level_values,
+    size_t num_levels);
 extern C_ROCKSDB_LIBRARY_API size_t
 crocksdb_options_get_compression_level_number(crocksdb_options_t* opt);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_get_compression_per_level(
-    crocksdb_options_t* opt, int* level_values);
+    crocksdb_options_t* opt, rocksdb::CompressionType* level_values);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_set_bottommost_compression(
-    crocksdb_options_t* opt, int c);
+    crocksdb_options_t* opt, rocksdb::CompressionType c);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_create_if_missing(
     crocksdb_options_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void
@@ -1069,7 +1045,7 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_logger_t* crocksdb_logger_create(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_info_log(
     crocksdb_options_t*, crocksdb_logger_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_info_log_level(
-    crocksdb_options_t*, int);
+    crocksdb_options_t*, rocksdb::InfoLogLevel);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_write_buffer_size(
     crocksdb_options_t*, size_t);
 extern C_ROCKSDB_LIBRARY_API size_t
@@ -1349,36 +1325,14 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_max_subcompactions(
     crocksdb_options_t*, uint32_t);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_wal_bytes_per_sync(
     crocksdb_options_t*, uint64_t);
-
-enum {
-  crocksdb_tolerate_corrupted_tail_records_recovery = 0,
-  crocksdb_absolute_consistency_recovery = 1,
-  crocksdb_point_in_time_recovery = 2,
-  crocksdb_skip_any_corrupted_records_recovery = 3
-};
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_wal_recovery_mode(
-    crocksdb_options_t*, int);
-
-enum {
-  crocksdb_no_compression = 0,
-  crocksdb_snappy_compression = 1,
-  crocksdb_zlib_compression = 2,
-  crocksdb_bz2_compression = 3,
-  crocksdb_lz4_compression = 4,
-  crocksdb_lz4hc_compression = 5
-};
+    crocksdb_options_t*, rocksdb::WALRecoveryMode);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_compression(
-    crocksdb_options_t*, int);
-extern C_ROCKSDB_LIBRARY_API int crocksdb_options_get_compression(
-    crocksdb_options_t*);
-
-enum {
-  crocksdb_level_compaction = 0,
-  crocksdb_universal_compaction = 1,
-  crocksdb_fifo_compaction = 2
-};
+    crocksdb_options_t*, rocksdb::CompressionType);
+extern C_ROCKSDB_LIBRARY_API rocksdb::CompressionType
+crocksdb_options_get_compression(crocksdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_compaction_style(
-    crocksdb_options_t*, int);
+    crocksdb_options_t*, rocksdb::CompactionStyle);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_options_set_universal_compaction_options(
     crocksdb_options_t*, crocksdb_universal_compaction_options_t*);
@@ -1392,15 +1346,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_vector_memtable_factory(
     crocksdb_options_t* opt, uint64_t reserved_bytes);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_atomic_flush(
     crocksdb_options_t* opt, unsigned char enable);
-
-enum {
-  compaction_by_compensated_size = 0,
-  compaction_by_oldest_largestseq_first = 1,
-  compaction_by_oldest_smallest_seq_first = 2,
-  compaction_by_min_overlapping_ratio = 3,
-};
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_compaction_priority(
-    crocksdb_options_t*, unsigned char);
+    crocksdb_options_t*, rocksdb::CompactionPri);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_delayed_write_rate(
     crocksdb_options_t*, uint64_t);
@@ -1417,12 +1364,12 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_ratelimiter_t*
 crocksdb_ratelimiter_create_with_auto_tuned(int64_t rate_bytes_per_sec,
                                             int64_t refill_period_us,
                                             int32_t fairness,
-                                            crocksdb_ratelimiter_mode_t mode,
+                                            rocksdb::RateLimiter::Mode mode,
                                             unsigned char auto_tuned);
 extern C_ROCKSDB_LIBRARY_API crocksdb_ratelimiter_t*
 crocksdb_writeampbasedratelimiter_create_with_auto_tuned(
     int64_t rate_bytes_per_sec, int64_t refill_period_us, int32_t fairness,
-    crocksdb_ratelimiter_mode_t mode, unsigned char auto_tuned);
+    rocksdb::RateLimiter::Mode mode, unsigned char auto_tuned);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_ratelimiter_destroy(
     crocksdb_ratelimiter_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_ratelimiter_set_bytes_per_second(
@@ -1431,22 +1378,18 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_ratelimiter_set_auto_tuned(
     crocksdb_ratelimiter_t* limiter, unsigned char auto_tuned);
 extern C_ROCKSDB_LIBRARY_API int64_t
 crocksdb_ratelimiter_get_singleburst_bytes(crocksdb_ratelimiter_t* limiter);
-enum {
-  env_io_priority_low = 0,
-  env_io_priority_high = 1,
-  env_io_priority_total = 2,
-};
 extern C_ROCKSDB_LIBRARY_API void crocksdb_ratelimiter_request(
-    crocksdb_ratelimiter_t* limiter, int64_t bytes, unsigned char pri);
+    crocksdb_ratelimiter_t* limiter, int64_t bytes,
+    rocksdb::Env::IOPriority pri);
 extern C_ROCKSDB_LIBRARY_API int64_t
 crocksdb_ratelimiter_get_total_bytes_through(crocksdb_ratelimiter_t* limiter,
-                                             unsigned char pri);
+                                             rocksdb::Env::IOPriority pri);
 extern C_ROCKSDB_LIBRARY_API int64_t
 crocksdb_ratelimiter_get_bytes_per_second(crocksdb_ratelimiter_t* limiter);
 extern C_ROCKSDB_LIBRARY_API unsigned char crocksdb_ratelimiter_get_auto_tuned(
     crocksdb_ratelimiter_t* limiter);
 extern C_ROCKSDB_LIBRARY_API int64_t crocksdb_ratelimiter_get_total_requests(
-    crocksdb_ratelimiter_t* limiter, unsigned char pri);
+    crocksdb_ratelimiter_t* limiter, rocksdb::Env::IOPriority pri);
 
 /* Compaction Filter Context */
 
@@ -1477,7 +1420,8 @@ crocksdb_compactionfilterfactory_create(
     void* state, void (*destructor)(void*),
     crocksdb_compactionfilter_t* (*create_compaction_filter)(
         void*, crocksdb_compactionfiltercontext_t* context),
-    unsigned char (*should_filter_table_file_creation)(void*, int reason),
+    unsigned char (*should_filter_table_file_creation)(
+        void*, rocksdb::TableFileCreationReason reason),
     const char* (*name)(void*));
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compactionfilterfactory_destroy(
     crocksdb_compactionfilterfactory_t*);
@@ -1549,7 +1493,7 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_readoptions_set_iterate_lower_bound(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_readoptions_set_iterate_upper_bound(
     crocksdb_readoptions_t*, const char* key, size_t keylen);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_readoptions_set_read_tier(
-    crocksdb_readoptions_t*, int);
+    crocksdb_readoptions_t*, rocksdb::ReadTier);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_readoptions_set_tailing(
     crocksdb_readoptions_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_readoptions_set_managed(
@@ -1613,7 +1557,7 @@ extern C_ROCKSDB_LIBRARY_API void
 crocksdb_compactoptions_set_max_subcompactions(crocksdb_compactoptions_t*, int);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_compactoptions_set_bottommost_level_compaction(
-    crocksdb_compactoptions_t*, int);
+    crocksdb_compactoptions_t*, rocksdb::BottommostLevelCompaction);
 
 /* Flush options */
 
@@ -1702,7 +1646,7 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_file_encryption_info_t*
 crocksdb_file_encryption_info_create();
 extern C_ROCKSDB_LIBRARY_API void crocksdb_file_encryption_info_destroy(
     crocksdb_file_encryption_info_t* file_info);
-extern C_ROCKSDB_LIBRARY_API crocksdb_encryption_method_t
+extern C_ROCKSDB_LIBRARY_API rocksdb::EncryptionMethod
 crocksdb_file_encryption_info_method(
     crocksdb_file_encryption_info_t* file_info);
 extern C_ROCKSDB_LIBRARY_API const char* crocksdb_file_encryption_info_key(
@@ -1711,7 +1655,7 @@ extern C_ROCKSDB_LIBRARY_API const char* crocksdb_file_encryption_info_iv(
     crocksdb_file_encryption_info_t* file_info, size_t* ivlen);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_file_encryption_info_set_method(
     crocksdb_file_encryption_info_t* file_info,
-    crocksdb_encryption_method_t method);
+    rocksdb::EncryptionMethod method);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_file_encryption_info_set_key(
     crocksdb_file_encryption_info_t* file_info, const char* key, size_t keylen);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_file_encryption_info_set_iv(
@@ -1911,11 +1855,6 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_slicetransform_destroy(
 
 /* Universal Compaction options */
 
-enum {
-  crocksdb_similar_size_compaction_stop_style = 0,
-  crocksdb_total_size_compaction_stop_style = 1
-};
-
 extern C_ROCKSDB_LIBRARY_API crocksdb_universal_compaction_options_t*
 crocksdb_universal_compaction_options_create();
 extern C_ROCKSDB_LIBRARY_API void
@@ -1935,7 +1874,7 @@ crocksdb_universal_compaction_options_set_compression_size_percent(
     crocksdb_universal_compaction_options_t*, int);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_universal_compaction_options_set_stop_style(
-    crocksdb_universal_compaction_options_t*, int);
+    crocksdb_universal_compaction_options_t*, rocksdb::CompactionStopStyle);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_universal_compaction_options_destroy(
     crocksdb_universal_compaction_options_t*);
 
@@ -2012,8 +1951,8 @@ extern C_ROCKSDB_LIBRARY_API const char* crocksdb_pinnableslice_value(
     const crocksdb_pinnableslice_t* t, size_t* vlen);
 
 extern C_ROCKSDB_LIBRARY_API size_t crocksdb_get_supported_compression_number();
-extern C_ROCKSDB_LIBRARY_API void crocksdb_get_supported_compression(int*,
-                                                                     size_t);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_get_supported_compression(
+    rocksdb::CompressionType*, size_t);
 
 /* Table Properties */
 
@@ -2208,7 +2147,7 @@ crocksdb_compaction_options_create();
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compaction_options_destroy(
     crocksdb_compaction_options_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compaction_options_set_compression(
-    crocksdb_compaction_options_t*, int);
+    crocksdb_compaction_options_t*, rocksdb::CompressionType);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_compaction_options_set_output_file_size_limit(
     crocksdb_compaction_options_t*, size_t);
@@ -2222,8 +2161,9 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_compact_files_cf(
     size_t input_file_count, int output_level, char** errptr);
 
 /* PerfContext */
-extern C_ROCKSDB_LIBRARY_API int crocksdb_get_perf_level(void);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_set_perf_level(int level);
+extern C_ROCKSDB_LIBRARY_API rocksdb::PerfLevel crocksdb_get_perf_level(void);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_set_perf_level(
+    rocksdb::PerfLevel level);
 extern C_ROCKSDB_LIBRARY_API crocksdb_perf_context_t* crocksdb_get_perf_context(
     void);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_perf_context_reset(
@@ -2440,7 +2380,7 @@ extern C_ROCKSDB_LIBRARY_API void
 crocksdb_sst_partitioner_request_set_current_output_file_size(
     crocksdb_sst_partitioner_request_t* req, uint64_t current_output_file_size);
 
-typedef crocksdb_sst_partitioner_result_t (
+typedef rocksdb::PartitionerResult (
     *crocksdb_sst_partitioner_should_partition_cb)(
     void* underlying, crocksdb_sst_partitioner_request_t* req);
 typedef unsigned char (*crocksdb_sst_partitioner_can_do_trivial_move_cb)(
@@ -2455,7 +2395,7 @@ crocksdb_sst_partitioner_create(
     crocksdb_sst_partitioner_can_do_trivial_move_cb can_do_trivial_move_cb);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_sst_partitioner_destroy(
     crocksdb_sst_partitioner_t* partitioner);
-extern C_ROCKSDB_LIBRARY_API crocksdb_sst_partitioner_result_t
+extern C_ROCKSDB_LIBRARY_API rocksdb::PartitionerResult
 crocksdb_sst_partitioner_should_partition(
     crocksdb_sst_partitioner_t* partitioner,
     crocksdb_sst_partitioner_request_t* req);
@@ -2588,7 +2528,7 @@ extern C_ROCKSDB_LIBRARY_API void ctitandb_options_set_gc_merge_rewrite(
     ctitandb_options_t*, unsigned char);
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_options_set_blob_file_compression(
-    ctitandb_options_t*, int type);
+    ctitandb_options_t*, rocksdb::CompressionType type);
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_options_set_compression_options(
     ctitandb_options_t* opt, int, int, int, int, int);
@@ -2654,8 +2594,8 @@ extern C_ROCKSDB_LIBRARY_API void ctitandb_options_set_discardable_ratio(
 extern void C_ROCKSDB_LIBRARY_API
 ctitandb_options_set_sample_ratio(ctitandb_options_t* options, double ratio);
 
-extern void C_ROCKSDB_LIBRARY_API
-ctitandb_options_set_blob_run_mode(ctitandb_options_t* options, int mode);
+extern void C_ROCKSDB_LIBRARY_API ctitandb_options_set_blob_run_mode(
+    ctitandb_options_t* options, rocksdb::titandb::TitanBlobRunMode mode);
 
 /* TitanReadOptions */
 
