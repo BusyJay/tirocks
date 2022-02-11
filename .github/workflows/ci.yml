@@ -84,18 +84,19 @@ jobs:
     - run: cargo xtask submodule
     - run: cargo test --all
 
-  Win:
-    name: Windows
-    runs-on: windows-latest
-    env:
-      LIBCLANG_PATH: 'C:\Program Files\LLVM\bin'
-      RUSTFLAGS: ""
-      # It's not recoginized by cc-rs, set it explicitly
-      VisualStudioVersion: "17.0"
-    steps:
-    - uses: actions/checkout@v2
-    - run: choco install -y llvm
-    - run: refreshenv
-    - run: cargo version ; cmake --version 
-    - run: cargo xtask submodule
-    - run: cargo test --all
+# It's not supported by tikv/titan and tikv/rocksdb yet.
+#  Win:
+#    name: Windows
+#    runs-on: windows-latest
+#    env:
+#      LIBCLANG_PATH: 'C:\Program Files\LLVM\bin'
+#      RUSTFLAGS: ""
+#      # It's not recoginized by cc-rs, set it explicitly
+#      VisualStudioVersion: "17.0"
+#    steps:
+#    - uses: actions/checkout@v2
+#    - run: choco install -y llvm
+#    - run: refreshenv
+#    - run: cargo version ; cmake --version 
+#    - run: cargo xtask submodule
+#    - run: cargo test --all
