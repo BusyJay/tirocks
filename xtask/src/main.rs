@@ -50,11 +50,21 @@ fn submodule() {
         let mut remote_changed = false;
         let path = format!("tirocks-sys/{}", submodule);
         if let Ok(repo) = env::var(&format!("{}_REPO", upper)) {
-            exec(cmd("git").args(&["config", "--file=.gitmodules", &format!("submodule.\"{}\".url", path), &format!("https://github.com/{}/{}.git", repo, submodule)]));
+            exec(cmd("git").args(&[
+                "config",
+                "--file=.gitmodules",
+                &format!("submodule.\"{}\".url", path),
+                &format!("https://github.com/{}/{}.git", repo, submodule),
+            ]));
             remote_changed = true;
         }
         if let Ok(branch) = env::var(&format!("{}_BRANCH", upper)) {
-            exec(cmd("git").args(&["config", "--file=.gitmodules", &format!("submodule.\"{}\".branch", path), &branch]));
+            exec(cmd("git").args(&[
+                "config",
+                "--file=.gitmodules",
+                &format!("submodule.\"{}\".branch", path),
+                &branch,
+            ]));
             remote_changed = true;
         }
         if remote_changed {

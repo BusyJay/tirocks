@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: 
+    - main
+
+env:
+  RUST_BACKTRACE: 1
+  # Some of the bindgen tests generate "deref-nullptr" warnings, see https://github.com/rust-lang/rust-bindgen/issues/1651
+  RUSTFLAGS: "--deny=warnings --allow deref-nullptr"
+  TEST_BIND: 1
+
+jobs:
+  Linux-Format:
+    name: Linux-Format
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - run: sudo apt-get install -y clang-tidy-9
+    - run: sudo update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-9 100
+    - run: which cargo && cargo version && clang --version && openssl version && which cmake && cmake --version
+    - run: cargo xtask submodule
+    - run: cargo clippy --all -- -D clippy::all
+    - run: cargo xtask format && git diff-index --quiet HEAD
+
+  Linux-Stable:
+    strategy:
+      matrix:
+        include:
+          - host: ubuntu-latest
+            profile: 
+            suffix:
+          # Following will be enabled when the project is moved to tikv org.
+          #- host: ARM64
+          #  profile: --release
+          #  suffix: -Arm64
+    name: Linux-Stable${{ matrix.suffix }}
+    runs-on: ${{ matrix.host }}
+    steps:
+    - uses: actions/checkout@v2
+    - run: which cargo && cargo version && clang --version && openssl version
+    - run: cargo xtask submodule
+    - run: env TEST_BIND=0 cargo xtask bindgen && git diff --exit-code HEAD
+    - run: cargo xtask bindgen
+    - run: cargo build
+    - run: cargo test --all ${{ matrix.profile }}
+
+  Linux-Stable-openssl:
+    strategy:
+      matrix:
+        include:
+          - host: ubuntu-latest
+            profile: 
+            suffix:
+          #- host: ARM64
+          #  profile: --release
+          #  suffix: -Arm64
+    name: Linux-Stable-openssl${{ matrix.suffix }}
+    runs-on: ${{ matrix.host }}
+    steps:
+    - uses: actions/checkout@v2
+    - run: which cargo && cargo version && clang --version && openssl version
+    - run: cargo xtask submodule
+    - run: cargo test --features "encryption" --all ${{ matrix.profile }}
+
+  Linux-Nightly:
+    name: Linux-Nightly
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - run: rustup default nightly
+    - run: which cargo && cargo version && clang --version && openssl version
+    - run: cargo xtask submodule
+    - run: RUSTFLAGS="-Z sanitizer=address" cargo test --features encryption --all --target x86_64-unknown-linux-gnu
+
+  Mac:
+    name: Mac
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - run: which cargo && cargo version && clang --version && openssl version
+    - run: cargo xtask submodule
+    - run: cargo test --all
+
+# It's not supported by tikv/titan and tikv/rocksdb yet.
+#  Win:
+#    name: Windows
+#    runs-on: windows-latest
+#    env:
+#      LIBCLANG_PATH: 'C:\Program Files\LLVM\bin'
+#      RUSTFLAGS: ""
+#      # It's not recoginized by cc-rs, set it explicitly
+#      VisualStudioVersion: "17.0"
+#    steps:
+#    - uses: actions/checkout@v2
+#    - run: choco install -y llvm
+#    - run: refreshenv
+#    - run: cargo version ; cmake --version 
+#    - run: cargo xtask submodule
+#    - run: cargo test --all
