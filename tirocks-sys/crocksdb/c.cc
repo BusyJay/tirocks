@@ -4137,24 +4137,11 @@ void crocksdb_file_encryption_info_destroy(
   delete file_info;
 }
 
-crocksdb_encryption_method_t crocksdb_file_encryption_info_method(
+EncryptionMethod crocksdb_file_encryption_info_method(
     crocksdb_file_encryption_info_t* file_info) {
   assert(file_info != nullptr);
   assert(file_info->rep != nullptr);
-  switch (file_info->rep->method) {
-    case EncryptionMethod::kUnknown:
-      return crocksdb_encryption_method_t::kUnknown;
-    case EncryptionMethod::kPlaintext:
-      return crocksdb_encryption_method_t::kPlaintext;
-    case EncryptionMethod::kAES128_CTR:
-      return crocksdb_encryption_method_t::kAES128_CTR;
-    case EncryptionMethod::kAES192_CTR:
-      return crocksdb_encryption_method_t::kAES192_CTR;
-    case EncryptionMethod::kAES256_CTR:
-      return crocksdb_encryption_method_t::kAES256_CTR;
-    default:
-      assert(false);
-  }
+  return file_info->rep->method;
 }
 
 const char* crocksdb_file_encryption_info_key(
@@ -4176,28 +4163,9 @@ const char* crocksdb_file_encryption_info_iv(
 }
 
 void crocksdb_file_encryption_info_set_method(
-    crocksdb_file_encryption_info_t* file_info,
-    crocksdb_encryption_method_t method) {
+    crocksdb_file_encryption_info_t* file_info, EncryptionMethod method) {
   assert(file_info != nullptr);
-  switch (method) {
-    case kUnknown:
-      file_info->rep->method = EncryptionMethod::kUnknown;
-      break;
-    case kPlaintext:
-      file_info->rep->method = EncryptionMethod::kPlaintext;
-      break;
-    case kAES128_CTR:
-      file_info->rep->method = EncryptionMethod::kAES128_CTR;
-      break;
-    case kAES192_CTR:
-      file_info->rep->method = EncryptionMethod::kAES192_CTR;
-      break;
-    case kAES256_CTR:
-      file_info->rep->method = EncryptionMethod::kAES256_CTR;
-      break;
-    default:
-      assert(false);
-  };
+  file_info->rep->method = method;
 }
 
 void crocksdb_file_encryption_info_set_key(

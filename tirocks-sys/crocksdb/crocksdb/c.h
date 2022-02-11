@@ -1646,7 +1646,7 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_file_encryption_info_t*
 crocksdb_file_encryption_info_create();
 extern C_ROCKSDB_LIBRARY_API void crocksdb_file_encryption_info_destroy(
     crocksdb_file_encryption_info_t* file_info);
-extern C_ROCKSDB_LIBRARY_API rocksdb::EncryptionMethod
+extern C_ROCKSDB_LIBRARY_API rocksdb::encryption::EncryptionMethod
 crocksdb_file_encryption_info_method(
     crocksdb_file_encryption_info_t* file_info);
 extern C_ROCKSDB_LIBRARY_API const char* crocksdb_file_encryption_info_key(
@@ -1655,7 +1655,7 @@ extern C_ROCKSDB_LIBRARY_API const char* crocksdb_file_encryption_info_iv(
     crocksdb_file_encryption_info_t* file_info, size_t* ivlen);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_file_encryption_info_set_method(
     crocksdb_file_encryption_info_t* file_info,
-    rocksdb::EncryptionMethod method);
+    rocksdb::encryption::EncryptionMethod method);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_file_encryption_info_set_key(
     crocksdb_file_encryption_info_t* file_info, const char* key, size_t keylen);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_file_encryption_info_set_iv(
