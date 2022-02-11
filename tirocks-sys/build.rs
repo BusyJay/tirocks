@@ -29,8 +29,6 @@ fn bindgen_rocksdb(file_path: &Path) {
         .clang_arg("-xc++")
         .clang_arg("-Irocksdb/include")
         .clang_arg("-Ititan/include")
-        // Can be removed after tikv/titan#229 is merged.
-        .clang_arg("-Irocksdb/")
         .clang_arg("-std=c++11")
         .rustfmt_bindings(true)
         .whitelist_function(r"\bcrocksdb_.*")
