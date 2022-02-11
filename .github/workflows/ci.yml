@@ -90,6 +90,8 @@ jobs:
     env:
       LIBCLANG_PATH: 'C:\Program Files\LLVM\bin'
       RUSTFLAGS: ""
+      # It's not recoginized by cc-rs, set it explicitly
+      VisualStudioVersion: "17.0"
     steps:
     - uses: actions/checkout@v2
     - run: choco install -y llvm
