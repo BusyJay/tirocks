@@ -22,12 +22,14 @@ fn bindgen_rocksdb(file_path: &Path) {
     if env::var("CARGO_CFG_TARGET_OS").map_or(false, |s| s == "windows") {
         builder = builder.clang_arg("-D _WIN32_WINNT=0x600");
     }
+    // TODO: generate bindings of encryption
     let builder = builder
         .header("crocksdb/crocksdb/c.h")
         .header("rocksdb/include/rocksdb/statistics.h")
         .header("titan/include/titan/statistics.h")
         .clang_arg("-xc++")
         .clang_arg("-Irocksdb/include")
+        .clang_arg("-Ititan/include")
         .clang_arg("-std=c++11")
         .rustfmt_bindings(true)
         .whitelist_function(r"\bcrocksdb_.*")

@@ -1,3 +1,513 @@
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_Env_IOPriority {
+    IO_LOW = 0,
+    IO_HIGH = 1,
+    IO_TOTAL = 2,
+}
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_InfoLogLevel {
+    DEBUG_LEVEL = 0,
+    INFO_LEVEL = 1,
+    WARN_LEVEL = 2,
+    ERROR_LEVEL = 3,
+    FATAL_LEVEL = 4,
+    HEADER_LEVEL = 5,
+    NUM_INFO_LOG_LEVELS = 6,
+}
+#[repr(i32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_TableFileCreationReason {
+    kFlush = 0,
+    kCompaction = 1,
+    kRecovery = 2,
+    kMisc = 3,
+}
+#[repr(i32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_BackgroundErrorReason {
+    kFlush = 0,
+    kCompaction = 1,
+    kWriteCallback = 2,
+    kMemTable = 3,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_CompactionStopStyle {
+    kCompactionStopStyleSimilarSize = 0,
+    kCompactionStopStyleTotalSize = 1,
+}
+#[repr(i8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_CompactionStyle {
+    kCompactionStyleLevel = 0,
+    kCompactionStyleUniversal = 1,
+    kCompactionStyleFIFO = 2,
+    kCompactionStyleNone = 3,
+}
+#[repr(i8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_CompactionPri {
+    kByCompensatedSize = 0,
+    kOldestLargestSeqFirst = 1,
+    kOldestSmallestSeqFirst = 2,
+    kMinOverlappingRatio = 3,
+}
+#[repr(i8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_PartitionerResult {
+    kNotRequired = 0,
+    kRequired = 1,
+}
+#[repr(u32)]
+#[doc = " Keep adding ticker's here."]
+#[doc = "  1. Any ticker should be added before TICKER_ENUM_MAX."]
+#[doc = "  2. Add a readable string in TickersNameMap below for the newly added ticker."]
+#[doc = "  3. Add a corresponding enum value to TickerType.java in the java API"]
+#[doc = "  4. Add the enum conversions from Java and C++ to portal.h's toJavaTickerType"]
+#[doc = " and toCppTickers"]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_Tickers {
+    BLOCK_CACHE_MISS = 0,
+    BLOCK_CACHE_HIT = 1,
+    BLOCK_CACHE_ADD = 2,
+    BLOCK_CACHE_ADD_FAILURES = 3,
+    BLOCK_CACHE_INDEX_MISS = 4,
+    BLOCK_CACHE_INDEX_HIT = 5,
+    BLOCK_CACHE_INDEX_ADD = 6,
+    BLOCK_CACHE_INDEX_BYTES_INSERT = 7,
+    BLOCK_CACHE_INDEX_BYTES_EVICT = 8,
+    BLOCK_CACHE_FILTER_MISS = 9,
+    BLOCK_CACHE_FILTER_HIT = 10,
+    BLOCK_CACHE_FILTER_ADD = 11,
+    BLOCK_CACHE_FILTER_BYTES_INSERT = 12,
+    BLOCK_CACHE_FILTER_BYTES_EVICT = 13,
+    BLOCK_CACHE_DATA_MISS = 14,
+    BLOCK_CACHE_DATA_HIT = 15,
+    BLOCK_CACHE_DATA_ADD = 16,
+    BLOCK_CACHE_DATA_BYTES_INSERT = 17,
+    BLOCK_CACHE_BYTES_READ = 18,
+    BLOCK_CACHE_BYTES_WRITE = 19,
+    BLOOM_FILTER_USEFUL = 20,
+    BLOOM_FILTER_FULL_POSITIVE = 21,
+    BLOOM_FILTER_FULL_TRUE_POSITIVE = 22,
+    BLOOM_FILTER_MICROS = 23,
+    PERSISTENT_CACHE_HIT = 24,
+    PERSISTENT_CACHE_MISS = 25,
+    SIM_BLOCK_CACHE_HIT = 26,
+    SIM_BLOCK_CACHE_MISS = 27,
+    MEMTABLE_HIT = 28,
+    MEMTABLE_MISS = 29,
+    GET_HIT_L0 = 30,
+    GET_HIT_L1 = 31,
+    GET_HIT_L2_AND_UP = 32,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    COMPACTION_KEY_DROP_NEWER_ENTRY = 33,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    COMPACTION_KEY_DROP_OBSOLETE = 34,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    COMPACTION_KEY_DROP_RANGE_DEL = 35,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    COMPACTION_KEY_DROP_USER = 36,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    COMPACTION_RANGE_DEL_DROP_OBSOLETE = 37,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    COMPACTION_OPTIMIZED_DEL_DROP_OBSOLETE = 38,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    COMPACTION_CANCELLED = 39,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_KEYS_WRITTEN = 40,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_KEYS_READ = 41,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_KEYS_UPDATED = 42,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    BYTES_WRITTEN = 43,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    BYTES_READ = 44,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_DB_SEEK = 45,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_DB_NEXT = 46,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_DB_PREV = 47,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_DB_SEEK_FOUND = 48,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_DB_NEXT_FOUND = 49,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_DB_PREV_FOUND = 50,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    ITER_BYTES_READ = 51,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NO_FILE_CLOSES = 52,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NO_FILE_OPENS = 53,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NO_FILE_ERRORS = 54,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    STALL_L0_SLOWDOWN_MICROS = 55,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    STALL_MEMTABLE_COMPACTION_MICROS = 56,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    STALL_L0_NUM_FILES_MICROS = 57,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    STALL_MICROS = 58,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    DB_MUTEX_WAIT_MICROS = 59,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    RATE_LIMIT_DELAY_MILLIS = 60,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NO_ITERATORS = 61,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_MULTIGET_CALLS = 62,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_MULTIGET_KEYS_READ = 63,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_MULTIGET_BYTES_READ = 64,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_FILTERED_DELETES = 65,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_MERGE_FAILURES = 66,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    BLOOM_FILTER_PREFIX_CHECKED = 67,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    BLOOM_FILTER_PREFIX_USEFUL = 68,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_OF_RESEEKS_IN_ITERATION = 69,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    GET_UPDATES_SINCE_CALLS = 70,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    BLOCK_CACHE_COMPRESSED_MISS = 71,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    BLOCK_CACHE_COMPRESSED_HIT = 72,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    BLOCK_CACHE_COMPRESSED_ADD = 73,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    BLOCK_CACHE_COMPRESSED_ADD_FAILURES = 74,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    WAL_FILE_SYNCED = 75,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    WAL_FILE_BYTES = 76,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    WRITE_DONE_BY_SELF = 77,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    WRITE_DONE_BY_OTHER = 78,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    WRITE_TIMEDOUT = 79,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    WRITE_WITH_WAL = 80,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    COMPACT_READ_BYTES = 81,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    COMPACT_WRITE_BYTES = 82,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    FLUSH_WRITE_BYTES = 83,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_DIRECT_LOAD_TABLE_PROPERTIES = 84,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_SUPERVERSION_ACQUIRES = 85,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_SUPERVERSION_RELEASES = 86,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_SUPERVERSION_CLEANUPS = 87,
+    NUMBER_BLOCK_COMPRESSED = 88,
+    NUMBER_BLOCK_DECOMPRESSED = 89,
+    NUMBER_BLOCK_NOT_COMPRESSED = 90,
+    MERGE_OPERATION_TOTAL_TIME = 91,
+    FILTER_OPERATION_TOTAL_TIME = 92,
+    ROW_CACHE_HIT = 93,
+    ROW_CACHE_MISS = 94,
+    READ_AMP_ESTIMATE_USEFUL_BYTES = 95,
+    READ_AMP_TOTAL_READ_BYTES = 96,
+    NUMBER_RATE_LIMITER_DRAINS = 97,
+    NUMBER_ITER_SKIP = 98,
+    BLOB_DB_NUM_PUT = 99,
+    BLOB_DB_NUM_WRITE = 100,
+    BLOB_DB_NUM_GET = 101,
+    BLOB_DB_NUM_MULTIGET = 102,
+    BLOB_DB_NUM_SEEK = 103,
+    BLOB_DB_NUM_NEXT = 104,
+    BLOB_DB_NUM_PREV = 105,
+    BLOB_DB_NUM_KEYS_WRITTEN = 106,
+    BLOB_DB_NUM_KEYS_READ = 107,
+    BLOB_DB_BYTES_WRITTEN = 108,
+    BLOB_DB_BYTES_READ = 109,
+    BLOB_DB_WRITE_INLINED = 110,
+    BLOB_DB_WRITE_INLINED_TTL = 111,
+    BLOB_DB_WRITE_BLOB = 112,
+    BLOB_DB_WRITE_BLOB_TTL = 113,
+    BLOB_DB_BLOB_FILE_BYTES_WRITTEN = 114,
+    BLOB_DB_BLOB_FILE_BYTES_READ = 115,
+    BLOB_DB_BLOB_FILE_SYNCED = 116,
+    BLOB_DB_BLOB_INDEX_EXPIRED_COUNT = 117,
+    BLOB_DB_BLOB_INDEX_EXPIRED_SIZE = 118,
+    BLOB_DB_BLOB_INDEX_EVICTED_COUNT = 119,
+    BLOB_DB_BLOB_INDEX_EVICTED_SIZE = 120,
+    BLOB_DB_GC_NUM_FILES = 121,
+    BLOB_DB_GC_NUM_NEW_FILES = 122,
+    BLOB_DB_GC_FAILURES = 123,
+    BLOB_DB_GC_NUM_KEYS_OVERWRITTEN = 124,
+    BLOB_DB_GC_NUM_KEYS_EXPIRED = 125,
+    BLOB_DB_GC_NUM_KEYS_RELOCATED = 126,
+    BLOB_DB_GC_BYTES_OVERWRITTEN = 127,
+    BLOB_DB_GC_BYTES_EXPIRED = 128,
+    BLOB_DB_GC_BYTES_RELOCATED = 129,
+    BLOB_DB_FIFO_NUM_FILES_EVICTED = 130,
+    BLOB_DB_FIFO_NUM_KEYS_EVICTED = 131,
+    BLOB_DB_FIFO_BYTES_EVICTED = 132,
+    TXN_PREPARE_MUTEX_OVERHEAD = 133,
+    TXN_OLD_COMMIT_MAP_MUTEX_OVERHEAD = 134,
+    TXN_DUPLICATE_KEY_OVERHEAD = 135,
+    TXN_SNAPSHOT_MUTEX_OVERHEAD = 136,
+    NUMBER_MULTIGET_KEYS_FOUND = 137,
+    NO_ITERATOR_CREATED = 138,
+    NO_ITERATOR_DELETED = 139,
+    BLOCK_CACHE_COMPRESSION_DICT_MISS = 140,
+    BLOCK_CACHE_COMPRESSION_DICT_HIT = 141,
+    BLOCK_CACHE_COMPRESSION_DICT_ADD = 142,
+    BLOCK_CACHE_COMPRESSION_DICT_BYTES_INSERT = 143,
+    BLOCK_CACHE_COMPRESSION_DICT_BYTES_EVICT = 144,
+    TICKER_ENUM_MAX = 145,
+}
+#[repr(u32)]
+#[doc = " Keep adding histogram's here."]
+#[doc = " Any histogram should have value less than HISTOGRAM_ENUM_MAX"]
+#[doc = " Add a new Histogram by assigning it the current value of HISTOGRAM_ENUM_MAX"]
+#[doc = " Add a string representation in HistogramsNameMap below"]
+#[doc = " And increment HISTOGRAM_ENUM_MAX"]
+#[doc = " Add a corresponding enum value to HistogramType.java in the java API"]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_Histograms {
+    DB_GET = 0,
+    DB_WRITE = 1,
+    COMPACTION_TIME = 2,
+    COMPACTION_CPU_TIME = 3,
+    SUBCOMPACTION_SETUP_TIME = 4,
+    TABLE_SYNC_MICROS = 5,
+    COMPACTION_OUTFILE_SYNC_MICROS = 6,
+    WAL_FILE_SYNC_MICROS = 7,
+    MANIFEST_FILE_SYNC_MICROS = 8,
+    TABLE_OPEN_IO_MICROS = 9,
+    DB_MULTIGET = 10,
+    READ_BLOCK_COMPACTION_MICROS = 11,
+    READ_BLOCK_GET_MICROS = 12,
+    WRITE_RAW_BLOCK_MICROS = 13,
+    STALL_L0_SLOWDOWN_COUNT = 14,
+    STALL_MEMTABLE_COMPACTION_COUNT = 15,
+    STALL_L0_NUM_FILES_COUNT = 16,
+    HARD_RATE_LIMIT_DELAY_COUNT = 17,
+    SOFT_RATE_LIMIT_DELAY_COUNT = 18,
+    NUM_FILES_IN_SINGLE_COMPACTION = 19,
+    DB_SEEK = 20,
+    WRITE_STALL = 21,
+    SST_READ_MICROS = 22,
+    NUM_SUBCOMPACTIONS_SCHEDULED = 23,
+    BYTES_PER_READ = 24,
+    BYTES_PER_WRITE = 25,
+    BYTES_PER_MULTIGET = 26,
+    BYTES_COMPRESSED = 27,
+    BYTES_DECOMPRESSED = 28,
+    COMPRESSION_TIMES_NANOS = 29,
+    DECOMPRESSION_TIMES_NANOS = 30,
+    READ_NUM_MERGE_OPERANDS = 31,
+    BLOB_DB_KEY_SIZE = 32,
+    BLOB_DB_VALUE_SIZE = 33,
+    BLOB_DB_WRITE_MICROS = 34,
+    BLOB_DB_GET_MICROS = 35,
+    BLOB_DB_MULTIGET_MICROS = 36,
+    BLOB_DB_SEEK_MICROS = 37,
+    BLOB_DB_NEXT_MICROS = 38,
+    BLOB_DB_PREV_MICROS = 39,
+    BLOB_DB_BLOB_FILE_WRITE_MICROS = 40,
+    BLOB_DB_BLOB_FILE_READ_MICROS = 41,
+    BLOB_DB_BLOB_FILE_SYNC_MICROS = 42,
+    BLOB_DB_GC_MICROS = 43,
+    BLOB_DB_COMPRESSION_MICROS = 44,
+    BLOB_DB_DECOMPRESSION_MICROS = 45,
+    FLUSH_TIME = 46,
+    SST_BATCH_SIZE = 47,
+    DB_WRITE_WAL_TIME = 48,
+    HISTOGRAM_ENUM_MAX = 49,
+}
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_CompressionType {
+    kNoCompression = 0,
+    kSnappyCompression = 1,
+    kZlibCompression = 2,
+    kBZip2Compression = 3,
+    kLZ4Compression = 4,
+    kLZ4HCCompression = 5,
+    kXpressCompression = 6,
+    kZSTD = 7,
+    kZSTDNotFinalCompression = 64,
+    kDisableCompressionOption = 255,
+}
+#[repr(i8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_WALRecoveryMode {
+    kTolerateCorruptedTailRecords = 0,
+    kAbsoluteConsistency = 1,
+    kPointInTimeRecovery = 2,
+    kSkipAnyCorruptedRecords = 3,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_ReadTier {
+    kReadAllTier = 0,
+    kBlockCacheTier = 1,
+    kPersistedTier = 2,
+    kMemtableTier = 3,
+}
+#[repr(i32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_BottommostLevelCompaction {
+    kSkip = 0,
+    kIfHaveCompactionFilter = 1,
+    kForce = 2,
+    kForceOptimized = 3,
+}
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_PerfLevel {
+    kUninitialized = 0,
+    kDisable = 1,
+    kEnableCount = 2,
+    kEnableTimeExceptForMutex = 3,
+    kEnableTimeAndCPUTimeExceptForMutex = 4,
+    kEnableTime = 5,
+    kOutOfBounds = 6,
+}
+#[repr(i32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_RateLimiter_Mode {
+    kReadsOnly = 0,
+    kWritesOnly = 1,
+    kAllIo = 2,
+}
+#[repr(i8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_BlockBasedTableOptions_IndexType {
+    kBinarySearch = 0,
+    kHashSearch = 1,
+    kTwoLevelIndexSearch = 2,
+    kBinarySearchWithFirstKey = 3,
+}
+#[repr(i32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_titandb_TitanBlobRunMode {
+    kNormal = 0,
+    kReadOnly = 1,
+    kFallback = 2,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_titandb_TickerType {
+    TITAN_NUM_GET = 145,
+    TITAN_NUM_SEEK = 146,
+    TITAN_NUM_NEXT = 147,
+    TITAN_NUM_PREV = 148,
+    TITAN_BLOB_FILE_NUM_KEYS_WRITTEN = 149,
+    TITAN_BLOB_FILE_NUM_KEYS_READ = 150,
+    TITAN_BLOB_FILE_BYTES_WRITTEN = 151,
+    TITAN_BLOB_FILE_BYTES_READ = 152,
+    TITAN_BLOB_FILE_SYNCED = 153,
+    TITAN_GC_NUM_FILES = 154,
+    TITAN_GC_NUM_NEW_FILES = 155,
+    TITAN_GC_NUM_KEYS_OVERWRITTEN = 156,
+    TITAN_GC_NUM_KEYS_RELOCATED = 157,
+    TITAN_GC_BYTES_OVERWRITTEN = 158,
+    TITAN_GC_BYTES_RELOCATED = 159,
+    TITAN_GC_BYTES_WRITTEN = 160,
+    TITAN_GC_BYTES_READ = 161,
+    TITAN_BLOB_CACHE_HIT = 162,
+    TITAN_BLOB_CACHE_MISS = 163,
+    TITAN_GC_NO_NEED = 164,
+    TITAN_GC_REMAIN = 165,
+    TITAN_GC_DISCARDABLE = 166,
+    TITAN_GC_SAMPLE = 167,
+    TITAN_GC_SMALL_FILE = 168,
+    TITAN_GC_FAILURE = 169,
+    TITAN_GC_SUCCESS = 170,
+    TITAN_GC_TRIGGER_NEXT = 171,
+    TITAN_TICKER_ENUM_MAX = 172,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_titandb_HistogramType {
+    TITAN_KEY_SIZE = 49,
+    TITAN_VALUE_SIZE = 50,
+    TITAN_GET_MICROS = 51,
+    TITAN_SEEK_MICROS = 52,
+    TITAN_NEXT_MICROS = 53,
+    TITAN_PREV_MICROS = 54,
+    TITAN_BLOB_FILE_WRITE_MICROS = 55,
+    TITAN_BLOB_FILE_READ_MICROS = 56,
+    TITAN_BLOB_FILE_SYNC_MICROS = 57,
+    TITAN_MANIFEST_FILE_SYNC_MICROS = 58,
+    TITAN_GC_MICROS = 59,
+    TITAN_GC_INPUT_FILE_SIZE = 60,
+    TITAN_GC_OUTPUT_FILE_SIZE = 61,
+    TITAN_ITER_TOUCH_BLOB_FILE_COUNT = 62,
+    TITAN_HISTOGRAM_ENUM_MAX = 63,
+}
 #[repr(C)]
 #[derive(Debug)]
 pub struct crocksdb_cloud_envoptions_t {
@@ -47,22 +557,6 @@ pub struct crocksdb_memory_allocator_t {
 #[derive(Debug)]
 pub struct crocksdb_compactionfilter_t {
     _unused: [u8; 0],
-}
-pub const crocksdb_table_file_creation_reason_flush: _bindgen_ty_1 =
-    _bindgen_ty_1::crocksdb_table_file_creation_reason_flush;
-pub const crocksdb_table_file_creation_reason_compaction: _bindgen_ty_1 =
-    _bindgen_ty_1::crocksdb_table_file_creation_reason_compaction;
-pub const crocksdb_table_file_creation_reason_recovery: _bindgen_ty_1 =
-    _bindgen_ty_1::crocksdb_table_file_creation_reason_recovery;
-pub const crocksdb_table_file_creation_reason_misc: _bindgen_ty_1 =
-    _bindgen_ty_1::crocksdb_table_file_creation_reason_misc;
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum _bindgen_ty_1 {
-    crocksdb_table_file_creation_reason_flush = 0,
-    crocksdb_table_file_creation_reason_compaction = 1,
-    crocksdb_table_file_creation_reason_recovery = 2,
-    crocksdb_table_file_creation_reason_misc = 3,
 }
 #[repr(C)]
 #[derive(Debug)]
@@ -510,12 +1004,6 @@ pub struct crocksdb_map_property_t {
 pub struct crocksdb_writebatch_iterator_t {
     _unused: [u8; 0],
 }
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum crocksdb_sst_partitioner_result_t {
-    kNotRequired = 0,
-    kRequired = 1,
-}
 #[repr(C)]
 #[derive(Debug)]
 pub struct crocksdb_sst_partitioner_t {
@@ -556,21 +1044,6 @@ pub enum crocksdb_table_property_t {
     kPrefixExtractorName = 15,
     kPropertyCollectorsNames = 16,
     kCompressionName = 17,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum crocksdb_ratelimiter_mode_t {
-    kReadsOnly = 1,
-    kWritesOnly = 2,
-    kAllIo = 3,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum crocksdb_backgrounderrorreason_t {
-    kFlush = 1,
-    kCompaction = 2,
-    kWriteCallback = 3,
-    kMemTable = 4,
 }
 #[repr(C)]
 #[derive(Debug)]
@@ -1629,23 +2102,10 @@ extern "C" {
         arg2: libc::c_int,
     );
 }
-pub const crocksdb_block_based_table_index_type_binary_search: _bindgen_ty_2 =
-    _bindgen_ty_2::crocksdb_block_based_table_index_type_binary_search;
-pub const crocksdb_block_based_table_index_type_hash_search: _bindgen_ty_2 =
-    _bindgen_ty_2::crocksdb_block_based_table_index_type_hash_search;
-pub const crocksdb_block_based_table_index_type_two_level_index_search: _bindgen_ty_2 =
-    _bindgen_ty_2::crocksdb_block_based_table_index_type_two_level_index_search;
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum _bindgen_ty_2 {
-    crocksdb_block_based_table_index_type_binary_search = 0,
-    crocksdb_block_based_table_index_type_hash_search = 1,
-    crocksdb_block_based_table_index_type_two_level_index_search = 2,
-}
 extern "C" {
     pub fn crocksdb_block_based_options_set_index_type(
         arg1: *mut crocksdb_block_based_table_options_t,
-        arg2: libc::c_int,
+        arg2: rocksdb_BlockBasedTableOptions_IndexType,
     );
 }
 extern "C" {
@@ -1936,7 +2396,7 @@ pub type on_external_file_ingested_cb = ::std::option::Option<
 pub type on_background_error_cb = ::std::option::Option<
     unsafe extern "C" fn(
         arg1: *mut libc::c_void,
-        arg2: crocksdb_backgrounderrorreason_t,
+        arg2: rocksdb_BackgroundErrorReason,
         arg3: *mut crocksdb_status_ptr_t,
     ),
 >;
@@ -1946,7 +2406,7 @@ pub type on_stall_conditions_changed_cb = ::std::option::Option<
 pub type crocksdb_logger_logv_cb = ::std::option::Option<
     unsafe extern "C" fn(
         arg1: *mut libc::c_void,
-        log_level: libc::c_int,
+        log_level: rocksdb_InfoLogLevel,
         arg2: *const libc::c_char,
     ),
 >;
@@ -2094,7 +2554,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_options_set_compression_per_level(
         opt: *mut crocksdb_options_t,
-        level_values: *mut libc::c_int,
+        level_values: *mut rocksdb_CompressionType,
         num_levels: usize,
     );
 }
@@ -2104,11 +2564,14 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_options_get_compression_per_level(
         opt: *mut crocksdb_options_t,
-        level_values: *mut libc::c_int,
+        level_values: *mut rocksdb_CompressionType,
     );
 }
 extern "C" {
-    pub fn crocksdb_set_bottommost_compression(opt: *mut crocksdb_options_t, c: libc::c_int);
+    pub fn crocksdb_set_bottommost_compression(
+        opt: *mut crocksdb_options_t,
+        c: rocksdb_CompressionType,
+    );
 }
 extern "C" {
     pub fn crocksdb_options_set_create_if_missing(
@@ -2145,7 +2608,10 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_options_set_info_log_level(arg1: *mut crocksdb_options_t, arg2: libc::c_int);
+    pub fn crocksdb_options_set_info_log_level(
+        arg1: *mut crocksdb_options_t,
+        arg2: rocksdb_InfoLogLevel,
+    );
 }
 extern "C" {
     pub fn crocksdb_options_set_write_buffer_size(arg1: *mut crocksdb_options_t, arg2: usize);
@@ -2755,60 +3221,28 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_options_set_wal_bytes_per_sync(arg1: *mut crocksdb_options_t, arg2: u64);
 }
-pub const crocksdb_tolerate_corrupted_tail_records_recovery: _bindgen_ty_3 =
-    _bindgen_ty_3::crocksdb_tolerate_corrupted_tail_records_recovery;
-pub const crocksdb_absolute_consistency_recovery: _bindgen_ty_3 =
-    _bindgen_ty_3::crocksdb_absolute_consistency_recovery;
-pub const crocksdb_point_in_time_recovery: _bindgen_ty_3 =
-    _bindgen_ty_3::crocksdb_point_in_time_recovery;
-pub const crocksdb_skip_any_corrupted_records_recovery: _bindgen_ty_3 =
-    _bindgen_ty_3::crocksdb_skip_any_corrupted_records_recovery;
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum _bindgen_ty_3 {
-    crocksdb_tolerate_corrupted_tail_records_recovery = 0,
-    crocksdb_absolute_consistency_recovery = 1,
-    crocksdb_point_in_time_recovery = 2,
-    crocksdb_skip_any_corrupted_records_recovery = 3,
+extern "C" {
+    pub fn crocksdb_options_set_wal_recovery_mode(
+        arg1: *mut crocksdb_options_t,
+        arg2: rocksdb_WALRecoveryMode,
+    );
 }
 extern "C" {
-    pub fn crocksdb_options_set_wal_recovery_mode(arg1: *mut crocksdb_options_t, arg2: libc::c_int);
-}
-pub const crocksdb_no_compression: _bindgen_ty_4 = _bindgen_ty_4::crocksdb_no_compression;
-pub const crocksdb_snappy_compression: _bindgen_ty_4 = _bindgen_ty_4::crocksdb_snappy_compression;
-pub const crocksdb_zlib_compression: _bindgen_ty_4 = _bindgen_ty_4::crocksdb_zlib_compression;
-pub const crocksdb_bz2_compression: _bindgen_ty_4 = _bindgen_ty_4::crocksdb_bz2_compression;
-pub const crocksdb_lz4_compression: _bindgen_ty_4 = _bindgen_ty_4::crocksdb_lz4_compression;
-pub const crocksdb_lz4hc_compression: _bindgen_ty_4 = _bindgen_ty_4::crocksdb_lz4hc_compression;
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum _bindgen_ty_4 {
-    crocksdb_no_compression = 0,
-    crocksdb_snappy_compression = 1,
-    crocksdb_zlib_compression = 2,
-    crocksdb_bz2_compression = 3,
-    crocksdb_lz4_compression = 4,
-    crocksdb_lz4hc_compression = 5,
+    pub fn crocksdb_options_set_compression(
+        arg1: *mut crocksdb_options_t,
+        arg2: rocksdb_CompressionType,
+    );
 }
 extern "C" {
-    pub fn crocksdb_options_set_compression(arg1: *mut crocksdb_options_t, arg2: libc::c_int);
+    pub fn crocksdb_options_get_compression(
+        arg1: *mut crocksdb_options_t,
+    ) -> rocksdb_CompressionType;
 }
 extern "C" {
-    pub fn crocksdb_options_get_compression(arg1: *mut crocksdb_options_t) -> libc::c_int;
-}
-pub const crocksdb_level_compaction: _bindgen_ty_5 = _bindgen_ty_5::crocksdb_level_compaction;
-pub const crocksdb_universal_compaction: _bindgen_ty_5 =
-    _bindgen_ty_5::crocksdb_universal_compaction;
-pub const crocksdb_fifo_compaction: _bindgen_ty_5 = _bindgen_ty_5::crocksdb_fifo_compaction;
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum _bindgen_ty_5 {
-    crocksdb_level_compaction = 0,
-    crocksdb_universal_compaction = 1,
-    crocksdb_fifo_compaction = 2,
-}
-extern "C" {
-    pub fn crocksdb_options_set_compaction_style(arg1: *mut crocksdb_options_t, arg2: libc::c_int);
+    pub fn crocksdb_options_set_compaction_style(
+        arg1: *mut crocksdb_options_t,
+        arg2: rocksdb_CompactionStyle,
+    );
 }
 extern "C" {
     pub fn crocksdb_options_set_universal_compaction_options(
@@ -2845,7 +3279,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_options_set_compaction_priority(
         arg1: *mut crocksdb_options_t,
-        arg2: libc::c_uchar,
+        arg2: rocksdb_CompactionPri,
     );
 }
 extern "C" {
@@ -2874,7 +3308,7 @@ extern "C" {
         rate_bytes_per_sec: i64,
         refill_period_us: i64,
         fairness: i32,
-        mode: crocksdb_ratelimiter_mode_t,
+        mode: rocksdb_RateLimiter_Mode,
         auto_tuned: libc::c_uchar,
     ) -> *mut crocksdb_ratelimiter_t;
 }
@@ -2883,7 +3317,7 @@ extern "C" {
         rate_bytes_per_sec: i64,
         refill_period_us: i64,
         fairness: i32,
-        mode: crocksdb_ratelimiter_mode_t,
+        mode: rocksdb_RateLimiter_Mode,
         auto_tuned: libc::c_uchar,
     ) -> *mut crocksdb_ratelimiter_t;
 }
@@ -2909,13 +3343,13 @@ extern "C" {
     pub fn crocksdb_ratelimiter_request(
         limiter: *mut crocksdb_ratelimiter_t,
         bytes: i64,
-        pri: libc::c_uchar,
+        pri: rocksdb_Env_IOPriority,
     );
 }
 extern "C" {
     pub fn crocksdb_ratelimiter_get_total_bytes_through(
         limiter: *mut crocksdb_ratelimiter_t,
-        pri: libc::c_uchar,
+        pri: rocksdb_Env_IOPriority,
     ) -> i64;
 }
 extern "C" {
@@ -2929,7 +3363,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_ratelimiter_get_total_requests(
         limiter: *mut crocksdb_ratelimiter_t,
-        pri: libc::c_uchar,
+        pri: rocksdb_Env_IOPriority,
     ) -> i64;
 }
 extern "C" {
@@ -2971,7 +3405,10 @@ extern "C" {
             ) -> *mut crocksdb_compactionfilter_t,
         >,
         should_filter_table_file_creation: ::std::option::Option<
-            unsafe extern "C" fn(arg1: *mut libc::c_void, reason: libc::c_int) -> libc::c_uchar,
+            unsafe extern "C" fn(
+                arg1: *mut libc::c_void,
+                reason: rocksdb_TableFileCreationReason,
+            ) -> libc::c_uchar,
         >,
         name: ::std::option::Option<
             unsafe extern "C" fn(arg1: *mut libc::c_void) -> *const libc::c_char,
@@ -3133,7 +3570,10 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_readoptions_set_read_tier(arg1: *mut crocksdb_readoptions_t, arg2: libc::c_int);
+    pub fn crocksdb_readoptions_set_read_tier(
+        arg1: *mut crocksdb_readoptions_t,
+        arg2: rocksdb_ReadTier,
+    );
 }
 extern "C" {
     pub fn crocksdb_readoptions_set_tailing(arg1: *mut crocksdb_readoptions_t, arg2: libc::c_uchar);
@@ -3265,7 +3705,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_compactoptions_set_bottommost_level_compaction(
         arg1: *mut crocksdb_compactoptions_t,
-        arg2: libc::c_int,
+        arg2: rocksdb_BottommostLevelCompaction,
     );
 }
 extern "C" {
@@ -3716,16 +4156,6 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_slicetransform_destroy(arg1: *mut crocksdb_slicetransform_t);
 }
-pub const crocksdb_similar_size_compaction_stop_style: _bindgen_ty_8 =
-    _bindgen_ty_8::crocksdb_similar_size_compaction_stop_style;
-pub const crocksdb_total_size_compaction_stop_style: _bindgen_ty_8 =
-    _bindgen_ty_8::crocksdb_total_size_compaction_stop_style;
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum _bindgen_ty_8 {
-    crocksdb_similar_size_compaction_stop_style = 0,
-    crocksdb_total_size_compaction_stop_style = 1,
-}
 extern "C" {
     pub fn crocksdb_universal_compaction_options_create(
     ) -> *mut crocksdb_universal_compaction_options_t;
@@ -3763,7 +4193,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_universal_compaction_options_set_stop_style(
         arg1: *mut crocksdb_universal_compaction_options_t,
-        arg2: libc::c_int,
+        arg2: rocksdb_CompactionStopStyle,
     );
 }
 extern "C" {
@@ -3921,7 +4351,7 @@ extern "C" {
     pub fn crocksdb_get_supported_compression_number() -> usize;
 }
 extern "C" {
-    pub fn crocksdb_get_supported_compression(arg1: *mut libc::c_int, arg2: usize);
+    pub fn crocksdb_get_supported_compression(arg1: *mut rocksdb_CompressionType, arg2: usize);
 }
 extern "C" {
     pub fn crocksdb_table_properties_get_u64(
@@ -4234,7 +4664,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_compaction_options_set_compression(
         arg1: *mut crocksdb_compaction_options_t,
-        arg2: libc::c_int,
+        arg2: rocksdb_CompressionType,
     );
 }
 extern "C" {
@@ -4261,10 +4691,10 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_get_perf_level() -> libc::c_int;
+    pub fn crocksdb_get_perf_level() -> rocksdb_PerfLevel;
 }
 extern "C" {
-    pub fn crocksdb_set_perf_level(level: libc::c_int);
+    pub fn crocksdb_set_perf_level(level: rocksdb_PerfLevel);
 }
 extern "C" {
     pub fn crocksdb_get_perf_context() -> *mut crocksdb_perf_context_t;
@@ -4645,7 +5075,7 @@ pub type crocksdb_sst_partitioner_should_partition_cb = ::std::option::Option<
     unsafe extern "C" fn(
         underlying: *mut libc::c_void,
         req: *mut crocksdb_sst_partitioner_request_t,
-    ) -> crocksdb_sst_partitioner_result_t,
+    ) -> rocksdb_PartitionerResult,
 >;
 pub type crocksdb_sst_partitioner_can_do_trivial_move_cb = ::std::option::Option<
     unsafe extern "C" fn(
@@ -4671,7 +5101,7 @@ extern "C" {
     pub fn crocksdb_sst_partitioner_should_partition(
         partitioner: *mut crocksdb_sst_partitioner_t,
         req: *mut crocksdb_sst_partitioner_request_t,
-    ) -> crocksdb_sst_partitioner_result_t;
+    ) -> rocksdb_PartitionerResult;
 }
 extern "C" {
     pub fn crocksdb_sst_partitioner_can_do_trivial_move(
@@ -4879,7 +5309,7 @@ extern "C" {
 extern "C" {
     pub fn ctitandb_options_set_blob_file_compression(
         arg1: *mut ctitandb_options_t,
-        type_: libc::c_int,
+        type_: rocksdb_CompressionType,
     );
 }
 extern "C" {
@@ -4990,7 +5420,10 @@ extern "C" {
     pub fn ctitandb_options_set_sample_ratio(options: *mut ctitandb_options_t, ratio: f64);
 }
 extern "C" {
-    pub fn ctitandb_options_set_blob_run_mode(options: *mut ctitandb_options_t, mode: libc::c_int);
+    pub fn ctitandb_options_set_blob_run_mode(
+        options: *mut ctitandb_options_t,
+        mode: rocksdb_titandb_TitanBlobRunMode,
+    );
 }
 extern "C" {
     pub fn ctitandb_readoptions_create() -> *mut ctitandb_readoptions_t;
@@ -5101,381 +5534,4 @@ extern "C" {
         include_end: libc::c_uchar,
         errptr: *mut *mut libc::c_char,
     );
-}
-#[repr(u32)]
-#[doc = " Keep adding ticker's here."]
-#[doc = "  1. Any ticker should be added before TICKER_ENUM_MAX."]
-#[doc = "  2. Add a readable string in TickersNameMap below for the newly added ticker."]
-#[doc = "  3. Add a corresponding enum value to TickerType.java in the java API"]
-#[doc = "  4. Add the enum conversions from Java and C++ to portal.h's toJavaTickerType"]
-#[doc = " and toCppTickers"]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum rocksdb_Tickers {
-    BLOCK_CACHE_MISS = 0,
-    BLOCK_CACHE_HIT = 1,
-    BLOCK_CACHE_ADD = 2,
-    BLOCK_CACHE_ADD_FAILURES = 3,
-    BLOCK_CACHE_INDEX_MISS = 4,
-    BLOCK_CACHE_INDEX_HIT = 5,
-    BLOCK_CACHE_INDEX_ADD = 6,
-    BLOCK_CACHE_INDEX_BYTES_INSERT = 7,
-    BLOCK_CACHE_INDEX_BYTES_EVICT = 8,
-    BLOCK_CACHE_FILTER_MISS = 9,
-    BLOCK_CACHE_FILTER_HIT = 10,
-    BLOCK_CACHE_FILTER_ADD = 11,
-    BLOCK_CACHE_FILTER_BYTES_INSERT = 12,
-    BLOCK_CACHE_FILTER_BYTES_EVICT = 13,
-    BLOCK_CACHE_DATA_MISS = 14,
-    BLOCK_CACHE_DATA_HIT = 15,
-    BLOCK_CACHE_DATA_ADD = 16,
-    BLOCK_CACHE_DATA_BYTES_INSERT = 17,
-    BLOCK_CACHE_BYTES_READ = 18,
-    BLOCK_CACHE_BYTES_WRITE = 19,
-    BLOOM_FILTER_USEFUL = 20,
-    BLOOM_FILTER_FULL_POSITIVE = 21,
-    BLOOM_FILTER_FULL_TRUE_POSITIVE = 22,
-    BLOOM_FILTER_MICROS = 23,
-    PERSISTENT_CACHE_HIT = 24,
-    PERSISTENT_CACHE_MISS = 25,
-    SIM_BLOCK_CACHE_HIT = 26,
-    SIM_BLOCK_CACHE_MISS = 27,
-    MEMTABLE_HIT = 28,
-    MEMTABLE_MISS = 29,
-    GET_HIT_L0 = 30,
-    GET_HIT_L1 = 31,
-    GET_HIT_L2_AND_UP = 32,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    COMPACTION_KEY_DROP_NEWER_ENTRY = 33,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    COMPACTION_KEY_DROP_OBSOLETE = 34,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    COMPACTION_KEY_DROP_RANGE_DEL = 35,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    COMPACTION_KEY_DROP_USER = 36,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    COMPACTION_RANGE_DEL_DROP_OBSOLETE = 37,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    COMPACTION_OPTIMIZED_DEL_DROP_OBSOLETE = 38,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    COMPACTION_CANCELLED = 39,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_KEYS_WRITTEN = 40,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_KEYS_READ = 41,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_KEYS_UPDATED = 42,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    BYTES_WRITTEN = 43,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    BYTES_READ = 44,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_DB_SEEK = 45,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_DB_NEXT = 46,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_DB_PREV = 47,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_DB_SEEK_FOUND = 48,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_DB_NEXT_FOUND = 49,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_DB_PREV_FOUND = 50,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    ITER_BYTES_READ = 51,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NO_FILE_CLOSES = 52,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NO_FILE_OPENS = 53,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NO_FILE_ERRORS = 54,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    STALL_L0_SLOWDOWN_MICROS = 55,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    STALL_MEMTABLE_COMPACTION_MICROS = 56,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    STALL_L0_NUM_FILES_MICROS = 57,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    STALL_MICROS = 58,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    DB_MUTEX_WAIT_MICROS = 59,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    RATE_LIMIT_DELAY_MILLIS = 60,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NO_ITERATORS = 61,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_MULTIGET_CALLS = 62,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_MULTIGET_KEYS_READ = 63,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_MULTIGET_BYTES_READ = 64,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_FILTERED_DELETES = 65,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_MERGE_FAILURES = 66,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    BLOOM_FILTER_PREFIX_CHECKED = 67,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    BLOOM_FILTER_PREFIX_USEFUL = 68,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_OF_RESEEKS_IN_ITERATION = 69,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    GET_UPDATES_SINCE_CALLS = 70,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    BLOCK_CACHE_COMPRESSED_MISS = 71,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    BLOCK_CACHE_COMPRESSED_HIT = 72,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    BLOCK_CACHE_COMPRESSED_ADD = 73,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    BLOCK_CACHE_COMPRESSED_ADD_FAILURES = 74,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    WAL_FILE_SYNCED = 75,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    WAL_FILE_BYTES = 76,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    WRITE_DONE_BY_SELF = 77,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    WRITE_DONE_BY_OTHER = 78,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    WRITE_TIMEDOUT = 79,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    WRITE_WITH_WAL = 80,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    COMPACT_READ_BYTES = 81,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    COMPACT_WRITE_BYTES = 82,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    FLUSH_WRITE_BYTES = 83,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_DIRECT_LOAD_TABLE_PROPERTIES = 84,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_SUPERVERSION_ACQUIRES = 85,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_SUPERVERSION_RELEASES = 86,
-    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
-    #[doc = " There are 4 reasons currently."]
-    NUMBER_SUPERVERSION_CLEANUPS = 87,
-    NUMBER_BLOCK_COMPRESSED = 88,
-    NUMBER_BLOCK_DECOMPRESSED = 89,
-    NUMBER_BLOCK_NOT_COMPRESSED = 90,
-    MERGE_OPERATION_TOTAL_TIME = 91,
-    FILTER_OPERATION_TOTAL_TIME = 92,
-    ROW_CACHE_HIT = 93,
-    ROW_CACHE_MISS = 94,
-    READ_AMP_ESTIMATE_USEFUL_BYTES = 95,
-    READ_AMP_TOTAL_READ_BYTES = 96,
-    NUMBER_RATE_LIMITER_DRAINS = 97,
-    NUMBER_ITER_SKIP = 98,
-    BLOB_DB_NUM_PUT = 99,
-    BLOB_DB_NUM_WRITE = 100,
-    BLOB_DB_NUM_GET = 101,
-    BLOB_DB_NUM_MULTIGET = 102,
-    BLOB_DB_NUM_SEEK = 103,
-    BLOB_DB_NUM_NEXT = 104,
-    BLOB_DB_NUM_PREV = 105,
-    BLOB_DB_NUM_KEYS_WRITTEN = 106,
-    BLOB_DB_NUM_KEYS_READ = 107,
-    BLOB_DB_BYTES_WRITTEN = 108,
-    BLOB_DB_BYTES_READ = 109,
-    BLOB_DB_WRITE_INLINED = 110,
-    BLOB_DB_WRITE_INLINED_TTL = 111,
-    BLOB_DB_WRITE_BLOB = 112,
-    BLOB_DB_WRITE_BLOB_TTL = 113,
-    BLOB_DB_BLOB_FILE_BYTES_WRITTEN = 114,
-    BLOB_DB_BLOB_FILE_BYTES_READ = 115,
-    BLOB_DB_BLOB_FILE_SYNCED = 116,
-    BLOB_DB_BLOB_INDEX_EXPIRED_COUNT = 117,
-    BLOB_DB_BLOB_INDEX_EXPIRED_SIZE = 118,
-    BLOB_DB_BLOB_INDEX_EVICTED_COUNT = 119,
-    BLOB_DB_BLOB_INDEX_EVICTED_SIZE = 120,
-    BLOB_DB_GC_NUM_FILES = 121,
-    BLOB_DB_GC_NUM_NEW_FILES = 122,
-    BLOB_DB_GC_FAILURES = 123,
-    BLOB_DB_GC_NUM_KEYS_OVERWRITTEN = 124,
-    BLOB_DB_GC_NUM_KEYS_EXPIRED = 125,
-    BLOB_DB_GC_NUM_KEYS_RELOCATED = 126,
-    BLOB_DB_GC_BYTES_OVERWRITTEN = 127,
-    BLOB_DB_GC_BYTES_EXPIRED = 128,
-    BLOB_DB_GC_BYTES_RELOCATED = 129,
-    BLOB_DB_FIFO_NUM_FILES_EVICTED = 130,
-    BLOB_DB_FIFO_NUM_KEYS_EVICTED = 131,
-    BLOB_DB_FIFO_BYTES_EVICTED = 132,
-    TXN_PREPARE_MUTEX_OVERHEAD = 133,
-    TXN_OLD_COMMIT_MAP_MUTEX_OVERHEAD = 134,
-    TXN_DUPLICATE_KEY_OVERHEAD = 135,
-    TXN_SNAPSHOT_MUTEX_OVERHEAD = 136,
-    NUMBER_MULTIGET_KEYS_FOUND = 137,
-    NO_ITERATOR_CREATED = 138,
-    NO_ITERATOR_DELETED = 139,
-    BLOCK_CACHE_COMPRESSION_DICT_MISS = 140,
-    BLOCK_CACHE_COMPRESSION_DICT_HIT = 141,
-    BLOCK_CACHE_COMPRESSION_DICT_ADD = 142,
-    BLOCK_CACHE_COMPRESSION_DICT_BYTES_INSERT = 143,
-    BLOCK_CACHE_COMPRESSION_DICT_BYTES_EVICT = 144,
-    TICKER_ENUM_MAX = 145,
-}
-#[repr(u32)]
-#[doc = " Keep adding histogram's here."]
-#[doc = " Any histogram should have value less than HISTOGRAM_ENUM_MAX"]
-#[doc = " Add a new Histogram by assigning it the current value of HISTOGRAM_ENUM_MAX"]
-#[doc = " Add a string representation in HistogramsNameMap below"]
-#[doc = " And increment HISTOGRAM_ENUM_MAX"]
-#[doc = " Add a corresponding enum value to HistogramType.java in the java API"]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum rocksdb_Histograms {
-    DB_GET = 0,
-    DB_WRITE = 1,
-    COMPACTION_TIME = 2,
-    COMPACTION_CPU_TIME = 3,
-    SUBCOMPACTION_SETUP_TIME = 4,
-    TABLE_SYNC_MICROS = 5,
-    COMPACTION_OUTFILE_SYNC_MICROS = 6,
-    WAL_FILE_SYNC_MICROS = 7,
-    MANIFEST_FILE_SYNC_MICROS = 8,
-    TABLE_OPEN_IO_MICROS = 9,
-    DB_MULTIGET = 10,
-    READ_BLOCK_COMPACTION_MICROS = 11,
-    READ_BLOCK_GET_MICROS = 12,
-    WRITE_RAW_BLOCK_MICROS = 13,
-    STALL_L0_SLOWDOWN_COUNT = 14,
-    STALL_MEMTABLE_COMPACTION_COUNT = 15,
-    STALL_L0_NUM_FILES_COUNT = 16,
-    HARD_RATE_LIMIT_DELAY_COUNT = 17,
-    SOFT_RATE_LIMIT_DELAY_COUNT = 18,
-    NUM_FILES_IN_SINGLE_COMPACTION = 19,
-    DB_SEEK = 20,
-    WRITE_STALL = 21,
-    SST_READ_MICROS = 22,
-    NUM_SUBCOMPACTIONS_SCHEDULED = 23,
-    BYTES_PER_READ = 24,
-    BYTES_PER_WRITE = 25,
-    BYTES_PER_MULTIGET = 26,
-    BYTES_COMPRESSED = 27,
-    BYTES_DECOMPRESSED = 28,
-    COMPRESSION_TIMES_NANOS = 29,
-    DECOMPRESSION_TIMES_NANOS = 30,
-    READ_NUM_MERGE_OPERANDS = 31,
-    BLOB_DB_KEY_SIZE = 32,
-    BLOB_DB_VALUE_SIZE = 33,
-    BLOB_DB_WRITE_MICROS = 34,
-    BLOB_DB_GET_MICROS = 35,
-    BLOB_DB_MULTIGET_MICROS = 36,
-    BLOB_DB_SEEK_MICROS = 37,
-    BLOB_DB_NEXT_MICROS = 38,
-    BLOB_DB_PREV_MICROS = 39,
-    BLOB_DB_BLOB_FILE_WRITE_MICROS = 40,
-    BLOB_DB_BLOB_FILE_READ_MICROS = 41,
-    BLOB_DB_BLOB_FILE_SYNC_MICROS = 42,
-    BLOB_DB_GC_MICROS = 43,
-    BLOB_DB_COMPRESSION_MICROS = 44,
-    BLOB_DB_DECOMPRESSION_MICROS = 45,
-    FLUSH_TIME = 46,
-    SST_BATCH_SIZE = 47,
-    DB_WRITE_WAL_TIME = 48,
-    HISTOGRAM_ENUM_MAX = 49,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum rocksdb_titandb_TickerType {
-    TITAN_NUM_GET = 145,
-    TITAN_NUM_SEEK = 146,
-    TITAN_NUM_NEXT = 147,
-    TITAN_NUM_PREV = 148,
-    TITAN_BLOB_FILE_NUM_KEYS_WRITTEN = 149,
-    TITAN_BLOB_FILE_NUM_KEYS_READ = 150,
-    TITAN_BLOB_FILE_BYTES_WRITTEN = 151,
-    TITAN_BLOB_FILE_BYTES_READ = 152,
-    TITAN_BLOB_FILE_SYNCED = 153,
-    TITAN_GC_NUM_FILES = 154,
-    TITAN_GC_NUM_NEW_FILES = 155,
-    TITAN_GC_NUM_KEYS_OVERWRITTEN = 156,
-    TITAN_GC_NUM_KEYS_RELOCATED = 157,
-    TITAN_GC_BYTES_OVERWRITTEN = 158,
-    TITAN_GC_BYTES_RELOCATED = 159,
-    TITAN_GC_BYTES_WRITTEN = 160,
-    TITAN_GC_BYTES_READ = 161,
-    TITAN_BLOB_CACHE_HIT = 162,
-    TITAN_BLOB_CACHE_MISS = 163,
-    TITAN_GC_NO_NEED = 164,
-    TITAN_GC_REMAIN = 165,
-    TITAN_GC_DISCARDABLE = 166,
-    TITAN_GC_SAMPLE = 167,
-    TITAN_GC_SMALL_FILE = 168,
-    TITAN_GC_FAILURE = 169,
-    TITAN_GC_SUCCESS = 170,
-    TITAN_GC_TRIGGER_NEXT = 171,
-    TITAN_TICKER_ENUM_MAX = 172,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum rocksdb_titandb_HistogramType {
-    TITAN_KEY_SIZE = 49,
-    TITAN_VALUE_SIZE = 50,
-    TITAN_GET_MICROS = 51,
-    TITAN_SEEK_MICROS = 52,
-    TITAN_NEXT_MICROS = 53,
-    TITAN_PREV_MICROS = 54,
-    TITAN_BLOB_FILE_WRITE_MICROS = 55,
-    TITAN_BLOB_FILE_READ_MICROS = 56,
-    TITAN_BLOB_FILE_SYNC_MICROS = 57,
-    TITAN_MANIFEST_FILE_SYNC_MICROS = 58,
-    TITAN_GC_MICROS = 59,
-    TITAN_GC_INPUT_FILE_SIZE = 60,
-    TITAN_GC_OUTPUT_FILE_SIZE = 61,
-    TITAN_ITER_TOUCH_BLOB_FILE_COUNT = 62,
-    TITAN_HISTOGRAM_ENUM_MAX = 63,
 }
