@@ -42,6 +42,9 @@ fn bindgen_rocksdb(file_path: &Path) {
         .whitelist_type(r"\brocksdb::titandb::TickerType")
         .whitelist_type(r"\brocksdb::titandb::HistogramType")
         .blacklist_type(r"\b__.*")
+        .blacklist_item(r"\bstd::.*")
+        .blacklist_item(r".*ToString")
+        .blacklist_item(r"mbstate_t")
         .derive_copy(false)
         .size_t_is_usize(true)
         .disable_header_comment()
@@ -258,5 +261,11 @@ fn main() {
         build.flag("-fno-rtti");
     }
     link_cpp(&mut build);
-    build.warnings(false).compile("libcrocksdb.a");
+    // It can break ABI if the return type is too small. But we only return
+    // Status, which is 16 bytes. It should be safe until 128bits fit in a
+    // single register.
+    build
+        .warnings(false)
+        .flag("-Wno-return-type-c-linkage")
+        .compile("libcrocksdb.a");
 }

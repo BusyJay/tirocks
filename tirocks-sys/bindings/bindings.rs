@@ -1,3 +1,93 @@
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_Status {
+    pub code_: rocksdb_Status_Code,
+    pub subcode_: rocksdb_Status_SubCode,
+    pub sev_: rocksdb_Status_Severity,
+    pub state_: *const libc::c_char,
+}
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_Status_Code {
+    kOk = 0,
+    kNotFound = 1,
+    kCorruption = 2,
+    kNotSupported = 3,
+    kInvalidArgument = 4,
+    kIOError = 5,
+    kMergeInProgress = 6,
+    kIncomplete = 7,
+    kShutdownInProgress = 8,
+    kTimedOut = 9,
+    kAborted = 10,
+    kBusy = 11,
+    kExpired = 12,
+    kTryAgain = 13,
+    kCompactionTooLarge = 14,
+    kColumnFamilyDropped = 15,
+    kMaxCode = 16,
+}
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_Status_SubCode {
+    kNone = 0,
+    kMutexTimeout = 1,
+    kLockTimeout = 2,
+    kLockLimit = 3,
+    kNoSpace = 4,
+    kDeadlock = 5,
+    kStaleFile = 6,
+    kMemoryLimit = 7,
+    kSpaceLimit = 8,
+    kPathNotFound = 9,
+    kMaxSubCode = 10,
+}
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_Status_Severity {
+    kNoError = 0,
+    kSoftError = 1,
+    kHardError = 2,
+    kFatalError = 3,
+    kUnrecoverableError = 4,
+    kMaxSeverity = 5,
+}
+extern "C" {
+    #[link_name = "\u{1}__ZN7rocksdb6StatusC1ERKS0_"]
+    pub fn rocksdb_Status_Status(this: *mut rocksdb_Status, s: *const rocksdb_Status);
+}
+extern "C" {
+    #[link_name = "\u{1}__ZN7rocksdb6StatusC1EOS0_"]
+    pub fn rocksdb_Status_Status1(this: *mut rocksdb_Status, s: *mut rocksdb_Status);
+}
+extern "C" {
+    #[link_name = "\u{1}__ZN7rocksdb6StatusC1ERKS0_NS0_8SeverityE"]
+    pub fn rocksdb_Status_Status2(
+        this: *mut rocksdb_Status,
+        s: *const rocksdb_Status,
+        sev: rocksdb_Status_Severity,
+    );
+}
+impl rocksdb_Status {
+    #[inline]
+    pub unsafe fn new(s: *const rocksdb_Status) -> Self {
+        let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
+        rocksdb_Status_Status(__bindgen_tmp.as_mut_ptr(), s);
+        __bindgen_tmp.assume_init()
+    }
+    #[inline]
+    pub unsafe fn new1(s: *mut rocksdb_Status) -> Self {
+        let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
+        rocksdb_Status_Status1(__bindgen_tmp.as_mut_ptr(), s);
+        __bindgen_tmp.assume_init()
+    }
+    #[inline]
+    pub unsafe fn new2(s: *const rocksdb_Status, sev: rocksdb_Status_Severity) -> Self {
+        let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
+        rocksdb_Status_Status2(__bindgen_tmp.as_mut_ptr(), s, sev);
+        __bindgen_tmp.assume_init()
+    }
+}
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_Env_IOPriority {
@@ -516,11 +606,6 @@ pub struct crocksdb_cloud_envoptions_t {
 #[repr(C)]
 #[derive(Debug)]
 pub struct crocksdb_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_status_ptr_t {
     _unused: [u8; 0],
 }
 #[repr(C)]
@@ -1054,51 +1139,43 @@ extern "C" {
     pub fn crocksdb_open(
         options: *const crocksdb_options_t,
         name: *const libc::c_char,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_t;
+        arg1: *mut *mut crocksdb_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_open_with_ttl(
         options: *const crocksdb_options_t,
         name: *const libc::c_char,
         ttl: libc::c_int,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_t;
+        arg1: *mut *mut crocksdb_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_open_for_read_only(
         options: *const crocksdb_options_t,
         name: *const libc::c_char,
         error_if_log_file_exist: libc::c_uchar,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_t;
-}
-extern "C" {
-    pub fn crocksdb_status_ptr_get_error(
-        arg1: *mut crocksdb_status_ptr_t,
-        errptr: *mut *mut libc::c_char,
-    );
+        arg1: *mut *mut crocksdb_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_backup_engine_open(
         options: *const crocksdb_options_t,
         path: *const libc::c_char,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_backup_engine_t;
+        arg1: *mut *mut crocksdb_backup_engine_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_backup_engine_create_new_backup(
         be: *mut crocksdb_backup_engine_t,
         db: *mut crocksdb_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_backup_engine_purge_old_backups(
         be: *mut crocksdb_backup_engine_t,
         num_backups_to_keep: u32,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_restore_options_create() -> *mut crocksdb_restore_options_t;
@@ -1118,8 +1195,7 @@ extern "C" {
         db_dir: *const libc::c_char,
         wal_dir: *const libc::c_char,
         restore_options: *const crocksdb_restore_options_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_backup_engine_get_backup_info(
@@ -1169,8 +1245,8 @@ extern "C" {
         column_family_names: *mut *const libc::c_char,
         column_family_options: *mut *const crocksdb_options_t,
         column_family_handles: *mut *mut crocksdb_column_family_handle_t,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_t;
+        arg1: *mut *mut crocksdb_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_open_column_families_with_ttl(
@@ -1182,8 +1258,8 @@ extern "C" {
         ttl_array: *const i32,
         read_only: libc::c_uchar,
         column_family_handles: *mut *mut crocksdb_column_family_handle_t,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_t;
+        arg1: *mut *mut crocksdb_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_open_for_read_only_column_families(
@@ -1194,16 +1270,16 @@ extern "C" {
         column_family_options: *mut *const crocksdb_options_t,
         column_family_handles: *mut *mut crocksdb_column_family_handle_t,
         error_if_log_file_exist: libc::c_uchar,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_t;
+        arg1: *mut *mut crocksdb_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_list_column_families(
         options: *const crocksdb_options_t,
         name: *const libc::c_char,
         lencf: *mut usize,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut *mut libc::c_char;
+        arg1: *mut *mut *mut libc::c_char,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_list_column_families_destroy(list: *mut *mut libc::c_char, len: usize);
@@ -1213,15 +1289,14 @@ extern "C" {
         db: *mut crocksdb_t,
         column_family_options: *const crocksdb_options_t,
         column_family_name: *const libc::c_char,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_column_family_handle_t;
+        arg1: *mut *mut crocksdb_column_family_handle_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_drop_column_family(
         db: *mut crocksdb_t,
         handle: *mut crocksdb_column_family_handle_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_column_family_handle_id(arg1: *mut crocksdb_column_family_handle_t) -> u32;
@@ -1246,8 +1321,7 @@ extern "C" {
         keylen: usize,
         val: *const libc::c_char,
         vallen: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_put_cf(
@@ -1258,8 +1332,7 @@ extern "C" {
         keylen: usize,
         val: *const libc::c_char,
         vallen: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_delete(
@@ -1267,8 +1340,7 @@ extern "C" {
         options: *const crocksdb_writeoptions_t,
         key: *const libc::c_char,
         keylen: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_delete_cf(
@@ -1277,8 +1349,7 @@ extern "C" {
         column_family: *mut crocksdb_column_family_handle_t,
         key: *const libc::c_char,
         keylen: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_single_delete(
@@ -1286,8 +1357,7 @@ extern "C" {
         options: *const crocksdb_writeoptions_t,
         key: *const libc::c_char,
         keylen: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_single_delete_cf(
@@ -1296,8 +1366,7 @@ extern "C" {
         column_family: *mut crocksdb_column_family_handle_t,
         key: *const libc::c_char,
         keylen: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_delete_range_cf(
@@ -1308,8 +1377,7 @@ extern "C" {
         begin_keylen: usize,
         end_key: *const libc::c_char,
         end_keylen: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_merge(
@@ -1319,8 +1387,7 @@ extern "C" {
         keylen: usize,
         val: *const libc::c_char,
         vallen: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_merge_cf(
@@ -1331,16 +1398,14 @@ extern "C" {
         keylen: usize,
         val: *const libc::c_char,
         vallen: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_write(
         db: *mut crocksdb_t,
         options: *const crocksdb_writeoptions_t,
         batch: *mut crocksdb_writebatch_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_write_multi_batch(
@@ -1348,8 +1413,7 @@ extern "C" {
         options: *const crocksdb_writeoptions_t,
         batches: *mut *mut crocksdb_writebatch_t,
         batch_size: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_get(
@@ -1358,8 +1422,8 @@ extern "C" {
         key: *const libc::c_char,
         keylen: usize,
         vallen: *mut usize,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut libc::c_char;
+        arg1: *mut *mut libc::c_char,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_get_cf(
@@ -1369,8 +1433,8 @@ extern "C" {
         key: *const libc::c_char,
         keylen: usize,
         vallen: *mut usize,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut libc::c_char;
+        arg1: *mut *mut libc::c_char,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_multi_get(
@@ -1381,7 +1445,7 @@ extern "C" {
         keys_list_sizes: *const usize,
         values_list: *mut *mut libc::c_char,
         values_list_sizes: *mut usize,
-        errs: *mut *mut libc::c_char,
+        statuses: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -1394,7 +1458,7 @@ extern "C" {
         keys_list_sizes: *const usize,
         values_list: *mut *mut libc::c_char,
         values_list_sizes: *mut usize,
-        errs: *mut *mut libc::c_char,
+        statuses: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -1417,8 +1481,7 @@ extern "C" {
         column_families: *mut *mut crocksdb_column_family_handle_t,
         iterators: *mut *mut crocksdb_iterator_t,
         size: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_create_snapshot(db: *mut crocksdb_t) -> *const crocksdb_snapshot_t;
@@ -1555,11 +1618,7 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_delete_file(
-        db: *mut crocksdb_t,
-        name: *const libc::c_char,
-        errptr: *mut *mut libc::c_char,
-    );
+    pub fn crocksdb_delete_file(db: *mut crocksdb_t, name: *const libc::c_char) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_livefiles(db: *mut crocksdb_t) -> *const crocksdb_livefiles_t;
@@ -1568,16 +1627,14 @@ extern "C" {
     pub fn crocksdb_flush(
         db: *mut crocksdb_t,
         options: *const crocksdb_flushoptions_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_flush_cf(
         db: *mut crocksdb_t,
         column_family: *mut crocksdb_column_family_handle_t,
         options: *const crocksdb_flushoptions_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_flush_cfs(
@@ -1585,31 +1642,25 @@ extern "C" {
         column_familys: *mut *const crocksdb_column_family_handle_t,
         num_handles: libc::c_int,
         options: *const crocksdb_flushoptions_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
-    pub fn crocksdb_flush_wal(
-        db: *mut crocksdb_t,
-        sync: libc::c_uchar,
-        errptr: *mut *mut libc::c_char,
-    );
+    pub fn crocksdb_flush_wal(db: *mut crocksdb_t, sync: libc::c_uchar) -> rocksdb_Status;
 }
 extern "C" {
-    pub fn crocksdb_sync_wal(db: *mut crocksdb_t, errptr: *mut *mut libc::c_char);
+    pub fn crocksdb_sync_wal(db: *mut crocksdb_t) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_get_latest_sequence_number(db: *mut crocksdb_t) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_disable_file_deletions(db: *mut crocksdb_t, errptr: *mut *mut libc::c_char);
+    pub fn crocksdb_disable_file_deletions(db: *mut crocksdb_t) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_enable_file_deletions(
         db: *mut crocksdb_t,
         force: libc::c_uchar,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_get_db_options(db: *mut crocksdb_t) -> *mut crocksdb_options_t;
@@ -1620,8 +1671,7 @@ extern "C" {
         names: *mut *const libc::c_char,
         values: *mut *const libc::c_char,
         num_options: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_get_options_cf(
@@ -1636,22 +1686,19 @@ extern "C" {
         names: *mut *const libc::c_char,
         values: *mut *const libc::c_char,
         num_options: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_destroy_db(
         options: *const crocksdb_options_t,
         name: *const libc::c_char,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_repair_db(
         options: *const crocksdb_options_t,
         name: *const libc::c_char,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_iter_destroy(arg1: *mut crocksdb_iterator_t);
@@ -1694,10 +1741,7 @@ extern "C" {
     ) -> *const libc::c_char;
 }
 extern "C" {
-    pub fn crocksdb_iter_get_error(
-        arg1: *const crocksdb_iterator_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    pub fn crocksdb_iter_get_error(arg1: *const crocksdb_iterator_t) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_writebatch_create() -> *mut crocksdb_writebatch_t;
@@ -1964,16 +2008,12 @@ extern "C" {
     pub fn crocksdb_writebatch_set_save_point(arg1: *mut crocksdb_writebatch_t);
 }
 extern "C" {
-    pub fn crocksdb_writebatch_pop_save_point(
-        arg1: *mut crocksdb_writebatch_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    pub fn crocksdb_writebatch_pop_save_point(arg1: *mut crocksdb_writebatch_t) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_writebatch_rollback_to_save_point(
         arg1: *mut crocksdb_writebatch_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_writebatch_set_content(
@@ -2163,8 +2203,7 @@ extern "C" {
     pub fn crocksdb_options_set_block_cache_capacity(
         opt: *mut crocksdb_options_t,
         capacity: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_options_get_block_cache_capacity(opt: *mut crocksdb_options_t) -> usize;
@@ -2199,8 +2238,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_compactionjobinfo_status(
         info: *const crocksdb_compactionjobinfo_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> *const rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_compactionjobinfo_cf_name(
@@ -2290,8 +2328,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_subcompactionjobinfo_status(
         arg1: *const crocksdb_subcompactionjobinfo_t,
-        arg2: *mut *mut libc::c_char,
-    );
+    ) -> *const rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_subcompactionjobinfo_cf_name(
@@ -2397,7 +2434,7 @@ pub type on_background_error_cb = ::std::option::Option<
     unsafe extern "C" fn(
         arg1: *mut libc::c_void,
         arg2: rocksdb_BackgroundErrorReason,
-        arg3: *mut crocksdb_status_ptr_t,
+        arg3: *mut rocksdb_Status,
     ),
 >;
 pub type on_stall_conditions_changed_cb = ::std::option::Option<
@@ -2786,8 +2823,7 @@ extern "C" {
         cf_descs: *mut *mut *mut crocksdb_column_family_descriptor,
         cf_descs_len: *mut usize,
         ignore_unknown_options: libc::c_uchar,
-        errptr: *mut *mut libc::c_char,
-    ) -> libc::c_uchar;
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_options_statistics_get_string(
@@ -3725,8 +3761,8 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_jemalloc_nodump_allocator_create(
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_memory_allocator_t;
+        arg1: *mut *mut crocksdb_memory_allocator_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_memory_allocator_destroy(arg1: *mut crocksdb_memory_allocator_t);
@@ -3807,15 +3843,13 @@ extern "C" {
     pub fn crocksdb_env_file_exists(
         env: *mut crocksdb_env_t,
         path: *const libc::c_char,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_env_delete_file(
         env: *mut crocksdb_env_t,
         path: *const libc::c_char,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_env_destroy(arg1: *mut crocksdb_env_t);
@@ -3831,23 +3865,22 @@ extern "C" {
         env: *mut crocksdb_env_t,
         path: *const libc::c_char,
         opts: *const crocksdb_envoptions_t,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_sequential_file_t;
+        arg1: *mut *mut crocksdb_sequential_file_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_sequential_file_read(
         arg1: *mut crocksdb_sequential_file_t,
         n: usize,
         buf: *mut libc::c_char,
-        errptr: *mut *mut libc::c_char,
-    ) -> usize;
+        len: *mut usize,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_sequential_file_skip(
         arg1: *mut crocksdb_sequential_file_t,
         n: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_sequential_file_destroy(arg1: *mut crocksdb_sequential_file_t);
@@ -3856,15 +3889,15 @@ pub type crocksdb_file_system_inspector_read_cb = ::std::option::Option<
     unsafe extern "C" fn(
         state: *mut libc::c_void,
         len: usize,
-        errptr: *mut *mut libc::c_char,
-    ) -> usize,
+        allowed: *mut usize,
+    ) -> rocksdb_Status,
 >;
 pub type crocksdb_file_system_inspector_write_cb = ::std::option::Option<
     unsafe extern "C" fn(
         state: *mut libc::c_void,
         len: usize,
-        errptr: *mut *mut libc::c_char,
-    ) -> usize,
+        allowed: *mut usize,
+    ) -> rocksdb_Status,
 >;
 extern "C" {
     pub fn crocksdb_file_system_inspector_create(
@@ -3881,15 +3914,15 @@ extern "C" {
     pub fn crocksdb_file_system_inspector_read(
         inspector: *mut crocksdb_file_system_inspector_t,
         len: usize,
-        errptr: *mut *mut libc::c_char,
-    ) -> usize;
+        allowed: *mut usize,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_file_system_inspector_write(
         inspector: *mut crocksdb_file_system_inspector_t,
         len: usize,
-        errptr: *mut *mut libc::c_char,
-    ) -> usize;
+        allowed: *mut usize,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_file_system_inspected_env_create(
@@ -3906,8 +3939,7 @@ extern "C" {
     pub fn crocksdb_sstfilereader_open(
         reader: *mut crocksdb_sstfilereader_t,
         name: *const libc::c_char,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_sstfilereader_new_iterator(
@@ -3927,8 +3959,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_sstfilereader_verify_checksum(
         reader: *mut crocksdb_sstfilereader_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_sstfilereader_destroy(reader: *mut crocksdb_sstfilereader_t);
@@ -3950,8 +3981,7 @@ extern "C" {
     pub fn crocksdb_sstfilewriter_open(
         writer: *mut crocksdb_sstfilewriter_t,
         name: *const libc::c_char,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_sstfilewriter_put(
@@ -3960,8 +3990,7 @@ extern "C" {
         keylen: usize,
         val: *const libc::c_char,
         vallen: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_sstfilewriter_merge(
@@ -3970,16 +3999,14 @@ extern "C" {
         keylen: usize,
         val: *const libc::c_char,
         vallen: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_sstfilewriter_delete(
         writer: *mut crocksdb_sstfilewriter_t,
         key: *const libc::c_char,
         keylen: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_sstfilewriter_delete_range(
@@ -3988,15 +4015,13 @@ extern "C" {
         begin_keylen: usize,
         end_key: *const libc::c_char,
         end_keylen: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_sstfilewriter_finish(
         writer: *mut crocksdb_sstfilewriter_t,
         info: *mut crocksdb_externalsstfileinfo_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_sstfilewriter_file_size(writer: *mut crocksdb_sstfilewriter_t) -> u64;
@@ -4091,8 +4116,7 @@ extern "C" {
         file_list: *const *const libc::c_char,
         list_len: usize,
         opt: *const crocksdb_ingestexternalfileoptions_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_ingest_external_file_cf(
@@ -4101,8 +4125,7 @@ extern "C" {
         file_list: *const *const libc::c_char,
         list_len: usize,
         opt: *const crocksdb_ingestexternalfileoptions_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_ingest_external_file_optimized(
@@ -4111,8 +4134,8 @@ extern "C" {
         file_list: *const *const libc::c_char,
         list_len: usize,
         opt: *const crocksdb_ingestexternalfileoptions_t,
-        errptr: *mut *mut libc::c_char,
-    ) -> libc::c_uchar;
+        has_flushed: *mut bool,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_slicetransform_create(
@@ -4261,8 +4284,7 @@ extern "C" {
         base_options: *const crocksdb_options_t,
         opts_str: *const libc::c_char,
         new_options: *mut crocksdb_options_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_delete_files_in_range(
@@ -4272,8 +4294,7 @@ extern "C" {
         limit_key: *const libc::c_char,
         limit_key_len: usize,
         include_end: libc::c_uchar,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_delete_files_in_range_cf(
@@ -4284,8 +4305,7 @@ extern "C" {
         limit_key: *const libc::c_char,
         limit_key_len: usize,
         include_end: libc::c_uchar,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_delete_files_in_ranges_cf(
@@ -4297,8 +4317,7 @@ extern "C" {
         limit_keys_lens: *const usize,
         num_ranges: usize,
         include_end: libc::c_uchar,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_free(ptr: *mut libc::c_void);
@@ -4313,8 +4332,8 @@ extern "C" {
     pub fn crocksdb_create_log_from_options(
         path: *const libc::c_char,
         opts: *mut crocksdb_options_t,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_logger_t;
+        arg1: *mut *mut crocksdb_logger_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_log_destroy(arg1: *mut crocksdb_logger_t);
@@ -4325,8 +4344,8 @@ extern "C" {
         options: *const crocksdb_readoptions_t,
         key: *const libc::c_char,
         keylen: usize,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_pinnableslice_t;
+        arg1: *mut *mut crocksdb_pinnableslice_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_get_pinned_cf(
@@ -4335,8 +4354,8 @@ extern "C" {
         column_family: *mut crocksdb_column_family_handle_t,
         key: *const libc::c_char,
         keylen: usize,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_pinnableslice_t;
+        arg1: *mut *mut crocksdb_pinnableslice_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_pinnableslice_destroy(v: *mut crocksdb_pinnableslice_t);
@@ -4534,15 +4553,15 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_get_properties_of_all_tables(
         db: *mut crocksdb_t,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_table_properties_collection_t;
+        arg1: *mut *mut crocksdb_table_properties_collection_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_get_properties_of_all_tables_cf(
         db: *mut crocksdb_t,
         cf: *mut crocksdb_column_family_handle_t,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_table_properties_collection_t;
+        arg1: *mut *mut crocksdb_table_properties_collection_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_get_properties_of_tables_in_range(
@@ -4553,8 +4572,8 @@ extern "C" {
         start_keys_lens: *const usize,
         limit_keys: *const *const libc::c_char,
         limit_keys_lens: *const usize,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_table_properties_collection_t;
+        arg1: *mut *mut crocksdb_table_properties_collection_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_keyversions_destroy(kvs: *mut crocksdb_keyversions_t);
@@ -4566,8 +4585,8 @@ extern "C" {
         begin_keylen: usize,
         end_key: *const libc::c_char,
         end_keylen: usize,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_keyversions_t;
+        arg1: *mut *mut crocksdb_keyversions_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_keyversions_count(kvs: *const crocksdb_keyversions_t) -> usize;
@@ -4599,8 +4618,8 @@ extern "C" {
         column_family: *mut crocksdb_column_family_handle_t,
         file: *const libc::c_char,
         seq_no: u64,
-        errptr: *mut *mut libc::c_char,
-    ) -> u64;
+        arg1: *mut u64,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_get_column_family_meta_data(
@@ -4687,8 +4706,7 @@ extern "C" {
         input_file_names: *mut *const libc::c_char,
         input_file_count: usize,
         output_level: libc::c_int,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn crocksdb_get_perf_level() -> rocksdb_PerfLevel;
@@ -5227,6 +5245,7 @@ extern "C" {
     );
 }
 #[repr(C)]
+#[derive(Debug)]
 pub struct ctitandb_blob_index_t {
     pub file_number: u64,
     pub blob_offset: u64,
@@ -5250,16 +5269,16 @@ extern "C" {
         column_family_names: *mut *const libc::c_char,
         titan_column_family_options: *mut *const ctitandb_options_t,
         column_family_handles: *mut *mut crocksdb_column_family_handle_t,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_t;
+        arg1: *mut *mut crocksdb_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn ctitandb_create_column_family(
         db: *mut crocksdb_t,
         titan_column_family_options: *const ctitandb_options_t,
         column_family_name: *const libc::c_char,
-        errptr: *mut *mut libc::c_char,
-    ) -> *mut crocksdb_column_family_handle_t;
+        arg1: *mut *mut crocksdb_column_family_handle_t,
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn ctitandb_options_create() -> *mut ctitandb_options_t;
@@ -5327,8 +5346,7 @@ extern "C" {
         value: *const libc::c_char,
         value_size: usize,
         index: *mut ctitandb_blob_index_t,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn ctitandb_encode_blob_index(
@@ -5407,8 +5425,7 @@ extern "C" {
     pub fn ctitandb_options_set_blob_cache_capacity(
         opt: *mut ctitandb_options_t,
         capacity: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn ctitandb_options_get_blob_cache_capacity(opt: *mut ctitandb_options_t) -> usize;
@@ -5460,8 +5477,7 @@ extern "C" {
         column_families: *mut *mut crocksdb_column_family_handle_t,
         iterators: *mut *mut crocksdb_iterator_t,
         size: usize,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn ctitandb_delete_files_in_range(
@@ -5471,8 +5487,7 @@ extern "C" {
         limit_key: *const libc::c_char,
         limit_key_len: usize,
         include_end: libc::c_uchar,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn ctitandb_delete_files_in_range_cf(
@@ -5483,8 +5498,7 @@ extern "C" {
         limit_key: *const libc::c_char,
         limit_key_len: usize,
         include_end: libc::c_uchar,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn ctitandb_delete_files_in_ranges_cf(
@@ -5496,8 +5510,7 @@ extern "C" {
         limit_keys_lens: *const usize,
         num_ranges: usize,
         include_end: libc::c_uchar,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn ctitandb_delete_blob_files_in_range(
@@ -5507,8 +5520,7 @@ extern "C" {
         limit_key: *const libc::c_char,
         limit_key_len: usize,
         include_end: libc::c_uchar,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn ctitandb_delete_blob_files_in_range_cf(
@@ -5519,8 +5531,7 @@ extern "C" {
         limit_key: *const libc::c_char,
         limit_key_len: usize,
         include_end: libc::c_uchar,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
 }
 extern "C" {
     pub fn ctitandb_delete_blob_files_in_ranges_cf(
@@ -5532,6 +5543,11 @@ extern "C" {
         limit_keys_lens: *const usize,
         num_ranges: usize,
         include_end: libc::c_uchar,
-        errptr: *mut *mut libc::c_char,
-    );
+    ) -> rocksdb_Status;
+}
+extern "C" {
+    pub fn crocksdb_free_cplus_array(arr: *const libc::c_char);
+}
+extern "C" {
+    pub fn crocksdb_to_cplus_array(arr: *const libc::c_char, len: usize) -> *const libc::c_char;
 }
