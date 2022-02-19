@@ -41,7 +41,8 @@ fn bindgen_rocksdb(file_path: &Path) {
         .allowlist_type(r"\brocksdb::Histograms")
         .allowlist_type(r"\brocksdb::titandb::TickerType")
         .allowlist_type(r"\brocksdb::titandb::HistogramType")
-        .blocklist_type(r"\b__.*")
+        // Block all system headers
+        .blocklist_file(r"^/.*")
         .with_codegen_config(
             bindgen::CodegenConfig::FUNCTIONS
                 | bindgen::CodegenConfig::VARS
