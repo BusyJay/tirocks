@@ -1,5 +1,11 @@
 #[repr(C)]
 #[derive(Debug)]
+pub struct rocksdb_Slice {
+    pub data_: *const libc::c_char,
+    pub size_: usize,
+}
+#[repr(C)]
+#[derive(Debug)]
 pub struct rocksdb_Status {
     pub code_: rocksdb_Status_Code,
     pub subcode_: rocksdb_Status_SubCode,
@@ -51,42 +57,6 @@ pub enum rocksdb_Status_Severity {
     kFatalError = 3,
     kUnrecoverableError = 4,
     kMaxSeverity = 5,
-}
-extern "C" {
-    #[link_name = "\u{1}__ZN7rocksdb6StatusC1ERKS0_"]
-    pub fn rocksdb_Status_Status(this: *mut rocksdb_Status, s: *const rocksdb_Status);
-}
-extern "C" {
-    #[link_name = "\u{1}__ZN7rocksdb6StatusC1EOS0_"]
-    pub fn rocksdb_Status_Status1(this: *mut rocksdb_Status, s: *mut rocksdb_Status);
-}
-extern "C" {
-    #[link_name = "\u{1}__ZN7rocksdb6StatusC1ERKS0_NS0_8SeverityE"]
-    pub fn rocksdb_Status_Status2(
-        this: *mut rocksdb_Status,
-        s: *const rocksdb_Status,
-        sev: rocksdb_Status_Severity,
-    );
-}
-impl rocksdb_Status {
-    #[inline]
-    pub unsafe fn new(s: *const rocksdb_Status) -> Self {
-        let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-        rocksdb_Status_Status(__bindgen_tmp.as_mut_ptr(), s);
-        __bindgen_tmp.assume_init()
-    }
-    #[inline]
-    pub unsafe fn new1(s: *mut rocksdb_Status) -> Self {
-        let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-        rocksdb_Status_Status1(__bindgen_tmp.as_mut_ptr(), s);
-        __bindgen_tmp.assume_init()
-    }
-    #[inline]
-    pub unsafe fn new2(s: *const rocksdb_Status, sev: rocksdb_Status_Severity) -> Self {
-        let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-        rocksdb_Status_Status2(__bindgen_tmp.as_mut_ptr(), s, sev);
-        __bindgen_tmp.assume_init()
-    }
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -928,156 +898,149 @@ pub struct crocksdb_writestallinfo_t {
 pub struct crocksdb_writestallcondition_t {
     _unused: [u8; 0],
 }
-#[doc = " This is not a safe type. The lifetime of data is up to context."]
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_slice_t {
-    pub data: *const libc::c_char,
-    pub size: usize,
+extern "C" {
+    pub static crocksdb_property_name_num_files_at_level_prefix: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_files_at_level_prefix: crocksdb_slice_t;
+    pub static crocksdb_property_name_compression_ratio_at_level_prefix: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_compression_ratio_at_level_prefix: crocksdb_slice_t;
+    pub static crocksdb_property_name_stats: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_stats: crocksdb_slice_t;
+    pub static crocksdb_property_name_ss_tables: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_ss_tables: crocksdb_slice_t;
+    pub static crocksdb_property_name_cf_stats: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_cf_stats: crocksdb_slice_t;
+    pub static crocksdb_property_name_cf_stats_no_file_histogram: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_cf_stats_no_file_histogram: crocksdb_slice_t;
+    pub static crocksdb_property_name_cf_file_histogram: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_cf_file_histogram: crocksdb_slice_t;
+    pub static crocksdb_property_name_db_stats: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_db_stats: crocksdb_slice_t;
+    pub static crocksdb_property_name_level_stats: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_level_stats: crocksdb_slice_t;
+    pub static crocksdb_property_name_num_immutable_mem_table: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_immutable_mem_table: crocksdb_slice_t;
+    pub static crocksdb_property_name_num_immutable_mem_table_flushed: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_immutable_mem_table_flushed: crocksdb_slice_t;
+    pub static crocksdb_property_name_mem_table_flush_pending: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_mem_table_flush_pending: crocksdb_slice_t;
+    pub static crocksdb_property_name_num_running_flushes: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_running_flushes: crocksdb_slice_t;
+    pub static crocksdb_property_name_compaction_pending: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_compaction_pending: crocksdb_slice_t;
+    pub static crocksdb_property_name_num_running_compactions: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_running_compactions: crocksdb_slice_t;
+    pub static crocksdb_property_name_background_errors: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_background_errors: crocksdb_slice_t;
+    pub static crocksdb_property_name_cur_size_active_mem_table: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_cur_size_active_mem_table: crocksdb_slice_t;
+    pub static crocksdb_property_name_cur_size_all_mem_tables: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_cur_size_all_mem_tables: crocksdb_slice_t;
+    pub static crocksdb_property_name_size_all_mem_tables: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_size_all_mem_tables: crocksdb_slice_t;
+    pub static crocksdb_property_name_num_entries_active_mem_table: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_entries_active_mem_table: crocksdb_slice_t;
+    pub static crocksdb_property_name_num_entries_imm_mem_tables: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_entries_imm_mem_tables: crocksdb_slice_t;
+    pub static crocksdb_property_name_num_deletes_active_mem_table: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_deletes_active_mem_table: crocksdb_slice_t;
+    pub static crocksdb_property_name_num_deletes_imm_mem_tables: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_deletes_imm_mem_tables: crocksdb_slice_t;
+    pub static crocksdb_property_name_estimate_num_keys: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_estimate_num_keys: crocksdb_slice_t;
+    pub static crocksdb_property_name_estimate_table_readers_mem: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_estimate_table_readers_mem: crocksdb_slice_t;
+    pub static crocksdb_property_name_is_file_deletions_enabled: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_is_file_deletions_enabled: crocksdb_slice_t;
+    pub static crocksdb_property_name_num_snapshots: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_snapshots: crocksdb_slice_t;
+    pub static crocksdb_property_name_oldest_snapshot_time: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_oldest_snapshot_time: crocksdb_slice_t;
+    pub static crocksdb_property_name_oldest_snapshot_sequence: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_oldest_snapshot_sequence: crocksdb_slice_t;
+    pub static crocksdb_property_name_num_live_versions: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_num_live_versions: crocksdb_slice_t;
+    pub static crocksdb_property_name_current_super_version_number: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_current_super_version_number: crocksdb_slice_t;
+    pub static crocksdb_property_name_estimate_live_data_size: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_estimate_live_data_size: crocksdb_slice_t;
+    pub static crocksdb_property_name_min_log_number_to_keep: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_min_log_number_to_keep: crocksdb_slice_t;
+    pub static crocksdb_property_name_min_obsolete_sst_number_to_keep: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_min_obsolete_sst_number_to_keep: crocksdb_slice_t;
+    pub static crocksdb_property_name_total_sst_files_size: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_total_sst_files_size: crocksdb_slice_t;
+    pub static crocksdb_property_name_live_sst_files_size: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_live_sst_files_size: crocksdb_slice_t;
+    pub static crocksdb_property_name_base_level: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_base_level: crocksdb_slice_t;
+    pub static crocksdb_property_name_estimate_pending_compaction_bytes: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_estimate_pending_compaction_bytes: crocksdb_slice_t;
+    pub static crocksdb_property_name_aggregated_table_properties: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_aggregated_table_properties: crocksdb_slice_t;
+    pub static crocksdb_property_name_aggregated_table_properties_at_level: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_aggregated_table_properties_at_level: crocksdb_slice_t;
+    pub static crocksdb_property_name_actual_delayed_write_rate: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_actual_delayed_write_rate: crocksdb_slice_t;
+    pub static crocksdb_property_name_is_write_stopped: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_is_write_stopped: crocksdb_slice_t;
+    pub static crocksdb_property_name_is_write_stalled: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_is_write_stalled: crocksdb_slice_t;
+    pub static crocksdb_property_name_estimate_oldest_key_time: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_estimate_oldest_key_time: crocksdb_slice_t;
+    pub static crocksdb_property_name_block_cache_capacity: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_block_cache_capacity: crocksdb_slice_t;
+    pub static crocksdb_property_name_block_cache_usage: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_block_cache_usage: crocksdb_slice_t;
+    pub static crocksdb_property_name_block_cache_pinned_usage: rocksdb_Slice;
 }
 extern "C" {
-    pub static crocksdb_property_name_block_cache_pinned_usage: crocksdb_slice_t;
-}
-extern "C" {
-    pub static crocksdb_property_name_options_statistics: crocksdb_slice_t;
+    pub static crocksdb_property_name_options_statistics: rocksdb_Slice;
 }
 #[repr(C)]
 #[derive(Debug)]
@@ -5549,5 +5512,5 @@ extern "C" {
     pub fn crocksdb_free_cplus_array(arr: *const libc::c_char);
 }
 extern "C" {
-    pub fn crocksdb_to_cplus_array(arr: *const libc::c_char, len: usize) -> *const libc::c_char;
+    pub fn crocksdb_to_cplus_array(s: rocksdb_Slice) -> *const libc::c_char;
 }

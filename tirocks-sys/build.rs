@@ -41,10 +41,11 @@ fn bindgen_rocksdb(file_path: &Path) {
         .whitelist_type(r"\brocksdb::Histograms")
         .whitelist_type(r"\brocksdb::titandb::TickerType")
         .whitelist_type(r"\brocksdb::titandb::HistogramType")
-        .blacklist_type(r"\b__.*")
-        .blacklist_item(r"\bstd::.*")
-        .blacklist_item(r".*ToString")
-        .blacklist_item(r"mbstate_t")
+        .with_codegen_config(
+            bindgen::CodegenConfig::FUNCTIONS
+                | bindgen::CodegenConfig::VARS
+                | bindgen::CodegenConfig::TYPES,
+        )
         .derive_copy(false)
         .size_t_is_usize(true)
         .disable_header_comment()

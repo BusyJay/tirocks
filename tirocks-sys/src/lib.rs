@@ -15,10 +15,31 @@ mod bindings {
 
 pub use bindings::*;
 
-impl crocksdb_slice_t {
-    pub fn to_bytes(&self) -> &[u8] {
-        unsafe { std::slice::from_raw_parts(self.data as _, self.size) }
+/// Convert a rust slice to rocksdb slice.
+///
+/// ### Safety
+///
+/// Caller should guarantee the data lives as long as the returned slice.
+// Because the layout of rocksdb_Slice is exact the same as &[u8], this function
+// will be optimized away by compiler.
+#[inline]
+pub unsafe fn r(src: &[u8]) -> rocksdb_Slice {
+    rocksdb_Slice {
+        data_: src.as_ptr() as _,
+        size_: src.len(),
     }
+}
+
+/// Convert a rocksdb slice to rust slice.
+///
+/// ### Safety
+///
+/// Caller should guarantee the data lives as long as the returned slice.
+// Because the layout of rocksdb_Slice is exact the same as &[u8], this function
+// will be optimized away by compiler.
+#[inline]
+pub unsafe fn s<'a>(src: rocksdb_Slice) -> &'a [u8] {
+    std::slice::from_raw_parts(src.data_ as _, src.size_)
 }
 
 impl rocksdb_Status {
@@ -46,7 +67,7 @@ impl rocksdb_Status {
     pub fn set_state(&mut self, state: &[u8]) {
         self.clear_state();
         if !state.is_empty() {
-            self.state_ = unsafe { crocksdb_to_cplus_array(state.as_ptr() as _, state.len()) };
+            self.state_ = unsafe { crocksdb_to_cplus_array(r(state)) };
         }
     }
 

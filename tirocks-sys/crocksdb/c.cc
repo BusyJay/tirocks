@@ -390,112 +390,96 @@ struct crocksdb_compaction_options_t {
   CompactionOptions rep;
 };
 
-crocksdb_slice_t str_to_slice(const std::string& value) {
-  crocksdb_slice_t t = {value.data(), value.size()};
-  return t;
-}
-
-inline Slice r_slice(crocksdb_slice_t s) { return Slice(s.data, s.size); }
-
-const crocksdb_slice_t crocksdb_property_name_num_files_at_level_prefix =
-    str_to_slice(DB::Properties::kNumFilesAtLevelPrefix);
-const crocksdb_slice_t
-    crocksdb_property_name_compression_ratio_at_level_prefix =
-        str_to_slice(DB::Properties::kCompressionRatioAtLevelPrefix);
-const crocksdb_slice_t crocksdb_property_name_stats =
-    str_to_slice(DB::Properties::kStats);
-const crocksdb_slice_t crocksdb_property_name_ss_tables =
-    str_to_slice(DB::Properties::kSSTables);
-const crocksdb_slice_t crocksdb_property_name_cf_stats =
-    str_to_slice(DB::Properties::kCFStats);
-const crocksdb_slice_t crocksdb_property_name_cf_stats_no_file_histogram =
-    str_to_slice(DB::Properties::kCFStatsNoFileHistogram);
-const crocksdb_slice_t crocksdb_property_name_cf_file_histogram =
-    str_to_slice(DB::Properties::kCFFileHistogram);
-const crocksdb_slice_t crocksdb_property_name_db_stats =
-    str_to_slice(DB::Properties::kDBStats);
-const crocksdb_slice_t crocksdb_property_name_level_stats =
-    str_to_slice(DB::Properties::kLevelStats);
-const crocksdb_slice_t crocksdb_property_name_num_immutable_mem_table =
-    str_to_slice(DB::Properties::kNumImmutableMemTable);
-const crocksdb_slice_t crocksdb_property_name_num_immutable_mem_table_flushed =
-    str_to_slice(DB::Properties::kNumImmutableMemTableFlushed);
-const crocksdb_slice_t crocksdb_property_name_mem_table_flush_pending =
-    str_to_slice(DB::Properties::kMemTableFlushPending);
-const crocksdb_slice_t crocksdb_property_name_num_running_flushes =
-    str_to_slice(DB::Properties::kNumRunningFlushes);
-const crocksdb_slice_t crocksdb_property_name_compaction_pending =
-    str_to_slice(DB::Properties::kCompactionPending);
-const crocksdb_slice_t crocksdb_property_name_num_running_compactions =
-    str_to_slice(DB::Properties::kNumRunningCompactions);
-const crocksdb_slice_t crocksdb_property_name_background_errors =
-    str_to_slice(DB::Properties::kBackgroundErrors);
-const crocksdb_slice_t crocksdb_property_name_cur_size_active_mem_table =
-    str_to_slice(DB::Properties::kCurSizeActiveMemTable);
-const crocksdb_slice_t crocksdb_property_name_cur_size_all_mem_tables =
-    str_to_slice(DB::Properties::kCurSizeAllMemTables);
-const crocksdb_slice_t crocksdb_property_name_size_all_mem_tables =
-    str_to_slice(DB::Properties::kSizeAllMemTables);
-const crocksdb_slice_t crocksdb_property_name_num_entries_active_mem_table =
-    str_to_slice(DB::Properties::kNumEntriesActiveMemTable);
-const crocksdb_slice_t crocksdb_property_name_num_entries_imm_mem_tables =
-    str_to_slice(DB::Properties::kNumEntriesImmMemTables);
-const crocksdb_slice_t crocksdb_property_name_num_deletes_active_mem_table =
-    str_to_slice(DB::Properties::kNumDeletesActiveMemTable);
-const crocksdb_slice_t crocksdb_property_name_num_deletes_imm_mem_tables =
-    str_to_slice(DB::Properties::kNumDeletesImmMemTables);
-const crocksdb_slice_t crocksdb_property_name_estimate_num_keys =
-    str_to_slice(DB::Properties::kEstimateNumKeys);
-const crocksdb_slice_t crocksdb_property_name_estimate_table_readers_mem =
-    str_to_slice(DB::Properties::kEstimateTableReadersMem);
-const crocksdb_slice_t crocksdb_property_name_is_file_deletions_enabled =
-    str_to_slice(DB::Properties::kIsFileDeletionsEnabled);
-const crocksdb_slice_t crocksdb_property_name_num_snapshots =
-    str_to_slice(DB::Properties::kNumSnapshots);
-const crocksdb_slice_t crocksdb_property_name_oldest_snapshot_time =
-    str_to_slice(DB::Properties::kOldestSnapshotTime);
-const crocksdb_slice_t crocksdb_property_name_oldest_snapshot_sequence =
-    str_to_slice(DB::Properties::kOldestSnapshotSequence);
-const crocksdb_slice_t crocksdb_property_name_num_live_versions =
-    str_to_slice(DB::Properties::kNumLiveVersions);
-const crocksdb_slice_t crocksdb_property_name_current_super_version_number =
-    str_to_slice(DB::Properties::kCurrentSuperVersionNumber);
-const crocksdb_slice_t crocksdb_property_name_estimate_live_data_size =
-    str_to_slice(DB::Properties::kEstimateLiveDataSize);
-const crocksdb_slice_t crocksdb_property_name_min_log_number_to_keep =
-    str_to_slice(DB::Properties::kMinLogNumberToKeep);
-const crocksdb_slice_t crocksdb_property_name_min_obsolete_sst_number_to_keep =
-    str_to_slice(DB::Properties::kMinObsoleteSstNumberToKeep);
-const crocksdb_slice_t crocksdb_property_name_total_sst_files_size =
-    str_to_slice(DB::Properties::kTotalSstFilesSize);
-const crocksdb_slice_t crocksdb_property_name_live_sst_files_size =
-    str_to_slice(DB::Properties::kLiveSstFilesSize);
-const crocksdb_slice_t crocksdb_property_name_base_level =
-    str_to_slice(DB::Properties::kBaseLevel);
-const crocksdb_slice_t
-    crocksdb_property_name_estimate_pending_compaction_bytes =
-        str_to_slice(DB::Properties::kEstimatePendingCompactionBytes);
-const crocksdb_slice_t crocksdb_property_name_aggregated_table_properties =
-    str_to_slice(DB::Properties::kAggregatedTableProperties);
-const crocksdb_slice_t
-    crocksdb_property_name_aggregated_table_properties_at_level =
-        str_to_slice(DB::Properties::kAggregatedTablePropertiesAtLevel);
-const crocksdb_slice_t crocksdb_property_name_actual_delayed_write_rate =
-    str_to_slice(DB::Properties::kActualDelayedWriteRate);
-const crocksdb_slice_t crocksdb_property_name_is_write_stopped =
-    str_to_slice(DB::Properties::kIsWriteStopped);
-const crocksdb_slice_t crocksdb_property_name_is_write_stalled =
-    str_to_slice(DB::Properties::kIsWriteStalled);
-const crocksdb_slice_t crocksdb_property_name_estimate_oldest_key_time =
-    str_to_slice(DB::Properties::kEstimateOldestKeyTime);
-const crocksdb_slice_t crocksdb_property_name_block_cache_capacity =
-    str_to_slice(DB::Properties::kBlockCacheCapacity);
-const crocksdb_slice_t crocksdb_property_name_block_cache_usage =
-    str_to_slice(DB::Properties::kBlockCacheUsage);
-const crocksdb_slice_t crocksdb_property_name_block_cache_pinned_usage =
-    str_to_slice(DB::Properties::kBlockCachePinnedUsage);
-const crocksdb_slice_t crocksdb_property_name_options_statistics =
-    str_to_slice(DB::Properties::kOptionsStatistics);
+const Slice crocksdb_property_name_num_files_at_level_prefix =
+    DB::Properties::kNumFilesAtLevelPrefix;
+const Slice crocksdb_property_name_compression_ratio_at_level_prefix =
+    DB::Properties::kCompressionRatioAtLevelPrefix;
+const Slice crocksdb_property_name_stats = DB::Properties::kStats;
+const Slice crocksdb_property_name_ss_tables = DB::Properties::kSSTables;
+const Slice crocksdb_property_name_cf_stats = DB::Properties::kCFStats;
+const Slice crocksdb_property_name_cf_stats_no_file_histogram =
+    DB::Properties::kCFStatsNoFileHistogram;
+const Slice crocksdb_property_name_cf_file_histogram =
+    DB::Properties::kCFFileHistogram;
+const Slice crocksdb_property_name_db_stats = DB::Properties::kDBStats;
+const Slice crocksdb_property_name_level_stats = DB::Properties::kLevelStats;
+const Slice crocksdb_property_name_num_immutable_mem_table =
+    DB::Properties::kNumImmutableMemTable;
+const Slice crocksdb_property_name_num_immutable_mem_table_flushed =
+    DB::Properties::kNumImmutableMemTableFlushed;
+const Slice crocksdb_property_name_mem_table_flush_pending =
+    DB::Properties::kMemTableFlushPending;
+const Slice crocksdb_property_name_num_running_flushes =
+    DB::Properties::kNumRunningFlushes;
+const Slice crocksdb_property_name_compaction_pending =
+    DB::Properties::kCompactionPending;
+const Slice crocksdb_property_name_num_running_compactions =
+    DB::Properties::kNumRunningCompactions;
+const Slice crocksdb_property_name_background_errors =
+    DB::Properties::kBackgroundErrors;
+const Slice crocksdb_property_name_cur_size_active_mem_table =
+    DB::Properties::kCurSizeActiveMemTable;
+const Slice crocksdb_property_name_cur_size_all_mem_tables =
+    DB::Properties::kCurSizeAllMemTables;
+const Slice crocksdb_property_name_size_all_mem_tables =
+    DB::Properties::kSizeAllMemTables;
+const Slice crocksdb_property_name_num_entries_active_mem_table =
+    DB::Properties::kNumEntriesActiveMemTable;
+const Slice crocksdb_property_name_num_entries_imm_mem_tables =
+    DB::Properties::kNumEntriesImmMemTables;
+const Slice crocksdb_property_name_num_deletes_active_mem_table =
+    DB::Properties::kNumDeletesActiveMemTable;
+const Slice crocksdb_property_name_num_deletes_imm_mem_tables =
+    DB::Properties::kNumDeletesImmMemTables;
+const Slice crocksdb_property_name_estimate_num_keys =
+    DB::Properties::kEstimateNumKeys;
+const Slice crocksdb_property_name_estimate_table_readers_mem =
+    DB::Properties::kEstimateTableReadersMem;
+const Slice crocksdb_property_name_is_file_deletions_enabled =
+    DB::Properties::kIsFileDeletionsEnabled;
+const Slice crocksdb_property_name_num_snapshots =
+    DB::Properties::kNumSnapshots;
+const Slice crocksdb_property_name_oldest_snapshot_time =
+    DB::Properties::kOldestSnapshotTime;
+const Slice crocksdb_property_name_oldest_snapshot_sequence =
+    DB::Properties::kOldestSnapshotSequence;
+const Slice crocksdb_property_name_num_live_versions =
+    DB::Properties::kNumLiveVersions;
+const Slice crocksdb_property_name_current_super_version_number =
+    DB::Properties::kCurrentSuperVersionNumber;
+const Slice crocksdb_property_name_estimate_live_data_size =
+    DB::Properties::kEstimateLiveDataSize;
+const Slice crocksdb_property_name_min_log_number_to_keep =
+    DB::Properties::kMinLogNumberToKeep;
+const Slice crocksdb_property_name_min_obsolete_sst_number_to_keep =
+    DB::Properties::kMinObsoleteSstNumberToKeep;
+const Slice crocksdb_property_name_total_sst_files_size =
+    DB::Properties::kTotalSstFilesSize;
+const Slice crocksdb_property_name_live_sst_files_size =
+    DB::Properties::kLiveSstFilesSize;
+const Slice crocksdb_property_name_base_level = DB::Properties::kBaseLevel;
+const Slice crocksdb_property_name_estimate_pending_compaction_bytes =
+    DB::Properties::kEstimatePendingCompactionBytes;
+const Slice crocksdb_property_name_aggregated_table_properties =
+    DB::Properties::kAggregatedTableProperties;
+const Slice crocksdb_property_name_aggregated_table_properties_at_level =
+    DB::Properties::kAggregatedTablePropertiesAtLevel;
+const Slice crocksdb_property_name_actual_delayed_write_rate =
+    DB::Properties::kActualDelayedWriteRate;
+const Slice crocksdb_property_name_is_write_stopped =
+    DB::Properties::kIsWriteStopped;
+const Slice crocksdb_property_name_is_write_stalled =
+    DB::Properties::kIsWriteStalled;
+const Slice crocksdb_property_name_estimate_oldest_key_time =
+    DB::Properties::kEstimateOldestKeyTime;
+const Slice crocksdb_property_name_block_cache_capacity =
+    DB::Properties::kBlockCacheCapacity;
+const Slice crocksdb_property_name_block_cache_usage =
+    DB::Properties::kBlockCacheUsage;
+const Slice crocksdb_property_name_block_cache_pinned_usage =
+    DB::Properties::kBlockCachePinnedUsage;
+const Slice crocksdb_property_name_options_statistics =
+    DB::Properties::kOptionsStatistics;
 
 struct crocksdb_map_property_t {
   std::map<std::string, std::string> rep;
@@ -6650,10 +6634,10 @@ Status ctitandb_delete_blob_files_in_ranges_cf(
 
 void crocksdb_free_cplus_array(const char* arr) { delete[] arr; }
 
-const char* crocksdb_to_cplus_array(const char* arr, size_t len) {
-  char* const result = new char[len + 1];  // +1 for null terminator
-  memcpy(result, arr, len);
-  result[len] = '\0';  // null terminator for C style string
+const char* crocksdb_to_cplus_array(Slice s) {
+  char* const result = new char[s.size() + 1];  // +1 for null terminator
+  memcpy(result, s.data(), s.size());
+  result[s.size()] = '\0';  // null terminator for C style string
   return result;
 }
 
