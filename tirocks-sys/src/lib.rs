@@ -85,10 +85,12 @@ impl Drop for rocksdb_Status {
 
 #[cfg(test)]
 mod tests {
+    use super::s;
+
     #[test]
     fn test_smoke() {
         assert_eq!(b"rocksdb.cfstats-no-file-histogram", unsafe {
-            super::crocksdb_property_name_cf_stats_no_file_histogram.to_bytes()
+            s(super::crocksdb_property_name_cf_stats_no_file_histogram)
         });
     }
 }

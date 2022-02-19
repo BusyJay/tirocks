@@ -1,5 +1,5 @@
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct rocksdb_Slice {
     pub data_: *const libc::c_char,
     pub size_: usize,

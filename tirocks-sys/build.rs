@@ -47,7 +47,7 @@ fn bindgen_rocksdb(file_path: &Path) {
                 | bindgen::CodegenConfig::VARS
                 | bindgen::CodegenConfig::TYPES,
         )
-        .derive_copy(false)
+        .no_copy(r"\b(crocksdb|rocksdb|ctitandb)_.*$")
         .size_t_is_usize(true)
         .disable_header_comment()
         .ctypes_prefix("libc")
