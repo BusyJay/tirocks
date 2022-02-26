@@ -203,6 +203,8 @@ using rocksdb::FileSystemInspector;
 using rocksdb::NewFileSystemInspectedEnv;
 using std::shared_ptr;
 
+inline Slice r_slice(crocksdb_slice_t s) { return Slice(s.data, s.size); }
+
 extern "C" {
 
 const char* block_base_table_str = "BlockBasedTable";
@@ -397,8 +399,6 @@ crocksdb_slice_t str_to_slice(const std::string& value) {
   crocksdb_slice_t t = {value.data(), value.size()};
   return t;
 }
-
-inline Slice r_slice(crocksdb_slice_t s) { return Slice(s.data, s.size); }
 
 const crocksdb_slice_t crocksdb_property_name_num_files_at_level_prefix =
     str_to_slice(DB::Properties::kNumFilesAtLevelPrefix);

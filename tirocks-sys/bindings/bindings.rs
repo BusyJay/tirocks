@@ -5227,6 +5227,7 @@ extern "C" {
     );
 }
 #[repr(C)]
+#[derive(Debug)]
 pub struct ctitandb_blob_index_t {
     pub file_number: u64,
     pub blob_offset: u64,
