@@ -1,3 +1,57 @@
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_Status {
+    pub code_: rocksdb_Status_Code,
+    pub subcode_: rocksdb_Status_SubCode,
+    pub sev_: rocksdb_Status_Severity,
+    pub state_: *const libc::c_char,
+}
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_Status_Code {
+    kOk = 0,
+    kNotFound = 1,
+    kCorruption = 2,
+    kNotSupported = 3,
+    kInvalidArgument = 4,
+    kIOError = 5,
+    kMergeInProgress = 6,
+    kIncomplete = 7,
+    kShutdownInProgress = 8,
+    kTimedOut = 9,
+    kAborted = 10,
+    kBusy = 11,
+    kExpired = 12,
+    kTryAgain = 13,
+    kCompactionTooLarge = 14,
+    kColumnFamilyDropped = 15,
+    kMaxCode = 16,
+}
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_Status_SubCode {
+    kNone = 0,
+    kMutexTimeout = 1,
+    kLockTimeout = 2,
+    kLockLimit = 3,
+    kNoSpace = 4,
+    kDeadlock = 5,
+    kStaleFile = 6,
+    kMemoryLimit = 7,
+    kSpaceLimit = 8,
+    kPathNotFound = 9,
+    kMaxSubCode = 10,
+}
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_Status_Severity {
+    kNoError = 0,
+    kSoftError = 1,
+    kHardError = 2,
+    kFatalError = 3,
+    kUnrecoverableError = 4,
+    kMaxSeverity = 5,
+}
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_Env_IOPriority {
@@ -3806,14 +3860,14 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_env_file_exists(
         env: *mut crocksdb_env_t,
-        path: *const libc::c_char,
+        path: crocksdb_slice_t,
         errptr: *mut *mut libc::c_char,
     );
 }
 extern "C" {
     pub fn crocksdb_env_delete_file(
         env: *mut crocksdb_env_t,
-        path: *const libc::c_char,
+        path: crocksdb_slice_t,
         errptr: *mut *mut libc::c_char,
     );
 }
@@ -3829,9 +3883,9 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_sequential_file_create(
         env: *mut crocksdb_env_t,
-        path: *const libc::c_char,
+        path: crocksdb_slice_t,
         opts: *const crocksdb_envoptions_t,
-        errptr: *mut *mut libc::c_char,
+        s: *mut rocksdb_Status,
     ) -> *mut crocksdb_sequential_file_t;
 }
 extern "C" {
@@ -3839,14 +3893,14 @@ extern "C" {
         arg1: *mut crocksdb_sequential_file_t,
         n: usize,
         buf: *mut libc::c_char,
-        errptr: *mut *mut libc::c_char,
+        s: *mut rocksdb_Status,
     ) -> usize;
 }
 extern "C" {
     pub fn crocksdb_sequential_file_skip(
         arg1: *mut crocksdb_sequential_file_t,
         n: usize,
-        errptr: *mut *mut libc::c_char,
+        s: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -5535,4 +5589,7 @@ extern "C" {
         include_end: libc::c_uchar,
         errptr: *mut *mut libc::c_char,
     );
+}
+extern "C" {
+    pub fn crocksdb_destroy_status(s: rocksdb_Status);
 }

@@ -67,9 +67,12 @@
 #include "rocksdb/perf_level.h"
 #include "rocksdb/rate_limiter.h"
 #include "rocksdb/sst_partitioner.h"
+#include "rocksdb/status.h"
 #include "rocksdb/table.h"
 #include "rocksdb/types.h"
 #include "titan/options.h"
+
+using namespace rocksdb;
 
 #ifdef __cplusplus
 extern "C" {
@@ -1616,10 +1619,10 @@ crocksdb_env_set_high_priority_background_threads(crocksdb_env_t* env, int n);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_env_join_all_threads(
     crocksdb_env_t* env);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_env_file_exists(crocksdb_env_t* env,
-                                                           const char* path,
+                                                           crocksdb_slice_t path,
                                                            char** errptr);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_env_delete_file(crocksdb_env_t* env,
-                                                           const char* path,
+                                                           crocksdb_slice_t path,
                                                            char** errptr);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_env_destroy(crocksdb_env_t*);
 
@@ -1629,13 +1632,13 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_envoptions_destroy(
     crocksdb_envoptions_t* opt);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_sequential_file_t*
-crocksdb_sequential_file_create(crocksdb_env_t* env, const char* path,
+crocksdb_sequential_file_create(crocksdb_env_t* env, crocksdb_slice_t path,
                                 const crocksdb_envoptions_t* opts,
-                                char** errptr);
+                                Status* s);
 extern C_ROCKSDB_LIBRARY_API size_t crocksdb_sequential_file_read(
-    crocksdb_sequential_file_t*, size_t n, char* buf, char** errptr);
+    crocksdb_sequential_file_t*, size_t n, char* buf, Status* s);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_sequential_file_skip(
-    crocksdb_sequential_file_t*, size_t n, char** errptr);
+    crocksdb_sequential_file_t*, size_t n, Status* s);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_sequential_file_destroy(
     crocksdb_sequential_file_t*);
 
@@ -2659,6 +2662,8 @@ extern C_ROCKSDB_LIBRARY_API void ctitandb_delete_blob_files_in_ranges_cf(
     const char* const* start_keys, const size_t* start_keys_lens,
     const char* const* limit_keys, const size_t* limit_keys_lens,
     size_t num_ranges, unsigned char include_end, char** errptr);
+
+extern C_ROCKSDB_LIBRARY_API void crocksdb_destroy_status(Status s);
 
 #ifdef __cplusplus
 } /* end extern "C" */

@@ -4067,14 +4067,14 @@ void crocksdb_env_join_all_threads(crocksdb_env_t* env) {
   env->rep->WaitForJoin();
 }
 
-void crocksdb_env_file_exists(crocksdb_env_t* env, const char* path,
+void crocksdb_env_file_exists(crocksdb_env_t* env, crocksdb_slice_t path,
                               char** errptr) {
-  SaveError(errptr, env->rep->FileExists(path));
+  SaveError(errptr, env->rep->FileExists(r_slice(path).ToString()));
 }
 
-void crocksdb_env_delete_file(crocksdb_env_t* env, const char* path,
+void crocksdb_env_delete_file(crocksdb_env_t* env, crocksdb_slice_t path,
                               char** errptr) {
-  SaveError(errptr, env->rep->DeleteFile(path));
+  SaveError(errptr, env->rep->DeleteFile(r_slice(path).ToString()));
 }
 
 void crocksdb_env_destroy(crocksdb_env_t* env) {
@@ -4092,11 +4092,12 @@ crocksdb_envoptions_t* crocksdb_envoptions_create() {
 void crocksdb_envoptions_destroy(crocksdb_envoptions_t* opt) { delete opt; }
 
 crocksdb_sequential_file_t* crocksdb_sequential_file_create(
-    crocksdb_env_t* env, const char* path, const crocksdb_envoptions_t* opts,
-    char** errptr) {
+    crocksdb_env_t* env, crocksdb_slice_t path, const crocksdb_envoptions_t* opts,
+    Status* s) {
   std::unique_ptr<SequentialFile> result;
-  if (SaveError(errptr,
-                env->rep->NewSequentialFile(path, &result, opts->rep))) {
+  auto p = r_slice(path).ToString();
+  *s = env->rep->NewSequentialFile(p, &result, opts->rep);
+  if (!s->ok()) {
     return nullptr;
   }
   auto file = new crocksdb_sequential_file_t;
@@ -4105,17 +4106,18 @@ crocksdb_sequential_file_t* crocksdb_sequential_file_create(
 }
 
 size_t crocksdb_sequential_file_read(crocksdb_sequential_file_t* file, size_t n,
-                                     char* buf, char** errptr) {
+                                     char* buf, Status* s) {
   Slice result;
-  if (SaveError(errptr, file->rep->Read(n, &result, buf))) {
+  *s = file->rep->Read(n, &result, buf);
+  if (!s->ok()) {
     return 0;
   }
   return result.size();
 }
 
 void crocksdb_sequential_file_skip(crocksdb_sequential_file_t* file, size_t n,
-                                   char** errptr) {
-  SaveError(errptr, file->rep->Skip(n));
+                                   Status* s) {
+  *s = file->rep->Skip(n);
 }
 
 void crocksdb_sequential_file_destroy(crocksdb_sequential_file_t* file) {
@@ -6755,5 +6757,7 @@ void ctitandb_delete_blob_files_in_ranges_cf(
   SaveError(errptr, static_cast<TitanDB*>(db->rep)->DeleteBlobFilesInRanges(
                         cf->rep, &ranges[0], num_ranges, include_end));
 }
+
+void crocksdb_status_destroy(Status _s) {}
 
 }  // end extern "C"
