@@ -141,7 +141,7 @@ macro_rules! ffi_try {
 mod tests {
     use crate::{
         crocksdb_close, crocksdb_options_create, crocksdb_options_destroy,
-        crocksdb_options_set_create_if_missing, rocksdb_Status_Code,
+        crocksdb_options_set_create_if_missing, r, rocksdb_Status_Code,
     };
 
     use super::s;
@@ -161,7 +161,7 @@ mod tests {
             let opt = crocksdb_options_create();
             crocksdb_options_set_create_if_missing(opt, 0);
             let s: Result<_, super::rocksdb_Status> =
-                (|| Ok(ffi_try!(crocksdb_open(opt, path.as_ptr() as _))))();
+                (|| Ok(ffi_try!(crocksdb_open(opt, r(path.as_bytes())))))();
             let e = s.unwrap_err();
             assert!(!e.ok());
             assert_eq!(e.code_, rocksdb_Status_Code::kInvalidArgument);
@@ -170,7 +170,7 @@ mod tests {
 
             crocksdb_options_set_create_if_missing(opt, 1);
             let s: Result<_, super::rocksdb_Status> =
-                (|| Ok(ffi_try!(crocksdb_open(opt, path.as_ptr() as _))))();
+                (|| Ok(ffi_try!(crocksdb_open(opt, r(path.as_bytes())))))();
             let e = s.unwrap();
             crocksdb_close(e);
             crocksdb_options_destroy(opt);

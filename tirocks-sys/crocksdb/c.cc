@@ -778,10 +778,10 @@ static char* CopyString(const std::string& str) {
   return result;
 }
 
-crocksdb_t* crocksdb_open(const crocksdb_options_t* options, const char* name,
+crocksdb_t* crocksdb_open(const crocksdb_options_t* options, Slice name,
                           Status* s) {
   DB* db;
-  *s = DB::Open(options->rep, std::string(name), &db);
+  *s = DB::Open(options->rep, name.ToString(), &db);
   if (!s->ok()) {
     return nullptr;
   }
@@ -791,9 +791,9 @@ crocksdb_t* crocksdb_open(const crocksdb_options_t* options, const char* name,
 }
 
 crocksdb_t* crocksdb_open_with_ttl(const crocksdb_options_t* options,
-                                   const char* name, int ttl, Status* s) {
+                                   Slice name, int ttl, Status* s) {
   DBWithTTL* db;
-  *s = DBWithTTL::Open(options->rep, std::string(name), &db, ttl);
+  *s = DBWithTTL::Open(options->rep, name.ToString(), &db, ttl);
   if (!s->ok()) {
     return nullptr;
   }
@@ -803,11 +803,11 @@ crocksdb_t* crocksdb_open_with_ttl(const crocksdb_options_t* options,
 }
 
 crocksdb_t* crocksdb_open_for_read_only(const crocksdb_options_t* options,
-                                        const char* name,
+                                        Slice name,
                                         unsigned char error_if_log_file_exist,
                                         Status* s) {
   DB* db;
-  *s = DB::OpenForReadOnly(options->rep, std::string(name), &db,
+  *s = DB::OpenForReadOnly(options->rep, name.ToString(), &db,
                            error_if_log_file_exist);
   if (!s->ok()) {
     return nullptr;
@@ -820,9 +820,10 @@ crocksdb_t* crocksdb_open_for_read_only(const crocksdb_options_t* options,
 void crocksdb_resume(crocksdb_t* db, Status* s) { *s = db->rep->Resume(); }
 
 crocksdb_backup_engine_t* crocksdb_backup_engine_open(
-    const crocksdb_options_t* options, const char* path, Status* s) {
+    const crocksdb_options_t* options, Slice path, Status* s) {
   BackupEngine* be;
-  *s = BackupEngine::Open(options->rep.env, BackupableDBOptions(path), &be);
+  *s = BackupEngine::Open(options->rep.env,
+                          BackupableDBOptions(path.ToString()), &be);
   if (!s->ok()) {
     return nullptr;
   }
@@ -856,10 +857,10 @@ void crocksdb_restore_options_set_keep_log_files(
 }
 
 void crocksdb_backup_engine_restore_db_from_latest_backup(
-    crocksdb_backup_engine_t* be, const char* db_dir, const char* wal_dir,
+    crocksdb_backup_engine_t* be, Slice db_dir, Slice wal_dir,
     const crocksdb_restore_options_t* restore_options, Status* s) {
-  *s = be->rep->RestoreDBFromLatestBackup(
-      std::string(db_dir), std::string(wal_dir), restore_options->rep);
+  *s = be->rep->RestoreDBFromLatestBackup(db_dir.ToString(), wal_dir.ToString(),
+                                          restore_options->rep);
 }
 
 const crocksdb_backup_engine_info_t* crocksdb_backup_engine_get_backup_info(
@@ -916,20 +917,20 @@ void crocksdb_continue_bg_work(crocksdb_t* db) {
 }
 
 crocksdb_t* crocksdb_open_column_families(
-    const crocksdb_options_t* db_options, const char* name,
-    int num_column_families, const char** column_family_names,
+    const crocksdb_options_t* db_options, Slice name, int num_column_families,
+    Slice* column_family_names,
     const crocksdb_options_t** column_family_options,
     crocksdb_column_family_handle_t** column_family_handles, Status* s) {
   std::vector<ColumnFamilyDescriptor> column_families;
   for (int i = 0; i < num_column_families; i++) {
     column_families.push_back(ColumnFamilyDescriptor(
-        std::string(column_family_names[i]),
+        column_family_names[i].ToString(),
         ColumnFamilyOptions(column_family_options[i]->rep)));
   }
 
   DB* db;
   std::vector<ColumnFamilyHandle*> handles;
-  *s = DB::Open(DBOptions(db_options->rep), std::string(name), column_families,
+  *s = DB::Open(DBOptions(db_options->rep), name.ToString(), column_families,
                 &handles, &db);
   if (!s->ok()) {
     return nullptr;
@@ -947,8 +948,8 @@ crocksdb_t* crocksdb_open_column_families(
 }
 
 crocksdb_t* crocksdb_open_column_families_with_ttl(
-    const crocksdb_options_t* db_options, const char* name,
-    int num_column_families, const char** column_family_names,
+    const crocksdb_options_t* db_options, Slice name, int num_column_families,
+    Slice* column_family_names,
     const crocksdb_options_t** column_family_options, const int32_t* ttl_array,
     unsigned char read_only,
     crocksdb_column_family_handle_t** column_family_handles, Status* s) {
@@ -956,14 +957,14 @@ crocksdb_t* crocksdb_open_column_families_with_ttl(
   std::vector<int32_t> ttls;
   for (int i = 0; i < num_column_families; i++) {
     column_families.push_back(ColumnFamilyDescriptor(
-        std::string(column_family_names[i]),
+        column_family_names[i].ToString(),
         ColumnFamilyOptions(column_family_options[i]->rep)));
     ttls.push_back(ttl_array[i]);
   }
 
   DBWithTTL* db;
   std::vector<ColumnFamilyHandle*> handles;
-  *s = DBWithTTL::Open(DBOptions(db_options->rep), std::string(name),
+  *s = DBWithTTL::Open(DBOptions(db_options->rep), name.ToString(),
                        column_families, &handles, &db, ttls, read_only);
   if (!s->ok()) {
     return nullptr;
@@ -981,21 +982,21 @@ crocksdb_t* crocksdb_open_column_families_with_ttl(
 }
 
 crocksdb_t* crocksdb_open_for_read_only_column_families(
-    const crocksdb_options_t* db_options, const char* name,
-    int num_column_families, const char** column_family_names,
+    const crocksdb_options_t* db_options, Slice name, int num_column_families,
+    Slice* column_family_names,
     const crocksdb_options_t** column_family_options,
     crocksdb_column_family_handle_t** column_family_handles,
     unsigned char error_if_log_file_exist, Status* s) {
   std::vector<ColumnFamilyDescriptor> column_families;
   for (int i = 0; i < num_column_families; i++) {
     column_families.push_back(ColumnFamilyDescriptor(
-        std::string(column_family_names[i]),
+        column_family_names[i].ToString(),
         ColumnFamilyOptions(column_family_options[i]->rep)));
   }
 
   DB* db;
   std::vector<ColumnFamilyHandle*> handles;
-  *s = DB::OpenForReadOnly(DBOptions(db_options->rep), std::string(name),
+  *s = DB::OpenForReadOnly(DBOptions(db_options->rep), name.ToString(),
                            column_families, &handles, &db,
                            error_if_log_file_exist);
   if (!s->ok()) {
@@ -1014,11 +1015,9 @@ crocksdb_t* crocksdb_open_for_read_only_column_families(
 }
 
 char** crocksdb_list_column_families(const crocksdb_options_t* options,
-                                     const char* name, size_t* lencfs,
-                                     Status* s) {
+                                     Slice name, size_t* lencfs, Status* s) {
   std::vector<std::string> fams;
-  *s =
-      DB::ListColumnFamilies(DBOptions(options->rep), std::string(name), &fams);
+  *s = DB::ListColumnFamilies(DBOptions(options->rep), name.ToString(), &fams);
   if (!s->ok()) {
     return nullptr;
   }

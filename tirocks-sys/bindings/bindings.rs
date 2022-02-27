@@ -1101,14 +1101,14 @@ pub struct crocksdb_file_system_inspector_t {
 extern "C" {
     pub fn crocksdb_open(
         options: *const crocksdb_options_t,
-        name: *const libc::c_char,
+        name: rocksdb_Slice,
         s: *mut rocksdb_Status,
     ) -> *mut crocksdb_t;
 }
 extern "C" {
     pub fn crocksdb_open_with_ttl(
         options: *const crocksdb_options_t,
-        name: *const libc::c_char,
+        name: rocksdb_Slice,
         ttl: libc::c_int,
         s: *mut rocksdb_Status,
     ) -> *mut crocksdb_t;
@@ -1116,7 +1116,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_open_for_read_only(
         options: *const crocksdb_options_t,
-        name: *const libc::c_char,
+        name: rocksdb_Slice,
         error_if_log_file_exist: libc::c_uchar,
         s: *mut rocksdb_Status,
     ) -> *mut crocksdb_t;
@@ -1124,7 +1124,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_backup_engine_open(
         options: *const crocksdb_options_t,
-        path: *const libc::c_char,
+        path: rocksdb_Slice,
         s: *mut rocksdb_Status,
     ) -> *mut crocksdb_backup_engine_t;
 }
@@ -1157,8 +1157,8 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_backup_engine_restore_db_from_latest_backup(
         be: *mut crocksdb_backup_engine_t,
-        db_dir: *const libc::c_char,
-        wal_dir: *const libc::c_char,
+        db_dir: rocksdb_Slice,
+        wal_dir: rocksdb_Slice,
         restore_options: *const crocksdb_restore_options_t,
         s: *mut rocksdb_Status,
     );
@@ -1206,9 +1206,9 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_open_column_families(
         options: *const crocksdb_options_t,
-        name: *const libc::c_char,
+        name: rocksdb_Slice,
         num_column_families: libc::c_int,
-        column_family_names: *mut *const libc::c_char,
+        column_family_names: *mut rocksdb_Slice,
         column_family_options: *mut *const crocksdb_options_t,
         column_family_handles: *mut *mut crocksdb_column_family_handle_t,
         s: *mut rocksdb_Status,
@@ -1217,9 +1217,9 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_open_column_families_with_ttl(
         options: *const crocksdb_options_t,
-        name: *const libc::c_char,
+        name: rocksdb_Slice,
         num_column_families: libc::c_int,
-        column_family_names: *mut *const libc::c_char,
+        column_family_names: *mut rocksdb_Slice,
         column_family_options: *mut *const crocksdb_options_t,
         ttl_array: *const i32,
         read_only: libc::c_uchar,
@@ -1230,9 +1230,9 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_open_for_read_only_column_families(
         options: *const crocksdb_options_t,
-        name: *const libc::c_char,
+        name: rocksdb_Slice,
         num_column_families: libc::c_int,
-        column_family_names: *mut *const libc::c_char,
+        column_family_names: *mut rocksdb_Slice,
         column_family_options: *mut *const crocksdb_options_t,
         column_family_handles: *mut *mut crocksdb_column_family_handle_t,
         error_if_log_file_exist: libc::c_uchar,
@@ -1242,7 +1242,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_list_column_families(
         options: *const crocksdb_options_t,
-        name: *const libc::c_char,
+        name: rocksdb_Slice,
         lencf: *mut usize,
         s: *mut rocksdb_Status,
     ) -> *mut *mut libc::c_char;
