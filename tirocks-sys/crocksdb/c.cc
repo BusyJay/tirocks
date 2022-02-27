@@ -11,7 +11,6 @@
 
 #include <stdlib.h>
 
-#include <iostream>
 #include <limits>
 
 #include "db/column_family.h"
