@@ -23,9 +23,17 @@ fn cargo() -> Command {
 }
 
 fn exec(c: &mut Command) {
-    if let Err(e) = c.status() {
-        eprintln!("failed to execute {:?}: {}", c, e);
-        process::exit(-1);
+    match c.status() {
+        Ok(e) => {
+            if !e.success() {
+                eprintln!("failed to execute {:?}", c);
+                process::exit(e.code().unwrap_or(-1));
+            }
+        }
+        Err(e) => {
+            eprintln!("failed to execute {:?}: {}", c, e);
+            process::exit(-1);
+        }
     }
 }
 

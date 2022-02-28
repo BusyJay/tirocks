@@ -866,7 +866,7 @@ crocksdb_compactionjobinfo_num_input_files_at_output_level(
 
 /* Subcompaction job info */
 extern C_ROCKSDB_LIBRARY_API void crocksdb_subcompactionjobinfo_status(
-    const crocksdb_subcompactionjobinfo_t*, Status* statuses);
+    const crocksdb_subcompactionjobinfo_t*, Status* s);
 extern C_ROCKSDB_LIBRARY_API const char* crocksdb_subcompactionjobinfo_cf_name(
     const crocksdb_subcompactionjobinfo_t*, size_t*);
 extern C_ROCKSDB_LIBRARY_API uint64_t
@@ -914,8 +914,7 @@ typedef void (*on_subcompaction_completed_cb)(
     void*, const crocksdb_subcompactionjobinfo_t*);
 typedef void (*on_external_file_ingested_cb)(
     void*, crocksdb_t*, const crocksdb_externalfileingestioninfo_t*);
-typedef void (*on_background_error_cb)(void*, BackgroundErrorReason,
-                                       Status* statuses);
+typedef void (*on_background_error_cb)(void*, BackgroundErrorReason, Status* s);
 typedef void (*on_stall_conditions_changed_cb)(
     void*, const crocksdb_writestallinfo_t*);
 typedef void (*crocksdb_logger_logv_cb)(void*, InfoLogLevel log_level,

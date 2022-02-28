@@ -2325,7 +2325,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_subcompactionjobinfo_status(
         arg1: *const crocksdb_subcompactionjobinfo_t,
-        statuses: *mut rocksdb_Status,
+        s: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -2432,7 +2432,7 @@ pub type on_background_error_cb = ::std::option::Option<
     unsafe extern "C" fn(
         arg1: *mut libc::c_void,
         arg2: rocksdb_BackgroundErrorReason,
-        statuses: *mut rocksdb_Status,
+        s: *mut rocksdb_Status,
     ),
 >;
 pub type on_stall_conditions_changed_cb = ::std::option::Option<

@@ -19,7 +19,7 @@ pub use bindings::*;
 
 /// Convert a rust slice to rocksdb slice.
 ///
-/// ### Safety
+/// # Safety
 ///
 /// Caller should guarantee the data lives as long as the returned slice.
 // Because the layout of rocksdb_Slice is exact the same as &[u8], this function
@@ -34,7 +34,7 @@ pub unsafe fn r(src: &[u8]) -> rocksdb_Slice {
 
 /// Convert a rocksdb slice to rust slice.
 ///
-/// ### Safety
+/// # Safety
 ///
 /// Caller should guarantee the data lives as long as the returned slice.
 // Because the layout of rocksdb_Slice is exact the same as &[u8], this function
@@ -55,6 +55,28 @@ impl rocksdb_Status {
         }
     }
 
+    /// Build a status with given errors.
+    ///
+    /// # Panics
+    ///
+    /// `code` should not be `kOK`.
+    #[inline]
+    pub fn with_error(code: rocksdb_Status_Code, state: impl AsRef<[u8]>) -> rocksdb_Status {
+        assert_ne!(code, rocksdb_Status_Code::kOk);
+        let state = state.as_ref();
+        let state_ = if !state.is_empty() {
+            unsafe { crocksdb_to_cplus_array(r(state)) }
+        } else {
+            std::ptr::null()
+        };
+        rocksdb_Status {
+            code_: code,
+            subcode_: rocksdb_Status_SubCode::kNone,
+            sev_: rocksdb_Status_Severity::kNoError,
+            state_,
+        }
+    }
+
     #[inline]
     fn clear_state(&mut self) {
         if self.state_.is_null() {
@@ -64,19 +86,6 @@ impl rocksdb_Status {
             crocksdb_free_cplus_array(self.state_);
             self.state_ = std::ptr::null();
         }
-    }
-
-    #[inline]
-    pub fn set_state(&mut self, state: &[u8]) {
-        self.clear_state();
-        if !state.is_empty() {
-            self.state_ = unsafe { crocksdb_to_cplus_array(r(state)) };
-        }
-    }
-
-    #[inline]
-    pub fn set_message(&mut self, msg: &str) {
-        self.set_state(msg.as_bytes())
     }
 
     #[inline]
@@ -105,6 +114,26 @@ impl rocksdb_Status {
     #[inline]
     pub fn code(&self) -> rocksdb_Status_Code {
         self.code_
+    }
+
+    #[inline]
+    pub fn severity(&self) -> rocksdb_Status_Severity {
+        self.sev_
+    }
+
+    #[inline]
+    pub fn set_severity(&mut self, severity: rocksdb_Status_Severity) {
+        self.sev_ = severity;
+    }
+
+    #[inline]
+    pub fn sub_code(&self) -> rocksdb_Status_SubCode {
+        self.subcode_
+    }
+
+    #[inline]
+    pub fn set_sub_code(&mut self, sub_code: rocksdb_Status_SubCode) {
+        self.subcode_ = sub_code;
     }
 }
 
