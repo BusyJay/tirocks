@@ -4173,7 +4173,7 @@ void crocksdb_encryption_key_manager_link_file(
 
 Env* crocksdb_key_managed_encrypted_env_create(
     Env* base_env, crocksdb_encryption_key_manager_t* key_manager) {
-  return NewKeyManagedEncryptedEnv(base_env->rep, key_manager->rep);
+  return NewKeyManagedEncryptedEnv(base_env, key_manager->rep);
 }
 #endif
 
