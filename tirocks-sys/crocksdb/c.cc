@@ -276,23 +276,23 @@ struct crocksdb_logger_impl_t : public Logger {
   void* rep;
 
   void (*destructor_)(void*);
-  void (*logv_internal_)(void* logger, InfoLogLevel log_level, const char* log);
+  void (*logv_internal_)(void* logger, InfoLogLevel log_level, Slice msg);
+
+  char* buffer_ = new char[500];
 
   void log_help_(void* logger, InfoLogLevel log_level, const char* format,
                  va_list ap) {
-    // Try twice, first with buffer on stack, second with buffer on heap.
-    constexpr int kBufferSize = 500;
-    char buffer[kBufferSize];
+    // TODO: check level before constructing strings.
     va_list ap_copy;
     va_copy(ap_copy, ap);
-    int num = vsnprintf(buffer, kBufferSize, format, ap_copy);
+    int num = vsnprintf(buffer_, 500, format, ap_copy);
     va_end(ap_copy);
-    if (num < kBufferSize) {
-      logv_internal_(rep, log_level, buffer);
+    if (num < 500) {
+      logv_internal_(rep, log_level, Slice(buffer_, num));
     } else {
       char* large_buffer = new char[num + 1];
       vsnprintf(large_buffer, static_cast<size_t>(num) + 1, format, ap);
-      logv_internal_(rep, log_level, large_buffer);
+      logv_internal_(rep, log_level, Slice(large_buffer, num));
       delete[] large_buffer;
     }
   }
@@ -306,7 +306,10 @@ struct crocksdb_logger_impl_t : public Logger {
     log_help_(rep, log_level, format, ap);
   }
 
-  virtual ~crocksdb_logger_impl_t() { (*destructor_)(rep); }
+  virtual ~crocksdb_logger_impl_t() {
+    (*destructor_)(rep);
+    delete[] buffer_;
+  }
 };
 struct crocksdb_lru_cache_options_t {
   LRUCacheOptions rep;
@@ -696,11 +699,21 @@ struct crocksdb_mergeoperator_t : public MergeOperator {
   }
 };
 
-struct crocksdb_env_t {
-  Env* rep;
-  bool is_default;
-  EncryptionProvider* encryption_provider;
-  BlockCipher* block_cipher;
+/// An Env that free resources when being deleted.
+struct EncryptedEnvWrapper : EnvWrapper {
+  EncryptedEnvWrapper(Env* env, EncryptionProvider* provider,
+                      BlockCipher* block_cipher)
+      : EnvWrapper(env),
+        encryption_provider_(provider),
+        block_cipher_(block_cipher) {}
+
+  ~EncryptedEnvWrapper() {
+    delete encryption_provider_;
+    delete block_cipher_;
+  }
+
+  EncryptionProvider* encryption_provider_;
+  BlockCipher* block_cipher_;
 };
 
 struct crocksdb_slicetransform_t : public SliceTransform {
@@ -2551,8 +2564,8 @@ void crocksdb_options_set_paranoid_checks(crocksdb_options_t* opt,
   opt->rep.paranoid_checks = v;
 }
 
-void crocksdb_options_set_env(crocksdb_options_t* opt, crocksdb_env_t* env) {
-  opt->rep.env = (env ? env->rep : nullptr);
+void crocksdb_options_set_env(crocksdb_options_t* opt, Env* env) {
+  opt->rep.env = env;
 }
 
 crocksdb_logger_t* crocksdb_logger_create(void* rep, void (*destructor_)(void*),
@@ -3320,12 +3333,12 @@ void crocksdb_options_set_atomic_flush(crocksdb_options_t* opt,
 }
 
 unsigned char crocksdb_load_latest_options(
-    const char* dbpath, crocksdb_env_t* env, crocksdb_options_t* db_options,
+    const char* dbpath, Env* env, crocksdb_options_t* db_options,
     crocksdb_column_family_descriptor*** cf_descs, size_t* cf_descs_len,
     unsigned char ignore_unknown_options, Status* s) {
   std::vector<ColumnFamilyDescriptor> tmp_cf_descs;
-  *s = rocksdb::LoadLatestOptions(dbpath, env->rep, &db_options->rep,
-                                  &tmp_cf_descs, ignore_unknown_options);
+  *s = rocksdb::LoadLatestOptions(dbpath, env, &db_options->rep, &tmp_cf_descs,
+                                  ignore_unknown_options);
 
   if (!s->ok()) {
     return false;
@@ -3393,8 +3406,9 @@ int64_t crocksdb_ratelimiter_get_singleburst_bytes(
 }
 
 void crocksdb_ratelimiter_request(crocksdb_ratelimiter_t* limiter,
-                                  int64_t bytes, Env::IOPriority pri) {
-  limiter->rep->Request(bytes, pri, nullptr);
+                                  int64_t bytes, Env::IOPriority pri,
+                                  RateLimiter::OpType ty) {
+  limiter->rep->Request(bytes, pri, nullptr, ty);
 }
 
 int64_t crocksdb_ratelimiter_get_total_bytes_through(
@@ -3908,23 +3922,9 @@ void crocksdb_cache_set_capacity(crocksdb_cache_t* cache, size_t capacity) {
   cache->rep->SetCapacity(capacity);
 }
 
-crocksdb_env_t* crocksdb_default_env_create() {
-  crocksdb_env_t* result = new crocksdb_env_t;
-  result->rep = Env::Default();
-  result->block_cipher = nullptr;
-  result->encryption_provider = nullptr;
-  result->is_default = true;
-  return result;
-}
+Env* crocksdb_default_env_create() { return Env::Default(); }
 
-crocksdb_env_t* crocksdb_mem_env_create() {
-  crocksdb_env_t* result = new crocksdb_env_t;
-  result->rep = rocksdb::NewMemEnv(Env::Default());
-  result->block_cipher = nullptr;
-  result->encryption_provider = nullptr;
-  result->is_default = false;
-  return result;
-}
+Env* crocksdb_mem_env_create(Env* base) { return rocksdb::NewMemEnv(base); }
 
 struct CTRBlockCipher : public BlockCipher {
   CTRBlockCipher(size_t block_size, const std::string& cipertext)
@@ -3953,48 +3953,33 @@ struct CTRBlockCipher : public BlockCipher {
   size_t block_size_;
 };
 
-crocksdb_env_t* crocksdb_ctr_encrypted_env_create(crocksdb_env_t* base_env,
-                                                  const char* ciphertext,
-                                                  size_t ciphertext_len) {
-  auto result = new crocksdb_env_t;
-  result->block_cipher = new CTRBlockCipher(
+Env* crocksdb_ctr_encrypted_env_create(Env* base_env, const char* ciphertext,
+                                       size_t ciphertext_len) {
+  auto block_cipher = new CTRBlockCipher(
       ciphertext_len, std::string(ciphertext, ciphertext_len));
-  result->encryption_provider =
-      new CTREncryptionProvider(*result->block_cipher);
-  result->rep = NewEncryptedEnv(base_env->rep, result->encryption_provider);
-  result->is_default = false;
-
-  return result;
+  auto encryption_provider = new CTREncryptionProvider(*block_cipher);
+  Env* env = NewEncryptedEnv(base_env, encryption_provider);
+  return new EncryptedEnvWrapper(env, encryption_provider, block_cipher);
 }
 
-void crocksdb_env_set_background_threads(crocksdb_env_t* env, int n) {
-  env->rep->SetBackgroundThreads(n);
+void crocksdb_env_set_background_threads(Env* env, int n, Env::Priority pri) {
+  env->SetBackgroundThreads(n, pri);
 }
 
-void crocksdb_env_set_high_priority_background_threads(crocksdb_env_t* env,
-                                                       int n) {
-  env->rep->SetBackgroundThreads(n, Env::HIGH);
+void crocksdb_env_join_all_threads(Env* env) { env->WaitForJoin(); }
+
+void crocksdb_env_file_exists(Env* env, Slice path, Status* s) {
+  *s = env->FileExists(path.ToString());
 }
 
-void crocksdb_env_join_all_threads(crocksdb_env_t* env) {
-  env->rep->WaitForJoin();
+void crocksdb_env_delete_file(Env* env, Slice path, Status* s) {
+  *s = env->DeleteFile(path.ToString());
 }
 
-void crocksdb_env_file_exists(crocksdb_env_t* env, const char* path,
-                              Status* s) {
-  *s = env->rep->FileExists(path);
-}
-
-void crocksdb_env_delete_file(crocksdb_env_t* env, const char* path,
-                              Status* s) {
-  *s = env->rep->DeleteFile(path);
-}
-
-void crocksdb_env_destroy(crocksdb_env_t* env) {
-  if (!env->is_default) delete env->rep;
-  if (env->block_cipher) delete env->block_cipher;
-  if (env->encryption_provider) delete env->encryption_provider;
-  delete env;
+void crocksdb_env_destroy(Env* env) {
+  if (env != Env::Default()) {
+    delete env;
+  }
 }
 
 crocksdb_envoptions_t* crocksdb_envoptions_create() {
@@ -4005,10 +3990,10 @@ crocksdb_envoptions_t* crocksdb_envoptions_create() {
 void crocksdb_envoptions_destroy(crocksdb_envoptions_t* opt) { delete opt; }
 
 crocksdb_sequential_file_t* crocksdb_sequential_file_create(
-    crocksdb_env_t* env, const char* path, const crocksdb_envoptions_t* opts,
-    Status* s) {
+    Env* env, Slice path, const crocksdb_envoptions_t* opts, Status* s) {
   std::unique_ptr<SequentialFile> result;
-  *s = env->rep->NewSequentialFile(path, &result, opts->rep);
+  auto p = path.ToString();
+  *s = env->NewSequentialFile(p, &result, opts->rep);
   if (!s->ok()) {
     return nullptr;
   }
@@ -4186,16 +4171,9 @@ void crocksdb_encryption_key_manager_link_file(
   *s = key_manager->rep->LinkFile(src_fname, dst_fname);
 }
 
-crocksdb_env_t* crocksdb_key_managed_encrypted_env_create(
-    crocksdb_env_t* base_env, crocksdb_encryption_key_manager_t* key_manager) {
-  assert(base_env != nullptr);
-  assert(key_manager != nullptr);
-  crocksdb_env_t* result = new crocksdb_env_t;
-  result->rep = NewKeyManagedEncryptedEnv(base_env->rep, key_manager->rep);
-  result->block_cipher = nullptr;
-  result->encryption_provider = nullptr;
-  result->is_default = false;
-  return result;
+Env* crocksdb_key_managed_encrypted_env_create(
+    Env* base_env, crocksdb_encryption_key_manager_t* key_manager) {
+  return NewKeyManagedEncryptedEnv(base_env->rep, key_manager->rep);
 }
 #endif
 
@@ -4255,16 +4233,9 @@ size_t crocksdb_file_system_inspector_write(
   return allowed;
 }
 
-crocksdb_env_t* crocksdb_file_system_inspected_env_create(
-    crocksdb_env_t* base_env, crocksdb_file_system_inspector_t* inspector) {
-  assert(base_env != nullptr);
-  assert(inspector != nullptr);
-  crocksdb_env_t* result = new crocksdb_env_t;
-  result->rep = NewFileSystemInspectedEnv(base_env->rep, inspector->rep);
-  result->block_cipher = nullptr;
-  result->encryption_provider = nullptr;
-  result->is_default = false;
-  return result;
+Env* crocksdb_file_system_inspected_env_create(
+    Env* base_env, crocksdb_file_system_inspector_t* inspector) {
+  return NewFileSystemInspectedEnv(base_env, inspector->rep);
 }
 
 crocksdb_sstfilereader_t* crocksdb_sstfilereader_create(
@@ -4748,10 +4719,9 @@ void crocksdb_delete_files_in_ranges_cf(
 
 void crocksdb_free(void* ptr) { free(ptr); }
 
-crocksdb_logger_t* crocksdb_create_env_logger(const char* fname,
-                                              crocksdb_env_t* env) {
+crocksdb_logger_t* crocksdb_create_env_logger(const char* fname, Env* env) {
   crocksdb_logger_t* logger = new crocksdb_logger_t;
-  Status s = NewEnvLogger(std::string(fname), env->rep, &logger->rep);
+  Status s = NewEnvLogger(std::string(fname), env, &logger->rep);
   if (!s.ok()) {
     delete logger;
     return NULL;

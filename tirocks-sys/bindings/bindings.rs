@@ -58,6 +58,31 @@ pub enum rocksdb_Status_Severity {
     kUnrecoverableError = 4,
     kMaxSeverity = 5,
 }
+#[repr(C)]
+#[repr(align(8))]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_Env {
+    pub _bindgen_opaque_blob: [u64; 2usize],
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_Env_WriteLifeTimeHint {
+    WLTH_NOT_SET = 0,
+    WLTH_NONE = 1,
+    WLTH_SHORT = 2,
+    WLTH_MEDIUM = 3,
+    WLTH_LONG = 4,
+    WLTH_EXTREME = 5,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_Env_Priority {
+    BOTTOM = 0,
+    LOW = 1,
+    HIGH = 2,
+    USER = 3,
+    TOTAL = 4,
+}
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_Env_IOPriority {
@@ -497,6 +522,12 @@ pub enum rocksdb_PerfLevel {
 }
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_RateLimiter_OpType {
+    kRead = 0,
+    kWrite = 1,
+}
+#[repr(i32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_RateLimiter_Mode {
     kReadsOnly = 0,
     kWritesOnly = 1,
@@ -626,11 +657,6 @@ pub struct crocksdb_compactionfilterfactory_t {
 #[repr(C)]
 #[derive(Debug)]
 pub struct crocksdb_comparator_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_env_t {
     _unused: [u8; 0],
 }
 #[repr(C)]
@@ -2442,7 +2468,7 @@ pub type crocksdb_logger_logv_cb = ::std::option::Option<
     unsafe extern "C" fn(
         arg1: *mut libc::c_void,
         log_level: rocksdb_InfoLogLevel,
-        arg2: *const libc::c_char,
+        msg: rocksdb_Slice,
     ),
 >;
 extern "C" {
@@ -2627,7 +2653,7 @@ extern "C" {
     pub fn crocksdb_options_set_paranoid_checks(arg1: *mut crocksdb_options_t, arg2: libc::c_uchar);
 }
 extern "C" {
-    pub fn crocksdb_options_set_env(arg1: *mut crocksdb_options_t, arg2: *mut crocksdb_env_t);
+    pub fn crocksdb_options_set_env(arg1: *mut crocksdb_options_t, arg2: *mut rocksdb_Env);
 }
 extern "C" {
     pub fn crocksdb_logger_create(
@@ -2816,7 +2842,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_load_latest_options(
         dbpath: *const libc::c_char,
-        env: *mut crocksdb_env_t,
+        env: *mut rocksdb_Env,
         db_options: *mut crocksdb_options_t,
         cf_descs: *mut *mut *mut crocksdb_column_family_descriptor,
         cf_descs_len: *mut usize,
@@ -3379,6 +3405,7 @@ extern "C" {
         limiter: *mut crocksdb_ratelimiter_t,
         bytes: i64,
         pri: rocksdb_Env_IOPriority,
+        op_ty: rocksdb_RateLimiter_OpType,
     );
 }
 extern "C" {
@@ -3814,46 +3841,44 @@ extern "C" {
     pub fn crocksdb_cache_set_capacity(cache: *mut crocksdb_cache_t, capacity: usize);
 }
 extern "C" {
-    pub fn crocksdb_default_env_create() -> *mut crocksdb_env_t;
+    pub fn crocksdb_default_env_create() -> *mut rocksdb_Env;
 }
 extern "C" {
-    pub fn crocksdb_mem_env_create() -> *mut crocksdb_env_t;
+    pub fn crocksdb_mem_env_create(arg1: *mut rocksdb_Env) -> *mut rocksdb_Env;
 }
 extern "C" {
     pub fn crocksdb_ctr_encrypted_env_create(
-        base_env: *mut crocksdb_env_t,
+        base_env: *mut rocksdb_Env,
         ciphertext: *const libc::c_char,
         ciphertext_len: usize,
-    ) -> *mut crocksdb_env_t;
+    ) -> *mut rocksdb_Env;
 }
 extern "C" {
-    pub fn crocksdb_env_set_background_threads(env: *mut crocksdb_env_t, n: libc::c_int);
-}
-extern "C" {
-    pub fn crocksdb_env_set_high_priority_background_threads(
-        env: *mut crocksdb_env_t,
+    pub fn crocksdb_env_set_background_threads(
+        env: *mut rocksdb_Env,
         n: libc::c_int,
+        pri: rocksdb_Env_Priority,
     );
 }
 extern "C" {
-    pub fn crocksdb_env_join_all_threads(env: *mut crocksdb_env_t);
+    pub fn crocksdb_env_join_all_threads(env: *mut rocksdb_Env);
 }
 extern "C" {
     pub fn crocksdb_env_file_exists(
-        env: *mut crocksdb_env_t,
-        path: *const libc::c_char,
+        env: *mut rocksdb_Env,
+        path: rocksdb_Slice,
         s: *mut rocksdb_Status,
     );
 }
 extern "C" {
     pub fn crocksdb_env_delete_file(
-        env: *mut crocksdb_env_t,
-        path: *const libc::c_char,
+        env: *mut rocksdb_Env,
+        path: rocksdb_Slice,
         s: *mut rocksdb_Status,
     );
 }
 extern "C" {
-    pub fn crocksdb_env_destroy(arg1: *mut crocksdb_env_t);
+    pub fn crocksdb_env_destroy(arg1: *mut rocksdb_Env);
 }
 extern "C" {
     pub fn crocksdb_envoptions_create() -> *mut crocksdb_envoptions_t;
@@ -3863,8 +3888,8 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_sequential_file_create(
-        env: *mut crocksdb_env_t,
-        path: *const libc::c_char,
+        env: *mut rocksdb_Env,
+        path: rocksdb_Slice,
         opts: *const crocksdb_envoptions_t,
         s: *mut rocksdb_Status,
     ) -> *mut crocksdb_sequential_file_t;
@@ -3920,9 +3945,9 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_file_system_inspected_env_create(
-        arg1: *mut crocksdb_env_t,
+        arg1: *mut rocksdb_Env,
         arg2: *mut crocksdb_file_system_inspector_t,
-    ) -> *mut crocksdb_env_t;
+    ) -> *mut rocksdb_Env;
 }
 extern "C" {
     pub fn crocksdb_sstfilereader_create(
@@ -4333,7 +4358,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_create_env_logger(
         fname: *const libc::c_char,
-        env: *mut crocksdb_env_t,
+        env: *mut rocksdb_Env,
     ) -> *mut crocksdb_logger_t;
 }
 extern "C" {

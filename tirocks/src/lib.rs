@@ -1,8 +1,9 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}
+// Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
+
+#![cfg_attr(feature = "nightly", features(io_error_more))]
+
+pub mod env;
+mod error;
+pub mod rate_limiter;
+
+pub use error::{Code, Result, Severity, Status, SubCode};

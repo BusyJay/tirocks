@@ -2,5 +2,16 @@
 name = "tirocks"
 version = "0.1.0"
 edition = "2021"
+authors = ["The TiKV Project Developers"]
+license = "Apache-2.0"
+keywords = ["rocksdb", "bindings"]
+
+[features]
+nightly = []
 
 [dependencies]
+libc = "0.2.11"
+tirocks-sys = { path = "../tirocks-sys" }
+
+[dev-dependencies]
+tempfile = "3.0"
