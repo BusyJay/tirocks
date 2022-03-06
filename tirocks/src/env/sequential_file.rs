@@ -50,3 +50,12 @@ impl Read for SequentialFile {
         Ok(SequentialFile::read(self, buf)?)
     }
 }
+
+impl Drop for SequentialFile {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            tirocks_sys::crocksdb_sequential_file_destroy(self.ptr);
+        }
+    }
+}
