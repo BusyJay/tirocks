@@ -98,14 +98,14 @@ impl FileSystemInspector for DBFileSystemInspector {
     #[inline]
     fn read(&self, len: usize) -> Result<usize> {
         let ret =
-            unsafe { tirocks_sys::ffi_try!(crocksdb_file_system_inspector_read(self.ptr, len)) };
+            unsafe { tirocks_sys::ffi_call!(crocksdb_file_system_inspector_read(self.ptr, len))? };
         Ok(ret)
     }
 
     #[inline]
     fn write(&self, len: usize) -> Result<usize> {
         let ret =
-            unsafe { tirocks_sys::ffi_try!(crocksdb_file_system_inspector_write(self.ptr, len)) };
+            unsafe { tirocks_sys::ffi_call!(crocksdb_file_system_inspector_write(self.ptr, len))? };
         Ok(ret)
     }
 }

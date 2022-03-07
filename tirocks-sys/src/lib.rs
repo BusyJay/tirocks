@@ -144,24 +144,39 @@ impl Drop for rocksdb_Status {
     }
 }
 
+/// A helper micros for handling FFI calls that need error handling.
+///
+/// It's simply translate the call
+/// ```ignored
+/// ffi_call!(func(...))
+/// ```
+/// to
+/// ```ignored
+/// let res = tirocks_sys::func(..., &mut status);
+/// if status.ok() {
+///     Ok(res)
+/// } else {
+///     Err(status)
+/// }
+/// ```
 #[macro_export]
-macro_rules! ffi_try {
+macro_rules! ffi_call {
     ($func:ident($($arg:expr),+)) => ({
         let mut status = $crate::rocksdb_Status::with_code($crate::rocksdb_Status_Code::kOk);
         let res = $crate::$func($($arg),+, &mut status);
         if status.ok() {
-            res
+            Ok(res)
         } else {
-            return Err(status.into());
+            Err(status)
         }
     });
     ($func:ident()) => ({
         let mut status = $crate::rocksdb_Status::with_code($crate::rocksdb_Status_Code::kOk);
         let res = $crate::$func(&mut status);
         if status.ok() {
-            res
+            Ok(res)
         } else {
-            return Err(status.into());
+            Err(status)
         }
     })
 }
@@ -189,8 +204,7 @@ mod tests {
         unsafe {
             let opt = crocksdb_options_create();
             crocksdb_options_set_create_if_missing(opt, 0);
-            let s: Result<_, super::rocksdb_Status> =
-                (|| Ok(ffi_try!(crocksdb_open(opt, r(path.as_bytes())))))();
+            let s = ffi_call!(crocksdb_open(opt, r(path.as_bytes())));
             let e = s.unwrap_err();
             assert!(!e.ok());
             assert_eq!(e.code_, rocksdb_Status_Code::kInvalidArgument);
@@ -198,8 +212,7 @@ mod tests {
             assert!(msg.contains("does not exist"), "{}", msg);
 
             crocksdb_options_set_create_if_missing(opt, 1);
-            let s: Result<_, super::rocksdb_Status> =
-                (|| Ok(ffi_try!(crocksdb_open(opt, r(path.as_bytes())))))();
+            let s = ffi_call!(crocksdb_open(opt, r(path.as_bytes())));
             let e = s.unwrap();
             crocksdb_close(e);
             crocksdb_options_destroy(opt);

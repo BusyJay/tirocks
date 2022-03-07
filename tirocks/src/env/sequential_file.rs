@@ -3,7 +3,7 @@
 use std::io::{self, Read};
 
 use crate::Result;
-use tirocks_sys::{crocksdb_sequential_file_t, ffi_try};
+use tirocks_sys::{crocksdb_sequential_file_t, ffi_call};
 
 /// A file abstraction for reading sequentially through a file.
 pub struct SequentialFile {
@@ -24,7 +24,7 @@ impl SequentialFile {
     #[inline]
     pub fn skip(&mut self, n: usize) -> Result<()> {
         unsafe {
-            ffi_try!(crocksdb_sequential_file_skip(self.ptr, n));
+            ffi_call!(crocksdb_sequential_file_skip(self.ptr, n))?;
             Ok(())
         }
     }
@@ -32,14 +32,14 @@ impl SequentialFile {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         unsafe {
-            let size = ffi_try! {
+            let size = ffi_call! {
                 crocksdb_sequential_file_read(
                     self.ptr,
                     buf.len(),
                     buf.as_mut_ptr() as *mut libc::c_char
                 )
-            };
-            Ok(size as usize)
+            }?;
+            Ok(size)
         }
     }
 }

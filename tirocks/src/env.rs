@@ -7,7 +7,7 @@ mod sequential_file;
 use self::inspected::DBFileSystemInspector;
 use crate::{Code, Result, Status};
 use libc::c_char;
-use tirocks_sys::{ffi_try, r};
+use tirocks_sys::{ffi_call, r};
 
 pub use self::inspected::FileSystemInspector;
 pub use self::sequential_file::SequentialFile;
@@ -140,9 +140,9 @@ impl Env {
     pub fn new_sequential_file(&self, path: &str, opts: EnvOptions) -> Result<SequentialFile> {
         unsafe {
             let file_path = r(path.as_bytes());
-            let file = ffi_try!(crocksdb_sequential_file_create(
+            let file = ffi_call!(crocksdb_sequential_file_create(
                 self.ptr, file_path, opts.ptr
-            ));
+            ))?;
             Ok(SequentialFile::from_ptr(file))
         }
     }
@@ -156,7 +156,7 @@ impl Env {
     pub fn file_exists(&self, path: &str) -> Result<()> {
         unsafe {
             let file_path = r(path.as_bytes());
-            ffi_try!(crocksdb_env_file_exists(self.ptr, file_path));
+            ffi_call!(crocksdb_env_file_exists(self.ptr, file_path))?;
             Ok(())
         }
     }
@@ -166,7 +166,7 @@ impl Env {
     pub fn delete_file(&self, path: &str) -> Result<()> {
         unsafe {
             let file_path = r(path.as_bytes());
-            ffi_try!(crocksdb_env_delete_file(self.ptr, file_path));
+            ffi_call!(crocksdb_env_delete_file(self.ptr, file_path))?;
             Ok(())
         }
     }
