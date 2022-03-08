@@ -61,16 +61,16 @@ extern "C" fn file_system_inspector_write<T: FileSystemInspector>(
     }
 }
 
-pub(crate) struct DBFileSystemInspector {
+pub(crate) struct SysFileSystemInspector {
     pub ptr: *mut tirocks_sys::crocksdb_file_system_inspector_t,
 }
 
-unsafe impl Send for DBFileSystemInspector {}
-unsafe impl Sync for DBFileSystemInspector {}
+unsafe impl Send for SysFileSystemInspector {}
+unsafe impl Sync for SysFileSystemInspector {}
 
-impl DBFileSystemInspector {
+impl SysFileSystemInspector {
     #[inline]
-    pub fn new<T: FileSystemInspector>(file_system_inspector: T) -> DBFileSystemInspector {
+    pub fn new<T: FileSystemInspector>(file_system_inspector: T) -> SysFileSystemInspector {
         let ctx = Box::into_raw(Box::new(file_system_inspector)) as *mut c_void;
         let instance = unsafe {
             tirocks_sys::crocksdb_file_system_inspector_create(
@@ -80,11 +80,11 @@ impl DBFileSystemInspector {
                 Some(file_system_inspector_write::<T>),
             )
         };
-        DBFileSystemInspector { ptr: instance }
+        SysFileSystemInspector { ptr: instance }
     }
 }
 
-impl Drop for DBFileSystemInspector {
+impl Drop for SysFileSystemInspector {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -94,18 +94,14 @@ impl Drop for DBFileSystemInspector {
 }
 
 #[cfg(test)]
-impl FileSystemInspector for DBFileSystemInspector {
+impl FileSystemInspector for SysFileSystemInspector {
     #[inline]
     fn read(&self, len: usize) -> Result<usize> {
-        let ret =
-            unsafe { tirocks_sys::ffi_call!(crocksdb_file_system_inspector_read(self.ptr, len))? };
-        Ok(ret)
+        unsafe { crate::error::ffi_call!(crocksdb_file_system_inspector_read(self.ptr, len)) }
     }
 
     #[inline]
     fn write(&self, len: usize) -> Result<usize> {
-        let ret =
-            unsafe { tirocks_sys::ffi_call!(crocksdb_file_system_inspector_write(self.ptr, len))? };
-        Ok(ret)
+        unsafe { crate::error::ffi_call!(crocksdb_file_system_inspector_write(self.ptr, len)) }
     }
 }

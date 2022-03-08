@@ -1,6 +1,6 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-#![cfg_attr(feature = "nightly", features(io_error_more))]
+#![cfg_attr(feature = "nightly", feature(io_error_more))]
 
 pub mod env;
 mod error;

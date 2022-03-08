@@ -103,9 +103,21 @@ impl Status {
     }
 
     #[inline]
+    pub(crate) fn as_mut_ptr(&mut self) -> *mut rocksdb_Status {
+        &mut self.0
+    }
+
+    #[inline]
     pub fn path_not_exist(&self) -> bool {
         self.code() == Code::kNotFound
             || self.code() == Code::kIOError && self.sub_code() == SubCode::kPathNotFound
+    }
+}
+
+impl Default for Status {
+    #[inline]
+    fn default() -> Status {
+        Status::with_code(Code::kOk)
     }
 }
 
@@ -158,6 +170,44 @@ impl Debug for Status {
 }
 
 pub type Result<T> = std::result::Result<T, Status>;
+
+/// A helper micros for handling FFI calls that need error handling.
+///
+/// It's simply translate the call
+/// ```ignored
+/// ffi_call!(func(...))
+/// ```
+/// to
+/// ```ignored
+/// let res = tirocks_sys::func(..., &mut status);
+/// if status.ok() {
+///     Ok(res)
+/// } else {
+///     Err(status)
+/// }
+/// ```
+macro_rules! ffi_call {
+    ($func:ident($($arg:expr),+)) => ({
+        let mut status = $crate::Status::default();
+        let res = tirocks_sys::$func($($arg),+, status.as_mut_ptr());
+        if status.ok() {
+            Ok(res)
+        } else {
+            Err(status)
+        }
+    });
+    ($func:ident()) => ({
+        let mut status = $crate::Status::default();
+        let res = tirocks_sys::$func(status.as_mut_ptr());
+        if status.ok() {
+            Ok(res)
+        } else {
+            Err(status)
+        }
+    })
+}
+
+pub(crate) use ffi_call;
 
 #[cfg(test)]
 mod tests {

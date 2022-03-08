@@ -4,10 +4,11 @@ mod inspected;
 pub mod logger;
 mod sequential_file;
 
-use self::inspected::DBFileSystemInspector;
+use self::inspected::SysFileSystemInspector;
+use crate::error::ffi_call;
 use crate::{Code, Result, Status};
 use libc::c_char;
-use tirocks_sys::{ffi_call, r};
+use tirocks_sys::r;
 
 pub use self::inspected::FileSystemInspector;
 pub use self::sequential_file::SequentialFile;
@@ -106,15 +107,15 @@ impl Env {
 
     /// Create an encrypted env that accepts an external key manager.
     #[cfg(feature = "encryption")]
-    pub fn with_key_managed_encrypted<T: EncryptionKeyManager>(
+    pub fn with_encrypted<T: KeyManager>(
         base_env: Env,
         key_manager: T,
     ) -> Result<Env, String> {
-        let db_key_manager = DBEncryptionKeyManager::new(key_manager);
+        let sys_key_manager = SysKeyManager::new(key_manager);
         let env = unsafe {
             crocksdb_ffi::crocksdb_key_managed_encrypted_env_create(
-                base_env.inner,
-                db_key_manager.inner,
+                base_env.ptr,
+                db_key_manager.ptr,
             )
         };
         Ok(Env::new(Some(base_env), env))
@@ -124,7 +125,7 @@ impl Env {
         base_env: Env,
         file_system_inspector: T,
     ) -> Result<Env> {
-        let db_file_system_inspector = DBFileSystemInspector::new(file_system_inspector);
+        let db_file_system_inspector = SysFileSystemInspector::new(file_system_inspector);
         let env = unsafe {
             tirocks_sys::crocksdb_file_system_inspected_env_create(
                 base_env.ptr,
@@ -156,8 +157,7 @@ impl Env {
     pub fn file_exists(&self, path: &str) -> Result<()> {
         unsafe {
             let file_path = r(path.as_bytes());
-            ffi_call!(crocksdb_env_file_exists(self.ptr, file_path))?;
-            Ok(())
+            ffi_call!(crocksdb_env_file_exists(self.ptr, file_path))
         }
     }
 
@@ -166,8 +166,7 @@ impl Env {
     pub fn delete_file(&self, path: &str) -> Result<()> {
         unsafe {
             let file_path = r(path.as_bytes());
-            ffi_call!(crocksdb_env_delete_file(self.ptr, file_path))?;
-            Ok(())
+            ffi_call!(crocksdb_env_delete_file(self.ptr, file_path))
         }
     }
 
