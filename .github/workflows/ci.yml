@@ -23,7 +23,7 @@ jobs:
     - run: which cargo && cargo version && clang --version && openssl version && which cmake && cmake --version
     - run: cargo xtask submodule
     - run: cargo clippy --all -- -D clippy::all
-    - run: cargo xtask format && git diff-index --quiet HEAD
+    - run: cargo xtask format && git diff --exit-code HEAD
 
   Linux-Stable:
     strategy:

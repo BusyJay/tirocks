@@ -107,7 +107,7 @@ impl Env {
 
     /// Create an encrypted env that accepts an external key manager.
     #[cfg(feature = "encryption")]
-    pub fn with_encrypted<T: KeyManager>(
+    pub fn with_key_manager_encrypted<T: KeyManager>(
         base_env: Env,
         key_manager: T,
     ) -> Result<Env, String> {
