@@ -22,7 +22,6 @@ fn bindgen_rocksdb(file_path: &Path) {
     if env::var("CARGO_CFG_TARGET_OS").map_or(false, |s| s == "windows") {
         builder = builder.clang_arg("-D _WIN32_WINNT=0x600");
     }
-    // TODO: generate bindings of encryption
     let builder = builder
         .header("crocksdb/crocksdb/c.h")
         .header("rocksdb/include/rocksdb/statistics.h")
@@ -31,6 +30,7 @@ fn bindgen_rocksdb(file_path: &Path) {
         .clang_arg("-Irocksdb/include")
         .clang_arg("-Ititan/include")
         .clang_arg("-std=c++11")
+        .clang_arg("-DOPENSSL")
         .rustfmt_bindings(true)
         .allowlist_function(r"\bcrocksdb_.*")
         .allowlist_type(r"\bcrocksdb_.*")
@@ -41,8 +41,10 @@ fn bindgen_rocksdb(file_path: &Path) {
         .allowlist_type(r"\brocksdb::Histograms")
         .allowlist_type(r"\brocksdb::titandb::TickerType")
         .allowlist_type(r"\brocksdb::titandb::HistogramType")
+        .opaque_type(r"\brocksdb::Env")
         // Block all system headers
         .blocklist_file(r"^/.*")
+        .blocklist_type(r"\brocksdb::Env_FileAttributes")
         .with_codegen_config(
             bindgen::CodegenConfig::FUNCTIONS
                 | bindgen::CodegenConfig::VARS

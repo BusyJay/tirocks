@@ -144,33 +144,11 @@ impl Drop for rocksdb_Status {
     }
 }
 
-#[macro_export]
-macro_rules! ffi_try {
-    ($func:ident($($arg:expr),+)) => ({
-        let mut status = $crate::rocksdb_Status::with_code($crate::rocksdb_Status_Code::kOk);
-        let res = $crate::$func($($arg),+, &mut status);
-        if status.ok() {
-            res
-        } else {
-            return Err(status.into());
-        }
-    });
-    ($func:ident()) => ({
-        let mut status = $crate::rocksdb_Status::with_code($crate::rocksdb_Status_Code::kOk);
-        let res = $crate::$func(&mut status);
-        if status.ok() {
-            res
-        } else {
-            return Err(status.into());
-        }
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use crate::{
-        crocksdb_close, crocksdb_options_create, crocksdb_options_destroy,
-        crocksdb_options_set_create_if_missing, r, rocksdb_Status_Code,
+        crocksdb_close, crocksdb_open, crocksdb_options_create, crocksdb_options_destroy,
+        crocksdb_options_set_create_if_missing, r, rocksdb_Status, rocksdb_Status_Code,
     };
 
     use super::s;
@@ -189,19 +167,18 @@ mod tests {
         unsafe {
             let opt = crocksdb_options_create();
             crocksdb_options_set_create_if_missing(opt, 0);
-            let s: Result<_, super::rocksdb_Status> =
-                (|| Ok(ffi_try!(crocksdb_open(opt, r(path.as_bytes())))))();
-            let e = s.unwrap_err();
-            assert!(!e.ok());
-            assert_eq!(e.code_, rocksdb_Status_Code::kInvalidArgument);
-            let msg = e.message().unwrap().unwrap();
+            let mut status = rocksdb_Status::with_code(rocksdb_Status_Code::kOk);
+            let s = crocksdb_open(opt, r(path.as_bytes()), &mut status);
+            assert!(!status.ok());
+            assert!(s.is_null());
+            assert_eq!(status.code(), rocksdb_Status_Code::kInvalidArgument);
+            let msg = status.message().unwrap().unwrap();
             assert!(msg.contains("does not exist"), "{}", msg);
 
             crocksdb_options_set_create_if_missing(opt, 1);
-            let s: Result<_, super::rocksdb_Status> =
-                (|| Ok(ffi_try!(crocksdb_open(opt, r(path.as_bytes())))))();
-            let e = s.unwrap();
-            crocksdb_close(e);
+            let s = crocksdb_open(opt, r(path.as_bytes()), &mut status);
+            assert!(status.ok(), "{:?}", status.message());
+            crocksdb_close(s);
             crocksdb_options_destroy(opt);
         }
     }
