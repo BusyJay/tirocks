@@ -43,6 +43,11 @@ impl Status {
     }
 
     #[inline]
+    pub fn with_invalid_argument(msg: impl AsRef<[u8]>) -> Status {
+        Self::new(Code::kInvalidArgument, SubCode::kNone, msg)
+    }
+
+    #[inline]
     pub fn with_memory_limmit(msg: impl AsRef<[u8]>) -> Status {
         Self::new(Code::kIOError, SubCode::kMemoryLimit, msg)
     }

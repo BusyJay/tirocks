@@ -5,6 +5,8 @@ pub mod logger;
 mod sequential_file;
 
 use self::inspected::SysFileSystemInspector;
+#[cfg(feature = "encryption")]
+use crate::encryption::{KeyManager, SysKeyManager};
 use crate::error::ffi_call;
 use crate::{Code, Result, Status};
 use libc::c_char;
@@ -107,15 +109,12 @@ impl Env {
 
     /// Create an encrypted env that accepts an external key manager.
     #[cfg(feature = "encryption")]
-    pub fn with_key_manager_encrypted<T: KeyManager>(
-        base_env: Env,
-        key_manager: T,
-    ) -> Result<Env, String> {
+    pub fn with_key_manager_encrypted<T: KeyManager>(base_env: Env, key_manager: T) -> Result<Env> {
         let sys_key_manager = SysKeyManager::new(key_manager);
         let env = unsafe {
-            crocksdb_ffi::crocksdb_key_managed_encrypted_env_create(
+            tirocks_sys::crocksdb_key_managed_encrypted_env_create(
                 base_env.ptr,
-                db_key_manager.ptr,
+                sys_key_manager.into_raw(),
             )
         };
         Ok(Env::new(Some(base_env), env))

@@ -110,6 +110,13 @@ pub enum rocksdb_encryption_EncryptionMethod {
     kAES192_CTR = 3,
     kAES256_CTR = 4,
 }
+#[repr(C)]
+pub struct rocksdb_encryption_KeyManager__bindgen_vtable(libc::c_void);
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_encryption_KeyManager {
+    pub vtable_: *const rocksdb_encryption_KeyManager__bindgen_vtable,
+}
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_TableFileCreationReason {
@@ -1131,12 +1138,11 @@ pub enum crocksdb_table_property_t {
 #[repr(C)]
 #[derive(Debug)]
 pub struct crocksdb_file_encryption_info_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_encryption_key_manager_t {
-    _unused: [u8; 0],
+    pub method: rocksdb_encryption_EncryptionMethod,
+    pub key: *const libc::c_char,
+    pub key_len: usize,
+    pub iv: *const libc::c_char,
+    pub iv_len: usize,
 }
 #[repr(C)]
 #[derive(Debug)]
@@ -3931,53 +3937,10 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_sequential_file_destroy(arg1: *mut crocksdb_sequential_file_t);
 }
-extern "C" {
-    pub fn crocksdb_file_encryption_info_create() -> *mut crocksdb_file_encryption_info_t;
-}
-extern "C" {
-    pub fn crocksdb_file_encryption_info_destroy(file_info: *mut crocksdb_file_encryption_info_t);
-}
-extern "C" {
-    pub fn crocksdb_file_encryption_info_method(
-        file_info: *mut crocksdb_file_encryption_info_t,
-    ) -> rocksdb_encryption_EncryptionMethod;
-}
-extern "C" {
-    pub fn crocksdb_file_encryption_info_key(
-        file_info: *mut crocksdb_file_encryption_info_t,
-        keylen: *mut usize,
-    ) -> *const libc::c_char;
-}
-extern "C" {
-    pub fn crocksdb_file_encryption_info_iv(
-        file_info: *mut crocksdb_file_encryption_info_t,
-        ivlen: *mut usize,
-    ) -> *const libc::c_char;
-}
-extern "C" {
-    pub fn crocksdb_file_encryption_info_set_method(
-        file_info: *mut crocksdb_file_encryption_info_t,
-        method: rocksdb_encryption_EncryptionMethod,
-    );
-}
-extern "C" {
-    pub fn crocksdb_file_encryption_info_set_key(
-        file_info: *mut crocksdb_file_encryption_info_t,
-        key: *const libc::c_char,
-        keylen: usize,
-    );
-}
-extern "C" {
-    pub fn crocksdb_file_encryption_info_set_iv(
-        file_info: *mut crocksdb_file_encryption_info_t,
-        iv: *const libc::c_char,
-        ivlen: usize,
-    );
-}
 pub type crocksdb_encryption_key_manager_get_file_cb = ::std::option::Option<
     unsafe extern "C" fn(
         state: *mut libc::c_void,
-        fname: *const libc::c_char,
+        fname: rocksdb_Slice,
         file_info: *mut crocksdb_file_encryption_info_t,
         arg1: *mut rocksdb_Status,
     ),
@@ -3985,23 +3948,19 @@ pub type crocksdb_encryption_key_manager_get_file_cb = ::std::option::Option<
 pub type crocksdb_encryption_key_manager_new_file_cb = ::std::option::Option<
     unsafe extern "C" fn(
         state: *mut libc::c_void,
-        fname: *const libc::c_char,
+        fname: rocksdb_Slice,
         file_info: *mut crocksdb_file_encryption_info_t,
         arg1: *mut rocksdb_Status,
     ),
 >;
 pub type crocksdb_encryption_key_manager_delete_file_cb = ::std::option::Option<
-    unsafe extern "C" fn(
-        state: *mut libc::c_void,
-        fname: *const libc::c_char,
-        arg1: *mut rocksdb_Status,
-    ),
+    unsafe extern "C" fn(state: *mut libc::c_void, fname: rocksdb_Slice, arg1: *mut rocksdb_Status),
 >;
 pub type crocksdb_encryption_key_manager_link_file_cb = ::std::option::Option<
     unsafe extern "C" fn(
         state: *mut libc::c_void,
-        src_fname: *const libc::c_char,
-        dst_fname: *const libc::c_char,
+        src_fname: rocksdb_Slice,
+        dst_fname: rocksdb_Slice,
         arg1: *mut rocksdb_Status,
     ),
 >;
@@ -4013,46 +3972,15 @@ extern "C" {
         new_file: crocksdb_encryption_key_manager_new_file_cb,
         delete_file: crocksdb_encryption_key_manager_delete_file_cb,
         link_file: crocksdb_encryption_key_manager_link_file_cb,
-    ) -> *mut crocksdb_encryption_key_manager_t;
+    ) -> *mut rocksdb_encryption_KeyManager;
 }
 extern "C" {
-    pub fn crocksdb_encryption_key_manager_destroy(arg1: *mut crocksdb_encryption_key_manager_t);
-}
-extern "C" {
-    pub fn crocksdb_encryption_key_manager_get_file(
-        key_manager: *mut crocksdb_encryption_key_manager_t,
-        fname: *const libc::c_char,
-        file_info: *mut crocksdb_file_encryption_info_t,
-        arg1: *mut rocksdb_Status,
-    );
-}
-extern "C" {
-    pub fn crocksdb_encryption_key_manager_new_file(
-        key_manager: *mut crocksdb_encryption_key_manager_t,
-        fname: *const libc::c_char,
-        file_info: *mut crocksdb_file_encryption_info_t,
-        arg1: *mut rocksdb_Status,
-    );
-}
-extern "C" {
-    pub fn crocksdb_encryption_key_manager_delete_file(
-        key_manager: *mut crocksdb_encryption_key_manager_t,
-        fname: *const libc::c_char,
-        arg1: *mut rocksdb_Status,
-    );
-}
-extern "C" {
-    pub fn crocksdb_encryption_key_manager_link_file(
-        key_manager: *mut crocksdb_encryption_key_manager_t,
-        src_fname: *const libc::c_char,
-        dst_fname: *const libc::c_char,
-        arg1: *mut rocksdb_Status,
-    );
+    pub fn crocksdb_encryption_key_manager_destroy(arg1: *mut rocksdb_encryption_KeyManager);
 }
 extern "C" {
     pub fn crocksdb_key_managed_encrypted_env_create(
         arg1: *mut rocksdb_Env,
-        arg2: *mut crocksdb_encryption_key_manager_t,
+        arg2: *mut rocksdb_encryption_KeyManager,
     ) -> *mut rocksdb_Env;
 }
 pub type crocksdb_file_system_inspector_read_cb = ::std::option::Option<
