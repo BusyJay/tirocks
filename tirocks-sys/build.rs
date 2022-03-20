@@ -42,6 +42,7 @@ fn bindgen_rocksdb(file_path: &Path) {
         .allowlist_type(r"\brocksdb::titandb::TickerType")
         .allowlist_type(r"\brocksdb::titandb::HistogramType")
         .opaque_type(r"\brocksdb::Env")
+        .opaque_type(r"\brocksdb::TableProperties")
         // Block all system headers
         .blocklist_file(r"^/.*")
         .blocklist_type(r"\brocksdb::Env_FileAttributes")
