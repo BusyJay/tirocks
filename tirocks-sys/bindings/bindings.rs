@@ -119,11 +119,6 @@ pub enum rocksdb_TableFileCreationReason {
     kRecovery = 2,
     kMisc = 3,
 }
-#[repr(C)]
-#[repr(align(8))]
-pub struct rocksdb_TableProperties {
-    pub _bindgen_opaque_blob: [u64; 53usize],
-}
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_BackgroundErrorReason {

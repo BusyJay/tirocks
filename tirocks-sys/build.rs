@@ -42,10 +42,13 @@ fn bindgen_rocksdb(file_path: &Path) {
         .allowlist_type(r"\brocksdb::titandb::TickerType")
         .allowlist_type(r"\brocksdb::titandb::HistogramType")
         .opaque_type(r"\brocksdb::Env")
+        // Just blocking the type will still include its dependencies.
         .opaque_type(r"\brocksdb::TableProperties")
         // Block all system headers
         .blocklist_file(r"^/.*")
         .blocklist_type(r"\brocksdb::Env_FileAttributes")
+        // `TableProperties` has different size on different platform.
+        .blocklist_type(r"\brocksdb::TableProperties")
         .with_codegen_config(
             bindgen::CodegenConfig::FUNCTIONS
                 | bindgen::CodegenConfig::VARS
