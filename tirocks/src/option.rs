@@ -19,23 +19,32 @@ pub use write::WriteOptions;
 ///
 /// The safety requires the slice is pinned. Not using pin here because
 /// we may use an array to manage multiple slices.
-struct OwnedSlie {
+struct OwnedSlice {
     data: Vec<u8>,
     slice: rocksdb_Slice,
 }
 
-impl OwnedSlie {
+impl OwnedSlice {
     #[inline]
-    fn set_data(&mut self, data: Vec<u8>) {
-        self.data = data;
-        self.slice = rocksdb_Slice {
-            data_: self.data.as_ptr() as _,
-            size_: self.data.len(),
+    fn set_data(&mut self, data: Option<Vec<u8>>) -> *mut rocksdb_Slice {
+        match data {
+            Some(data) => {
+                self.data = data;
+                self.slice = rocksdb_Slice {
+                    data_: self.data.as_ptr() as _,
+                    size_: self.data.len(),
+                };
+                &mut self.slice
+            }
+            None => {
+                *self = Default::default();
+                ptr::null_mut()
+            }
         }
     }
 }
 
-impl Default for OwnedSlie {
+impl Default for OwnedSlice {
     #[inline]
     fn default() -> Self {
         Self {

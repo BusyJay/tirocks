@@ -7,7 +7,7 @@ use std::{
 
 use tirocks_sys::rocksdb_titandb_TitanReadOptions;
 
-use super::OwnedSlie;
+use super::OwnedSlice;
 
 pub type ReadTier = tirocks_sys::rocksdb_ReadTier;
 pub type SequenceNumber = tirocks_sys::rocksdb_SequenceNumber;
@@ -16,7 +16,7 @@ pub type SequenceNumber = tirocks_sys::rocksdb_SequenceNumber;
 pub struct ReadOptions {
     raw: rocksdb_titandb_TitanReadOptions,
     // Storage for iterate_lower_bound, iterate_upper_bound and timestamp.
-    slice_store: Option<Box<[OwnedSlie; 3]>>,
+    slice_store: Option<Box<[OwnedSlice; 3]>>,
 }
 
 impl Default for ReadOptions {
@@ -55,11 +55,13 @@ impl ReadOptions {
     /// need to have the same prefix. This is because ordering is not guaranteed
     /// outside of prefix domain.
     #[inline]
-    pub fn set_iterate_lower_bound(&mut self, lower_bound: Vec<u8>) -> &mut Self {
+    pub fn set_iterate_lower_bound(
+        &mut self,
+        lower_bound: impl Into<Option<Vec<u8>>>,
+    ) -> &mut Self {
         self.init_slice_store();
         let arr = self.slice_store.as_mut().unwrap();
-        arr[0].set_data(lower_bound);
-        self.raw._base.iterate_lower_bound = &mut arr[0].slice;
+        self.raw._base.iterate_lower_bound = arr[0].set_data(lower_bound.into());
         self
     }
 
@@ -71,11 +73,13 @@ impl ReadOptions {
     /// iterate_upper_bound need to have the same prefix. This is because
     /// ordering is not guaranteed outside of prefix domain.
     #[inline]
-    pub fn set_iterate_upper_bound(&mut self, upper_bound: Vec<u8>) -> &mut Self {
+    pub fn set_iterate_upper_bound(
+        &mut self,
+        upper_bound: impl Into<Option<Vec<u8>>>,
+    ) -> &mut Self {
         self.init_slice_store();
         let arr = self.slice_store.as_mut().unwrap();
-        arr[1].set_data(upper_bound);
-        self.raw._base.iterate_lower_bound = &mut arr[1].slice;
+        self.raw._base.iterate_upper_bound = arr[1].set_data(upper_bound.into());
         self
     }
 
@@ -224,11 +228,10 @@ impl ReadOptions {
     /// The user-specified timestamp feature is still under active development,
     /// and the API is subject to change.
     #[inline]
-    pub fn set_timestamp(&mut self, timestamp: Vec<u8>) -> &mut Self {
+    pub fn set_timestamp(&mut self, timestamp: impl Into<Option<Vec<u8>>>) -> &mut Self {
         self.init_slice_store();
         let arr = self.slice_store.as_mut().unwrap();
-        arr[2].set_data(timestamp);
-        self.raw._base.timestamp = &mut arr[2].slice;
+        self.raw._base.timestamp = arr[2].set_data(timestamp.into());
         self
     }
 

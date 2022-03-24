@@ -5,13 +5,13 @@ use std::mem::MaybeUninit;
 
 use tirocks_sys::rocksdb_WriteOptions;
 
-use super::OwnedSlie;
+use super::OwnedSlice;
 
 /// Options that control write operations
 pub struct WriteOptions {
     raw: rocksdb_WriteOptions,
     // Storage for iterate_lower_bound, iterate_upper_bound and timestamp.
-    slice_store: Option<Box<OwnedSlie>>,
+    slice_store: Option<Box<OwnedSlice>>,
 }
 
 impl Default for WriteOptions {
@@ -111,12 +111,11 @@ impl WriteOptions {
     /// The user-specified timestamp feature is still under active development,
     /// and the API is subject to change.
     #[inline]
-    pub fn set_timestamp(&mut self, timestamp: Vec<u8>) -> &mut Self {
+    pub fn set_timestamp(&mut self, timestamp: impl Into<Option<Vec<u8>>>) -> &mut Self {
         let ts = self
             .slice_store
             .get_or_insert_with(|| Box::new(Default::default()));
-        ts.set_data(timestamp);
-        self.raw.timestamp = &mut ts.slice;
+        self.raw.timestamp = ts.set_data(timestamp.into());
         self
     }
 }
