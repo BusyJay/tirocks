@@ -14,6 +14,8 @@ pub use read::{ReadOptions, ReadTier};
 use tirocks_sys::{rocksdb_CompressionType, rocksdb_Slice};
 pub use write::WriteOptions;
 
+pub type CompressionType = rocksdb_CompressionType;
+
 /// An owned slice that can be used with the weird rocksdb Options
 /// API, which requires a pointer to slice to outlive the options.
 ///
@@ -56,5 +58,3 @@ impl Default for OwnedSlice {
         }
     }
 }
-
-pub type CompressionType = rocksdb_CompressionType;
