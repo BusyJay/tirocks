@@ -12,11 +12,17 @@ use super::OwnedSlice;
 pub type ReadTier = tirocks_sys::rocksdb_ReadTier;
 pub type SequenceNumber = tirocks_sys::rocksdb_SequenceNumber;
 
+#[derive(Default)]
+struct ReadOptionsStorage {
+    iterate_lower_bound: OwnedSlice,
+    iterate_upper_bound: OwnedSlice,
+    timestamp: OwnedSlice,
+}
+
 /// Options that control read operations
 pub struct ReadOptions {
     raw: rocksdb_titandb_TitanReadOptions,
-    // Storage for iterate_lower_bound, iterate_upper_bound and timestamp.
-    slice_store: Option<Box<[OwnedSlice; 3]>>,
+    slice_store: Option<Box<ReadOptionsStorage>>,
 }
 
 impl Default for ReadOptions {
@@ -60,8 +66,8 @@ impl ReadOptions {
         lower_bound: impl Into<Option<Vec<u8>>>,
     ) -> &mut Self {
         self.init_slice_store();
-        let arr = self.slice_store.as_mut().unwrap();
-        self.raw._base.iterate_lower_bound = arr[0].set_data(lower_bound.into());
+        let store = self.slice_store.as_mut().unwrap();
+        self.raw._base.iterate_lower_bound = store.iterate_lower_bound.set_data(lower_bound.into());
         self
     }
 
@@ -78,8 +84,8 @@ impl ReadOptions {
         upper_bound: impl Into<Option<Vec<u8>>>,
     ) -> &mut Self {
         self.init_slice_store();
-        let arr = self.slice_store.as_mut().unwrap();
-        self.raw._base.iterate_upper_bound = arr[1].set_data(upper_bound.into());
+        let store = self.slice_store.as_mut().unwrap();
+        self.raw._base.iterate_upper_bound = store.iterate_upper_bound.set_data(upper_bound.into());
         self
     }
 
@@ -230,8 +236,8 @@ impl ReadOptions {
     #[inline]
     pub fn set_timestamp(&mut self, timestamp: impl Into<Option<Vec<u8>>>) -> &mut Self {
         self.init_slice_store();
-        let arr = self.slice_store.as_mut().unwrap();
-        self.raw._base.timestamp = arr[2].set_data(timestamp.into());
+        let store = self.slice_store.as_mut().unwrap();
+        self.raw._base.timestamp = store.timestamp.set_data(timestamp.into());
         self
     }
 
