@@ -6,6 +6,7 @@
 pub mod encryption;
 pub mod env;
 mod error;
+pub mod option;
 pub mod rate_limiter;
 mod util;
 

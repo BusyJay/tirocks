@@ -117,6 +117,7 @@ pub struct rocksdb_encryption_KeyManager__bindgen_vtable(libc::c_void);
 pub struct rocksdb_encryption_KeyManager {
     pub vtable_: *const rocksdb_encryption_KeyManager__bindgen_vtable,
 }
+pub type rocksdb_SequenceNumber = u64;
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_TableFileCreationReason {
@@ -487,6 +488,11 @@ pub enum rocksdb_Histograms {
     DB_WRITE_WAL_TIME = 48,
     HISTOGRAM_ENUM_MAX = 49,
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_Snapshot {
+    _unused: [u8; 0],
+}
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_CompressionType {
@@ -517,6 +523,51 @@ pub enum rocksdb_ReadTier {
     kPersistedTier = 2,
     kMemtableTier = 3,
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_ReadOptions {
+    pub snapshot: *const rocksdb_Snapshot,
+    pub iterate_lower_bound: *const rocksdb_Slice,
+    pub iterate_upper_bound: *const rocksdb_Slice,
+    pub readahead_size: usize,
+    pub max_skippable_internal_keys: u64,
+    pub read_tier: rocksdb_ReadTier,
+    pub verify_checksums: bool,
+    pub fill_cache: bool,
+    pub tailing: bool,
+    pub managed: bool,
+    pub total_order_seek: bool,
+    pub prefix_same_as_start: bool,
+    pub pin_data: bool,
+    pub background_purge_on_iterator_cleanup: bool,
+    pub ignore_range_deletions: bool,
+    pub table_filter: [u64; 4usize],
+    pub iter_start_seqnum: rocksdb_SequenceNumber,
+    pub timestamp: *const rocksdb_Slice,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_WriteOptions {
+    pub sync: bool,
+    pub disableWAL: bool,
+    pub ignore_missing_column_families: bool,
+    pub no_slowdown: bool,
+    pub low_pri: bool,
+    pub timestamp: *const rocksdb_Slice,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_FlushOptions {
+    pub wait: bool,
+    pub allow_write_stall: bool,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_CompactionOptions {
+    pub compression: rocksdb_CompressionType,
+    pub output_file_size_limit: u64,
+    pub max_subcompactions: u32,
+}
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_BottommostLevelCompaction {
@@ -524,6 +575,29 @@ pub enum rocksdb_BottommostLevelCompaction {
     kIfHaveCompactionFilter = 1,
     kForce = 2,
     kForceOptimized = 3,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_CompactRangeOptions {
+    pub exclusive_manual_compaction: bool,
+    pub change_level: bool,
+    pub target_level: libc::c_int,
+    pub target_path_id: u32,
+    pub bottommost_level_compaction: rocksdb_BottommostLevelCompaction,
+    pub allow_write_stall: bool,
+    pub max_subcompactions: u32,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_IngestExternalFileOptions {
+    pub move_files: bool,
+    pub failed_move_fall_back_to_copy: bool,
+    pub snapshot_consistency: bool,
+    pub allow_global_seqno: bool,
+    pub allow_blocking_flush: bool,
+    pub ingest_behind: bool,
+    pub write_global_seqno: bool,
+    pub verify_checksums_before_ingest: bool,
 }
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -563,6 +637,12 @@ pub enum rocksdb_titandb_TitanBlobRunMode {
     kNormal = 0,
     kReadOnly = 1,
     kFallback = 2,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_titandb_TitanReadOptions {
+    pub _base: rocksdb_ReadOptions,
+    pub key_only: bool,
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -692,11 +772,6 @@ pub struct crocksdb_filterpolicy_t {
 }
 #[repr(C)]
 #[derive(Debug)]
-pub struct crocksdb_flushoptions_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
 pub struct crocksdb_iterator_t {
     _unused: [u8; 0],
 }
@@ -727,11 +802,6 @@ pub struct crocksdb_column_family_descriptor {
 }
 #[repr(C)]
 #[derive(Debug)]
-pub struct crocksdb_compactoptions_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
 pub struct crocksdb_block_based_table_options_t {
     _unused: [u8; 0],
 }
@@ -743,11 +813,6 @@ pub struct crocksdb_cuckoo_table_options_t {
 #[repr(C)]
 #[derive(Debug)]
 pub struct crocksdb_randomfile_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_readoptions_t {
     _unused: [u8; 0],
 }
 #[repr(C)]
@@ -777,11 +842,6 @@ pub struct crocksdb_writebatch_t {
 }
 #[repr(C)]
 #[derive(Debug)]
-pub struct crocksdb_writeoptions_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
 pub struct crocksdb_universal_compaction_options_t {
     _unused: [u8; 0],
 }
@@ -803,11 +863,6 @@ pub struct crocksdb_envoptions_t {
 #[repr(C)]
 #[derive(Debug)]
 pub struct crocksdb_sequential_file_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_ingestexternalfileoptions_t {
     _unused: [u8; 0],
 }
 #[repr(C)]
@@ -913,11 +968,6 @@ pub struct crocksdb_level_meta_data_t {
 #[repr(C)]
 #[derive(Debug)]
 pub struct crocksdb_sst_file_meta_data_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_compaction_options_t {
     _unused: [u8; 0],
 }
 #[repr(C)]
@@ -1334,7 +1384,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_put(
         db: *mut crocksdb_t,
-        options: *const crocksdb_writeoptions_t,
+        options: *const rocksdb_WriteOptions,
         key: *const libc::c_char,
         keylen: usize,
         val: *const libc::c_char,
@@ -1345,7 +1395,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_put_cf(
         db: *mut crocksdb_t,
-        options: *const crocksdb_writeoptions_t,
+        options: *const rocksdb_WriteOptions,
         column_family: *mut crocksdb_column_family_handle_t,
         key: *const libc::c_char,
         keylen: usize,
@@ -1357,7 +1407,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_delete(
         db: *mut crocksdb_t,
-        options: *const crocksdb_writeoptions_t,
+        options: *const rocksdb_WriteOptions,
         key: *const libc::c_char,
         keylen: usize,
         s: *mut rocksdb_Status,
@@ -1366,7 +1416,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_delete_cf(
         db: *mut crocksdb_t,
-        options: *const crocksdb_writeoptions_t,
+        options: *const rocksdb_WriteOptions,
         column_family: *mut crocksdb_column_family_handle_t,
         key: *const libc::c_char,
         keylen: usize,
@@ -1376,7 +1426,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_single_delete(
         db: *mut crocksdb_t,
-        options: *const crocksdb_writeoptions_t,
+        options: *const rocksdb_WriteOptions,
         key: *const libc::c_char,
         keylen: usize,
         s: *mut rocksdb_Status,
@@ -1385,7 +1435,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_single_delete_cf(
         db: *mut crocksdb_t,
-        options: *const crocksdb_writeoptions_t,
+        options: *const rocksdb_WriteOptions,
         column_family: *mut crocksdb_column_family_handle_t,
         key: *const libc::c_char,
         keylen: usize,
@@ -1395,7 +1445,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_delete_range_cf(
         db: *mut crocksdb_t,
-        options: *const crocksdb_writeoptions_t,
+        options: *const rocksdb_WriteOptions,
         column_family: *mut crocksdb_column_family_handle_t,
         begin_key: *const libc::c_char,
         begin_keylen: usize,
@@ -1407,7 +1457,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_merge(
         db: *mut crocksdb_t,
-        options: *const crocksdb_writeoptions_t,
+        options: *const rocksdb_WriteOptions,
         key: *const libc::c_char,
         keylen: usize,
         val: *const libc::c_char,
@@ -1418,7 +1468,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_merge_cf(
         db: *mut crocksdb_t,
-        options: *const crocksdb_writeoptions_t,
+        options: *const rocksdb_WriteOptions,
         column_family: *mut crocksdb_column_family_handle_t,
         key: *const libc::c_char,
         keylen: usize,
@@ -1430,7 +1480,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_write(
         db: *mut crocksdb_t,
-        options: *const crocksdb_writeoptions_t,
+        options: *const rocksdb_WriteOptions,
         batch: *mut crocksdb_writebatch_t,
         s: *mut rocksdb_Status,
     );
@@ -1438,7 +1488,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_write_multi_batch(
         db: *mut crocksdb_t,
-        options: *const crocksdb_writeoptions_t,
+        options: *const rocksdb_WriteOptions,
         batches: *mut *mut crocksdb_writebatch_t,
         batch_size: usize,
         s: *mut rocksdb_Status,
@@ -1447,7 +1497,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_get(
         db: *mut crocksdb_t,
-        options: *const crocksdb_readoptions_t,
+        options: *const rocksdb_ReadOptions,
         key: *const libc::c_char,
         keylen: usize,
         vallen: *mut usize,
@@ -1457,7 +1507,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_get_cf(
         db: *mut crocksdb_t,
-        options: *const crocksdb_readoptions_t,
+        options: *const rocksdb_ReadOptions,
         column_family: *mut crocksdb_column_family_handle_t,
         key: *const libc::c_char,
         keylen: usize,
@@ -1468,7 +1518,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_multi_get(
         db: *mut crocksdb_t,
-        options: *const crocksdb_readoptions_t,
+        options: *const rocksdb_ReadOptions,
         num_keys: usize,
         keys_list: *const *const libc::c_char,
         keys_list_sizes: *const usize,
@@ -1480,7 +1530,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_multi_get_cf(
         db: *mut crocksdb_t,
-        options: *const crocksdb_readoptions_t,
+        options: *const rocksdb_ReadOptions,
         column_families: *const *const crocksdb_column_family_handle_t,
         num_keys: usize,
         keys_list: *const *const libc::c_char,
@@ -1493,20 +1543,20 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_create_iterator(
         db: *mut crocksdb_t,
-        options: *const crocksdb_readoptions_t,
+        options: *const rocksdb_ReadOptions,
     ) -> *mut crocksdb_iterator_t;
 }
 extern "C" {
     pub fn crocksdb_create_iterator_cf(
         db: *mut crocksdb_t,
-        options: *const crocksdb_readoptions_t,
+        options: *const rocksdb_ReadOptions,
         column_family: *mut crocksdb_column_family_handle_t,
     ) -> *mut crocksdb_iterator_t;
 }
 extern "C" {
     pub fn crocksdb_create_iterators(
         db: *mut crocksdb_t,
-        opts: *mut crocksdb_readoptions_t,
+        opts: *const rocksdb_ReadOptions,
         column_families: *mut *mut crocksdb_column_family_handle_t,
         iterators: *mut *mut crocksdb_iterator_t,
         size: usize,
@@ -1629,7 +1679,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_compact_range_opt(
         db: *mut crocksdb_t,
-        opt: *mut crocksdb_compactoptions_t,
+        opt: *const rocksdb_CompactRangeOptions,
         start_key: *const libc::c_char,
         start_key_len: usize,
         limit_key: *const libc::c_char,
@@ -1640,7 +1690,7 @@ extern "C" {
     pub fn crocksdb_compact_range_cf_opt(
         db: *mut crocksdb_t,
         column_family: *mut crocksdb_column_family_handle_t,
-        opt: *mut crocksdb_compactoptions_t,
+        opt: *const rocksdb_CompactRangeOptions,
         start_key: *const libc::c_char,
         start_key_len: usize,
         limit_key: *const libc::c_char,
@@ -1660,7 +1710,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_flush(
         db: *mut crocksdb_t,
-        options: *const crocksdb_flushoptions_t,
+        options: *const rocksdb_FlushOptions,
         s: *mut rocksdb_Status,
     );
 }
@@ -1668,7 +1718,7 @@ extern "C" {
     pub fn crocksdb_flush_cf(
         db: *mut crocksdb_t,
         column_family: *mut crocksdb_column_family_handle_t,
-        options: *const crocksdb_flushoptions_t,
+        options: *const rocksdb_FlushOptions,
         s: *mut rocksdb_Status,
     );
 }
@@ -1677,7 +1727,7 @@ extern "C" {
         db: *mut crocksdb_t,
         column_familys: *mut *const crocksdb_column_family_handle_t,
         num_handles: libc::c_int,
-        options: *const crocksdb_flushoptions_t,
+        options: *const rocksdb_FlushOptions,
         s: *mut rocksdb_Status,
     );
 }
@@ -3619,97 +3669,8 @@ extern "C" {
     pub fn crocksdb_mergeoperator_destroy(arg1: *mut crocksdb_mergeoperator_t);
 }
 extern "C" {
-    pub fn crocksdb_readoptions_create() -> *mut crocksdb_readoptions_t;
-}
-extern "C" {
-    pub fn crocksdb_readoptions_destroy(arg1: *mut crocksdb_readoptions_t);
-}
-extern "C" {
-    pub fn crocksdb_readoptions_set_verify_checksums(
-        arg1: *mut crocksdb_readoptions_t,
-        arg2: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_readoptions_set_fill_cache(
-        arg1: *mut crocksdb_readoptions_t,
-        arg2: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_readoptions_set_snapshot(
-        arg1: *mut crocksdb_readoptions_t,
-        arg2: *const crocksdb_snapshot_t,
-    );
-}
-extern "C" {
-    pub fn crocksdb_readoptions_set_iterate_lower_bound(
-        arg1: *mut crocksdb_readoptions_t,
-        key: *const libc::c_char,
-        keylen: usize,
-    );
-}
-extern "C" {
-    pub fn crocksdb_readoptions_set_iterate_upper_bound(
-        arg1: *mut crocksdb_readoptions_t,
-        key: *const libc::c_char,
-        keylen: usize,
-    );
-}
-extern "C" {
-    pub fn crocksdb_readoptions_set_read_tier(
-        arg1: *mut crocksdb_readoptions_t,
-        arg2: rocksdb_ReadTier,
-    );
-}
-extern "C" {
-    pub fn crocksdb_readoptions_set_tailing(arg1: *mut crocksdb_readoptions_t, arg2: libc::c_uchar);
-}
-extern "C" {
-    pub fn crocksdb_readoptions_set_managed(arg1: *mut crocksdb_readoptions_t, arg2: libc::c_uchar);
-}
-extern "C" {
-    pub fn crocksdb_readoptions_set_readahead_size(arg1: *mut crocksdb_readoptions_t, arg2: usize);
-}
-extern "C" {
-    pub fn crocksdb_readoptions_set_max_skippable_internal_keys(
-        arg1: *mut crocksdb_readoptions_t,
-        arg2: u64,
-    );
-}
-extern "C" {
-    pub fn crocksdb_readoptions_set_total_order_seek(
-        arg1: *mut crocksdb_readoptions_t,
-        arg2: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_readoptions_set_prefix_same_as_start(
-        arg1: *mut crocksdb_readoptions_t,
-        arg2: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_readoptions_set_pin_data(
-        arg1: *mut crocksdb_readoptions_t,
-        arg2: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_readoptions_set_background_purge_on_iterator_cleanup(
-        arg1: *mut crocksdb_readoptions_t,
-        arg2: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_readoptions_set_ignore_range_deletions(
-        arg1: *mut crocksdb_readoptions_t,
-        arg2: libc::c_uchar,
-    );
-}
-extern "C" {
     pub fn crocksdb_readoptions_set_table_filter(
-        arg1: *mut crocksdb_readoptions_t,
+        arg1: *mut rocksdb_ReadOptions,
         arg2: *mut libc::c_void,
         table_filter: ::std::option::Option<
             unsafe extern "C" fn(
@@ -3721,94 +3682,13 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_writeoptions_create() -> *mut crocksdb_writeoptions_t;
+    pub fn crocksdb_writeoptions_init(arg1: *mut rocksdb_WriteOptions);
 }
 extern "C" {
-    pub fn crocksdb_writeoptions_destroy(arg1: *mut crocksdb_writeoptions_t);
+    pub fn crocksdb_compactrangeoptions_init(arg1: *mut rocksdb_CompactRangeOptions);
 }
 extern "C" {
-    pub fn crocksdb_writeoptions_set_sync(arg1: *mut crocksdb_writeoptions_t, arg2: libc::c_uchar);
-}
-extern "C" {
-    pub fn crocksdb_writeoptions_disable_wal(
-        opt: *mut crocksdb_writeoptions_t,
-        disable: libc::c_int,
-    );
-}
-extern "C" {
-    pub fn crocksdb_writeoptions_set_ignore_missing_column_families(
-        arg1: *mut crocksdb_writeoptions_t,
-        arg2: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_writeoptions_set_no_slowdown(
-        arg1: *mut crocksdb_writeoptions_t,
-        arg2: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_writeoptions_set_low_pri(
-        arg1: *mut crocksdb_writeoptions_t,
-        arg2: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_compactoptions_create() -> *mut crocksdb_compactoptions_t;
-}
-extern "C" {
-    pub fn crocksdb_compactoptions_destroy(arg1: *mut crocksdb_compactoptions_t);
-}
-extern "C" {
-    pub fn crocksdb_compactoptions_set_exclusive_manual_compaction(
-        arg1: *mut crocksdb_compactoptions_t,
-        arg2: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_compactoptions_set_change_level(
-        arg1: *mut crocksdb_compactoptions_t,
-        arg2: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_compactoptions_set_target_level(
-        arg1: *mut crocksdb_compactoptions_t,
-        arg2: libc::c_int,
-    );
-}
-extern "C" {
-    pub fn crocksdb_compactoptions_set_target_path_id(
-        arg1: *mut crocksdb_compactoptions_t,
-        arg2: libc::c_int,
-    );
-}
-extern "C" {
-    pub fn crocksdb_compactoptions_set_max_subcompactions(
-        arg1: *mut crocksdb_compactoptions_t,
-        arg2: libc::c_int,
-    );
-}
-extern "C" {
-    pub fn crocksdb_compactoptions_set_bottommost_level_compaction(
-        arg1: *mut crocksdb_compactoptions_t,
-        arg2: rocksdb_BottommostLevelCompaction,
-    );
-}
-extern "C" {
-    pub fn crocksdb_flushoptions_create() -> *mut crocksdb_flushoptions_t;
-}
-extern "C" {
-    pub fn crocksdb_flushoptions_destroy(arg1: *mut crocksdb_flushoptions_t);
-}
-extern "C" {
-    pub fn crocksdb_flushoptions_set_wait(arg1: *mut crocksdb_flushoptions_t, arg2: libc::c_uchar);
-}
-extern "C" {
-    pub fn crocksdb_flushoptions_set_allow_write_stall(
-        arg1: *mut crocksdb_flushoptions_t,
-        arg2: libc::c_uchar,
-    );
+    pub fn crocksdb_flushoptions_init(arg1: *mut rocksdb_FlushOptions);
 }
 extern "C" {
     pub fn crocksdb_jemalloc_nodump_allocator_create(
@@ -4035,7 +3915,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_sstfilereader_new_iterator(
         reader: *mut crocksdb_sstfilereader_t,
-        options: *const crocksdb_readoptions_t,
+        options: *const rocksdb_ReadOptions,
     ) -> *mut crocksdb_iterator_t;
 }
 extern "C" {
@@ -4166,54 +4046,14 @@ extern "C" {
     ) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_ingestexternalfileoptions_create() -> *mut crocksdb_ingestexternalfileoptions_t;
-}
-extern "C" {
-    pub fn crocksdb_ingestexternalfileoptions_set_move_files(
-        opt: *mut crocksdb_ingestexternalfileoptions_t,
-        move_files: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_ingestexternalfileoptions_set_snapshot_consistency(
-        opt: *mut crocksdb_ingestexternalfileoptions_t,
-        snapshot_consistency: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_ingestexternalfileoptions_set_allow_global_seqno(
-        opt: *mut crocksdb_ingestexternalfileoptions_t,
-        allow_global_seqno: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_ingestexternalfileoptions_set_allow_blocking_flush(
-        opt: *mut crocksdb_ingestexternalfileoptions_t,
-        allow_blocking_flush: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_ingestexternalfileoptions_get_write_global_seqno(
-        opt: *const crocksdb_ingestexternalfileoptions_t,
-    ) -> libc::c_uchar;
-}
-extern "C" {
-    pub fn crocksdb_ingestexternalfileoptions_set_write_global_seqno(
-        opt: *mut crocksdb_ingestexternalfileoptions_t,
-        write_global_seqno: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_ingestexternalfileoptions_destroy(
-        opt: *mut crocksdb_ingestexternalfileoptions_t,
-    );
+    pub fn crocksdb_ingestexternalfileoptions_init(arg1: *mut rocksdb_IngestExternalFileOptions);
 }
 extern "C" {
     pub fn crocksdb_ingest_external_file(
         db: *mut crocksdb_t,
         file_list: *const *const libc::c_char,
         list_len: usize,
-        opt: *const crocksdb_ingestexternalfileoptions_t,
+        opt: *const rocksdb_IngestExternalFileOptions,
         s: *mut rocksdb_Status,
     );
 }
@@ -4223,7 +4063,7 @@ extern "C" {
         handle: *mut crocksdb_column_family_handle_t,
         file_list: *const *const libc::c_char,
         list_len: usize,
-        opt: *const crocksdb_ingestexternalfileoptions_t,
+        opt: *const rocksdb_IngestExternalFileOptions,
         s: *mut rocksdb_Status,
     );
 }
@@ -4233,7 +4073,7 @@ extern "C" {
         handle: *mut crocksdb_column_family_handle_t,
         file_list: *const *const libc::c_char,
         list_len: usize,
-        opt: *const crocksdb_ingestexternalfileoptions_t,
+        opt: *const rocksdb_IngestExternalFileOptions,
         s: *mut rocksdb_Status,
     ) -> libc::c_uchar;
 }
@@ -4445,7 +4285,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_get_pinned(
         db: *mut crocksdb_t,
-        options: *const crocksdb_readoptions_t,
+        options: *const rocksdb_ReadOptions,
         key: *const libc::c_char,
         keylen: usize,
         s: *mut rocksdb_Status,
@@ -4454,7 +4294,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_get_pinned_cf(
         db: *mut crocksdb_t,
-        options: *const crocksdb_readoptions_t,
+        options: *const rocksdb_ReadOptions,
         column_family: *mut crocksdb_column_family_handle_t,
         key: *const libc::c_char,
         keylen: usize,
@@ -4779,34 +4619,13 @@ extern "C" {
     ) -> *const libc::c_char;
 }
 extern "C" {
-    pub fn crocksdb_compaction_options_create() -> *mut crocksdb_compaction_options_t;
-}
-extern "C" {
-    pub fn crocksdb_compaction_options_destroy(arg1: *mut crocksdb_compaction_options_t);
-}
-extern "C" {
-    pub fn crocksdb_compaction_options_set_compression(
-        arg1: *mut crocksdb_compaction_options_t,
-        arg2: rocksdb_CompressionType,
-    );
-}
-extern "C" {
-    pub fn crocksdb_compaction_options_set_output_file_size_limit(
-        arg1: *mut crocksdb_compaction_options_t,
-        arg2: usize,
-    );
-}
-extern "C" {
-    pub fn crocksdb_compaction_options_set_max_subcompactions(
-        arg1: *mut crocksdb_compaction_options_t,
-        arg2: libc::c_int,
-    );
+    pub fn crocksdb_compaction_options_init(arg1: *mut rocksdb_CompactionOptions);
 }
 extern "C" {
     pub fn crocksdb_compact_files_cf(
         arg1: *mut crocksdb_t,
         arg2: *mut crocksdb_column_family_handle_t,
-        arg3: *mut crocksdb_compaction_options_t,
+        arg3: *const rocksdb_CompactionOptions,
         input_file_names: *mut *const libc::c_char,
         input_file_count: usize,
         output_level: libc::c_int,
@@ -5361,11 +5180,6 @@ pub struct ctitandb_blob_index_t {
 pub struct ctitandb_options_t {
     _unused: [u8; 0],
 }
-#[repr(C)]
-#[derive(Debug)]
-pub struct ctitandb_readoptions_t {
-    _unused: [u8; 0],
-}
 extern "C" {
     pub fn ctitandb_open_column_families(
         name: *const libc::c_char,
@@ -5550,37 +5364,25 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn ctitandb_readoptions_create() -> *mut ctitandb_readoptions_t;
-}
-extern "C" {
-    pub fn ctitandb_readoptions_destroy(opts: *mut ctitandb_readoptions_t);
-}
-extern "C" {
-    pub fn ctitandb_readoptions_key_only(opts: *mut ctitandb_readoptions_t) -> libc::c_uchar;
-}
-extern "C" {
-    pub fn ctitandb_readoptions_set_key_only(opts: *mut ctitandb_readoptions_t, v: libc::c_uchar);
+    pub fn ctitandb_readoptions_init(arg1: *mut rocksdb_titandb_TitanReadOptions);
 }
 extern "C" {
     pub fn ctitandb_create_iterator(
         db: *mut crocksdb_t,
-        options: *const crocksdb_readoptions_t,
-        titan_options: *const ctitandb_readoptions_t,
+        titan_options: *const rocksdb_titandb_TitanReadOptions,
     ) -> *mut crocksdb_iterator_t;
 }
 extern "C" {
     pub fn ctitandb_create_iterator_cf(
         db: *mut crocksdb_t,
-        options: *const crocksdb_readoptions_t,
-        titan_options: *const ctitandb_readoptions_t,
+        titan_options: *const rocksdb_titandb_TitanReadOptions,
         column_family: *mut crocksdb_column_family_handle_t,
     ) -> *mut crocksdb_iterator_t;
 }
 extern "C" {
     pub fn ctitandb_create_iterators(
         db: *mut crocksdb_t,
-        options: *mut crocksdb_readoptions_t,
-        titan_options: *mut ctitandb_readoptions_t,
+        titan_options: *const rocksdb_titandb_TitanReadOptions,
         column_families: *mut *mut crocksdb_column_family_handle_t,
         iterators: *mut *mut crocksdb_iterator_t,
         size: usize,
