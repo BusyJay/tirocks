@@ -4,6 +4,7 @@
 
 pub mod env;
 mod error;
+pub mod option;
 pub mod rate_limiter;
 
 pub use error::{Code, Result, Severity, Status, SubCode};
