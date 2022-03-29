@@ -1480,15 +1480,6 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_write_multi_batch(
-        db: *mut crocksdb_t,
-        options: *const rocksdb_WriteOptions,
-        batches: *mut *mut crocksdb_writebatch_t,
-        batch_size: usize,
-        s: *mut rocksdb_Status,
-    );
-}
-extern "C" {
     pub fn crocksdb_get(
         db: *mut crocksdb_t,
         options: *const rocksdb_ReadOptions,
@@ -3195,15 +3186,10 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_options_set_enable_multi_batch_write(
+    pub fn crocksdb_options_set_enable_pipelined_commit(
         opt: *mut crocksdb_options_t,
         v: libc::c_uchar,
     );
-}
-extern "C" {
-    pub fn crocksdb_options_is_enable_multi_batch_write(
-        opt: *mut crocksdb_options_t,
-    ) -> libc::c_uchar;
 }
 extern "C" {
     pub fn crocksdb_options_set_unordered_write(arg1: *mut crocksdb_options_t, arg2: libc::c_uchar);

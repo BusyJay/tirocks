@@ -1126,16 +1126,6 @@ void crocksdb_write(crocksdb_t* db, const WriteOptions* options,
   *s = db->rep->Write(*options, &batch->rep);
 }
 
-void crocksdb_write_multi_batch(crocksdb_t* db, const WriteOptions* options,
-                                crocksdb_writebatch_t** batches,
-                                size_t batch_size, Status* s) {
-  std::vector<WriteBatch*> ws;
-  for (size_t i = 0; i < batch_size; i++) {
-    ws.push_back(&batches[i]->rep);
-  }
-  *s = db->rep->MultiBatchWrite(*options, std::move(ws));
-}
-
 char* crocksdb_get(crocksdb_t* db, const ReadOptions* options, const char* key,
                    size_t keylen, size_t* vallen, Status* s) {
   std::string tmp;
@@ -2912,14 +2902,9 @@ void crocksdb_options_set_enable_pipelined_write(crocksdb_options_t* opt,
   opt->rep.enable_pipelined_write = v;
 }
 
-void crocksdb_options_set_enable_multi_batch_write(crocksdb_options_t* opt,
-                                                   unsigned char v) {
-  opt->rep.enable_multi_thread_write = v;
-}
-
-unsigned char crocksdb_options_is_enable_multi_batch_write(
-    crocksdb_options_t* opt) {
-  return opt->rep.enable_multi_thread_write;
+void crocksdb_options_set_enable_pipelined_commit(crocksdb_options_t* opt,
+                                                  unsigned char v) {
+  opt->rep.enable_pipelined_commit = v;
 }
 
 void crocksdb_options_set_unordered_write(crocksdb_options_t* opt,
