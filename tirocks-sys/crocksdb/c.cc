@@ -5912,7 +5912,7 @@ crocksdb_column_family_handle_t* ctitandb_create_column_family(
 
 /* TitanDBOptions */
 
-ctitandb_options_t* ctitandb_options_create() { return new ctitandb_options_t; }
+TitanDBOptions* ctitandb_options_create() { return new TitanDBOptions; }
 
 void ctitandb_options_destroy(ctitandb_options_t* opts) { delete opts; }
 

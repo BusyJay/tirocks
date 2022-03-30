@@ -2337,7 +2337,7 @@ ctitandb_create_column_family(
 
 /* TitanDBOptions */
 
-extern C_ROCKSDB_LIBRARY_API ctitandb_options_t* ctitandb_options_create();
+extern C_ROCKSDB_LIBRARY_API TitanDBOptions* ctitandb_options_create();
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_options_destroy(ctitandb_options_t*);
 

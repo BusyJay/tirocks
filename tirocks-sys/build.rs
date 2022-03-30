@@ -44,8 +44,10 @@ fn bindgen_rocksdb(file_path: &Path) {
         .opaque_type(r"\brocksdb::Env")
         // Just blocking the type will still include its dependencies.
         .opaque_type(r"\brocksdb::TableProperties")
+        .opaque_type(r"\bstd::.*")
+        .opaque_type(r"\bstd::string")
         // Block all system headers
-        .blocklist_file(r"^/.*")
+        //.blocklist_file(r"^/.*")
         .blocklist_type(r"\brocksdb::Env_FileAttributes")
         // `TableProperties` has different size on different platform.
         .blocklist_type(r"\brocksdb::TableProperties")

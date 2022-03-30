@@ -1,3 +1,102 @@
+pub type std_string = [u64; 3usize];
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct std_allocator {
+    pub _address: u8,
+}
+pub type std_allocator_size_type = u64;
+pub type std_allocator_difference_type = u64;
+pub type std_allocator_value_type = u8;
+pub type std_allocator_propagate_on_container_move_assignment = u8;
+pub type std_allocator_is_always_equal = u8;
+pub type std_allocator_pointer = u8;
+pub type std_allocator_const_pointer = u8;
+pub type std_allocator_reference = u8;
+pub type std_allocator_const_reference = u8;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct std_allocator_rebind {
+    pub _address: u8,
+}
+pub type std_allocator_rebind_other = u8;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct std_default_delete {
+    pub _address: u8,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct std_unique_ptr {
+    pub _address: u8,
+}
+pub type std_unique_ptr_element_type = u8;
+pub type std_unique_ptr_deleter_type = u8;
+pub type std_unique_ptr_pointer = u8;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct std_unique_ptr___nat {
+    pub _address: u8,
+}
+pub type std_unique_ptr__DeleterSFINAE = u8;
+pub type std_unique_ptr__LValRefType = u8;
+pub type std_unique_ptr__GoodRValRefType = u8;
+pub type std_unique_ptr__BadRValRefType = u8;
+pub type std_unique_ptr__EnableIfDeleterDefaultConstructible = u8;
+pub type std_unique_ptr__EnableIfDeleterConstructible = u8;
+pub type std_unique_ptr__EnableIfMoveConvertible = u8;
+pub type std_unique_ptr__EnableIfDeleterConvertible = u8;
+pub type std_unique_ptr__EnableIfDeleterAssignable = u8;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct std_atomic {
+    pub _address: u8,
+}
+pub type std_atomic___base = u8;
+pub type std_atomic_value_type = u8;
+pub type std_atomic_difference_type = u8;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct std_shared_ptr {
+    pub _address: u8,
+}
+pub type std_shared_ptr_element_type = u8;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct std_shared_ptr___nat {
+    pub _address: u8,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct std_shared_ptr___shared_ptr_default_delete {
+    pub _address: u8,
+}
+pub type std_shared_ptr___shared_ptr_default_allocator_type = u8;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct std_vector {
+    pub _address: u8,
+}
+pub type std_vector___base = u8;
+pub type std_vector___default_allocator_type = u8;
+pub type std_vector___self = u8;
+pub type std_vector_value_type = u8;
+pub type std_vector_allocator_type = u8;
+pub type std_vector___alloc_traits = u8;
+pub type std_vector_reference = u8;
+pub type std_vector_const_reference = u8;
+pub type std_vector_size_type = u8;
+pub type std_vector_difference_type = u8;
+pub type std_vector_pointer = u8;
+pub type std_vector_const_pointer = u8;
+pub type std_vector_iterator = u8;
+pub type std_vector_const_iterator = u8;
+pub type std_vector_reverse_iterator = u8;
+pub type std_vector_const_reverse_iterator = u8;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct std_vector__ConstructTransaction {
+    pub _address: u8,
+}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct rocksdb_Slice {
@@ -101,6 +200,16 @@ pub enum rocksdb_InfoLogLevel {
     HEADER_LEVEL = 5,
     NUM_INFO_LOG_LEVELS = 6,
 }
+#[repr(C)]
+pub struct rocksdb_Logger__bindgen_vtable(libc::c_void);
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_Logger {
+    pub vtable_: *const rocksdb_Logger__bindgen_vtable,
+    pub kDoNotSupportGetLogFileSize: usize,
+    pub closed_: bool,
+    pub log_level_: rocksdb_InfoLogLevel,
+}
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_encryption_EncryptionMethod {
@@ -126,6 +235,13 @@ pub enum rocksdb_BackgroundErrorReason {
     kCompaction = 1,
     kWriteCallback = 2,
     kMemTable = 3,
+}
+#[repr(C)]
+pub struct rocksdb_EventListener__bindgen_vtable(libc::c_void);
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_EventListener {
+    pub vtable_: *const rocksdb_EventListener__bindgen_vtable,
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -154,6 +270,13 @@ pub enum rocksdb_CompactionPri {
 pub enum rocksdb_PartitionerResult {
     kNotRequired = 0,
     kRequired = 1,
+}
+#[repr(C)]
+pub struct rocksdb_MemoryAllocator__bindgen_vtable(libc::c_void);
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_MemoryAllocator {
+    pub vtable_: *const rocksdb_MemoryAllocator__bindgen_vtable,
 }
 #[repr(u32)]
 #[doc = " Keep adding ticker's here."]
@@ -481,9 +604,69 @@ pub enum rocksdb_Histograms {
     DB_WRITE_WAL_TIME = 48,
     HISTOGRAM_ENUM_MAX = 49,
 }
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_StatsLevel {
+    kExceptHistogramOrTimers = 0,
+    kExceptTimers = 1,
+    kExceptDetailedTimers = 2,
+    kExceptTimeForMutex = 3,
+    kAll = 4,
+}
+#[repr(C)]
+pub struct rocksdb_Statistics__bindgen_vtable(libc::c_void);
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_Statistics {
+    pub vtable_: *const rocksdb_Statistics__bindgen_vtable,
+    pub stats_level_: u8,
+}
+#[repr(C)]
+pub struct rocksdb_Cache__bindgen_vtable(libc::c_void);
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_Cache {
+    pub vtable_: *const rocksdb_Cache__bindgen_vtable,
+    pub memory_allocator_: [u64; 2usize],
+}
+#[repr(i32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_Cache_Priority {
+    HIGH = 0,
+    LOW = 1,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_Cache_Handle {
+    pub _address: u8,
+}
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_WriteBufferManager {
+    pub buffer_size_: usize,
+    pub mutable_limit_: usize,
+    pub memory_used_: u64,
+    pub memory_active_: u64,
+    pub cache_rep_: u64,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_WriteBufferManager_CacheRep {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_SstFileManager {
+    _unused: [u8; 0],
+}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct rocksdb_Snapshot {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_WalFilter {
     _unused: [u8; 0],
 }
 #[repr(u8)]
@@ -507,6 +690,105 @@ pub enum rocksdb_WALRecoveryMode {
     kAbsoluteConsistency = 1,
     kPointInTimeRecovery = 2,
     kSkipAnyCorruptedRecords = 3,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_DbPath {
+    pub path: std_string,
+    pub target_size: u64,
+}
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_DBOptions {
+    pub create_if_missing: bool,
+    pub create_missing_column_families: bool,
+    pub error_if_exists: bool,
+    pub paranoid_checks: bool,
+    pub env: *mut rocksdb_Env,
+    pub rate_limiter: [u64; 2usize],
+    pub sst_file_manager: [u64; 2usize],
+    pub info_log: [u64; 2usize],
+    pub info_log_level: rocksdb_InfoLogLevel,
+    pub max_open_files: libc::c_int,
+    pub max_file_opening_threads: libc::c_int,
+    pub max_total_wal_size: u64,
+    pub statistics: [u64; 2usize],
+    pub use_fsync: bool,
+    pub db_paths: [u64; 3usize],
+    pub db_log_dir: std_string,
+    pub wal_dir: std_string,
+    pub delete_obsolete_files_period_micros: u64,
+    pub max_background_jobs: libc::c_int,
+    pub base_background_compactions: libc::c_int,
+    pub max_background_compactions: libc::c_int,
+    pub max_subcompactions: u32,
+    pub max_background_flushes: libc::c_int,
+    pub max_log_file_size: usize,
+    pub log_file_time_to_roll: usize,
+    pub keep_log_file_num: usize,
+    pub recycle_log_file_num: usize,
+    pub max_manifest_file_size: u64,
+    pub table_cache_numshardbits: libc::c_int,
+    pub WAL_ttl_seconds: u64,
+    pub WAL_size_limit_MB: u64,
+    pub manifest_preallocation_size: usize,
+    pub allow_mmap_reads: bool,
+    pub allow_mmap_writes: bool,
+    pub use_direct_reads: bool,
+    pub use_direct_io_for_flush_and_compaction: bool,
+    pub allow_fallocate: bool,
+    pub is_fd_close_on_exec: bool,
+    pub skip_log_error_on_recovery: bool,
+    pub stats_dump_period_sec: libc::c_uint,
+    pub stats_persist_period_sec: libc::c_uint,
+    pub persist_stats_to_disk: bool,
+    pub stats_history_buffer_size: usize,
+    pub advise_random_on_open: bool,
+    pub db_write_buffer_size: usize,
+    pub write_buffer_manager: [u64; 2usize],
+    pub access_hint_on_compaction_start: rocksdb_DBOptions_AccessHint,
+    pub new_table_reader_for_compaction_inputs: bool,
+    pub compaction_readahead_size: usize,
+    pub random_access_max_buffer_size: usize,
+    pub writable_file_max_buffer_size: usize,
+    pub use_adaptive_mutex: bool,
+    pub bytes_per_sync: u64,
+    pub wal_bytes_per_sync: u64,
+    pub strict_bytes_per_sync: bool,
+    pub listeners: [u64; 3usize],
+    pub enable_thread_tracking: bool,
+    pub delayed_write_rate: u64,
+    pub enable_pipelined_write: bool,
+    pub unordered_write: bool,
+    pub enable_pipelined_commit: bool,
+    pub allow_concurrent_memtable_write: bool,
+    pub enable_write_thread_adaptive_yield: bool,
+    pub write_thread_max_yield_usec: u64,
+    pub write_thread_slow_yield_usec: u64,
+    pub skip_stats_update_on_db_open: bool,
+    pub wal_recovery_mode: rocksdb_WALRecoveryMode,
+    pub allow_2pc: bool,
+    pub row_cache: [u64; 2usize],
+    pub wal_filter: *mut rocksdb_WalFilter,
+    pub fail_if_options_file_error: bool,
+    pub dump_malloc_stats: bool,
+    pub avoid_flush_during_recovery: bool,
+    pub avoid_flush_during_shutdown: bool,
+    pub allow_ingest_behind: bool,
+    pub preserve_deletes: bool,
+    pub two_write_queues: bool,
+    pub manual_wal_flush: bool,
+    pub atomic_flush: bool,
+    pub avoid_unnecessary_blocking_io: bool,
+    pub log_readahead_size: usize,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_DBOptions_AccessHint {
+    NONE = 0,
+    NORMAL = 1,
+    SEQUENTIAL = 2,
+    WILLNEED = 3,
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -603,6 +885,14 @@ pub enum rocksdb_PerfLevel {
     kEnableTime = 5,
     kOutOfBounds = 6,
 }
+#[repr(C)]
+pub struct rocksdb_RateLimiter__bindgen_vtable(libc::c_void);
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_RateLimiter {
+    pub vtable_: *const rocksdb_RateLimiter__bindgen_vtable,
+    pub mode_: rocksdb_RateLimiter_Mode,
+}
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_RateLimiter_OpType {
@@ -623,6 +913,16 @@ pub enum rocksdb_BlockBasedTableOptions_IndexType {
     kHashSearch = 1,
     kTwoLevelIndexSearch = 2,
     kBinarySearchWithFirstKey = 3,
+}
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_titandb_TitanDBOptions {
+    pub _base: rocksdb_DBOptions,
+    pub dirname: std_string,
+    pub disable_background_gc: bool,
+    pub max_background_gc: i32,
+    pub purge_obsolete_files_period_sec: u32,
+    pub titan_stats_dump_period_sec: u32,
 }
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -5258,7 +5558,7 @@ extern "C" {
     ) -> *mut crocksdb_column_family_handle_t;
 }
 extern "C" {
-    pub fn ctitandb_options_create() -> *mut ctitandb_options_t;
+    pub fn ctitandb_options_create() -> *mut rocksdb_titandb_TitanDBOptions;
 }
 extern "C" {
     pub fn ctitandb_options_destroy(arg1: *mut ctitandb_options_t);
