@@ -227,7 +227,11 @@ mod test {
                 EncryptionMethod::kPlaintext
             };
             // Set arbitrary key and iv to detect UAF
-            Ok(FileEncryptionInfo::new(method, vec![1, 2, 3, 4], vec![1, 2, 3, 4]))
+            Ok(FileEncryptionInfo::new(
+                method,
+                vec![1, 2, 3, 4],
+                vec![1, 2, 3, 4],
+            ))
         }
 
         fn new_file(&self, _: &str) -> Result<FileEncryptionInfo> {
@@ -238,7 +242,11 @@ mod test {
                 EncryptionMethod::kPlaintext
             };
             // Set arbitrary key and iv to detect UAF
-            Ok(FileEncryptionInfo::new(method, vec![1, 2, 3, 4], vec![1, 2, 3, 4]))
+            Ok(FileEncryptionInfo::new(
+                method,
+                vec![1, 2, 3, 4],
+                vec![1, 2, 3, 4],
+            ))
         }
 
         fn delete_file(&self, _: &str) -> Result<()> {
