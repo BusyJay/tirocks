@@ -1187,15 +1187,6 @@ pub enum crocksdb_table_property_t {
 }
 #[repr(C)]
 #[derive(Debug)]
-pub struct crocksdb_file_encryption_info_t {
-    pub method: rocksdb_encryption_EncryptionMethod,
-    pub key: *const libc::c_char,
-    pub key_len: usize,
-    pub iv: *const libc::c_char,
-    pub iv_len: usize,
-}
-#[repr(C)]
-#[derive(Debug)]
 pub struct crocksdb_file_system_inspector_t {
     _unused: [u8; 0],
 }
@@ -3803,11 +3794,19 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_sequential_file_destroy(arg1: *mut crocksdb_sequential_file_t);
 }
+extern "C" {
+    pub fn crocksdb_file_encryption_info_init(
+        info: *mut rocksdb_encryption_FileEncryptionInfo,
+        method: rocksdb_encryption_EncryptionMethod,
+        key: rocksdb_Slice,
+        iv: rocksdb_Slice,
+    );
+}
 pub type crocksdb_encryption_key_manager_get_file_cb = ::std::option::Option<
     unsafe extern "C" fn(
         state: *mut libc::c_void,
         fname: rocksdb_Slice,
-        file_info: *mut crocksdb_file_encryption_info_t,
+        file_info: *mut rocksdb_encryption_FileEncryptionInfo,
         arg1: *mut rocksdb_Status,
     ),
 >;
@@ -3815,7 +3814,7 @@ pub type crocksdb_encryption_key_manager_new_file_cb = ::std::option::Option<
     unsafe extern "C" fn(
         state: *mut libc::c_void,
         fname: rocksdb_Slice,
-        file_info: *mut crocksdb_file_encryption_info_t,
+        file_info: *mut rocksdb_encryption_FileEncryptionInfo,
         arg1: *mut rocksdb_Status,
     ),
 >;

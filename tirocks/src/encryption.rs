@@ -7,8 +7,8 @@ use crate::util::utf8_name;
 use crate::{Code, Result, Status};
 use libc::c_void;
 use tirocks_sys::{
-    crocksdb_file_encryption_info_t, rocksdb_Slice, rocksdb_Status,
-    rocksdb_encryption_EncryptionMethod, rocksdb_encryption_KeyManager,
+    r, rocksdb_Slice, rocksdb_Status, rocksdb_encryption_EncryptionMethod,
+    rocksdb_encryption_FileEncryptionInfo, rocksdb_encryption_KeyManager,
 };
 
 pub type EncryptionMethod = rocksdb_encryption_EncryptionMethod;
@@ -41,13 +41,14 @@ impl FileEncryptionInfo {
         &self.iv
     }
 
-    unsafe fn copy_to(&self, file_info: *mut crocksdb_file_encryption_info_t) {
-        let info = &mut *file_info;
-        info.method = self.method;
-        info.key = self.key.as_ptr() as _;
-        info.key_len = self.key.len();
-        info.iv = self.iv.as_ptr() as _;
-        info.iv_len = self.iv.len();
+    #[inline]
+    unsafe fn fill(&self, file_info: *mut rocksdb_encryption_FileEncryptionInfo) {
+        tirocks_sys::crocksdb_file_encryption_info_init(
+            file_info,
+            self.method,
+            r(&self.key),
+            r(&self.iv),
+        )
     }
 }
 
@@ -83,7 +84,7 @@ extern "C" fn key_manager_destructor<T: KeyManager>(ctx: *mut c_void) {
 extern "C" fn key_manager_get_file<T: KeyManager>(
     ctx: *mut c_void,
     file_name: rocksdb_Slice,
-    file_info: *mut crocksdb_file_encryption_info_t,
+    file_info: *mut rocksdb_encryption_FileEncryptionInfo,
     status: *mut rocksdb_Status,
 ) {
     unsafe {
@@ -92,7 +93,7 @@ extern "C" fn key_manager_get_file<T: KeyManager>(
 
         match key_manager.get_file(name) {
             Ok(ret) => {
-                ret.copy_to(file_info);
+                ret.fill(file_info);
                 *status = Status::with_code(Code::kOk).into_raw();
             }
             Err(err) => *status = err.into_raw(),
@@ -103,7 +104,7 @@ extern "C" fn key_manager_get_file<T: KeyManager>(
 extern "C" fn key_manager_new_file<T: KeyManager>(
     ctx: *mut c_void,
     file_name: rocksdb_Slice,
-    file_info: *mut crocksdb_file_encryption_info_t,
+    file_info: *mut rocksdb_encryption_FileEncryptionInfo,
     status: *mut rocksdb_Status,
 ) {
     unsafe {
@@ -112,7 +113,7 @@ extern "C" fn key_manager_new_file<T: KeyManager>(
 
         match key_manager.new_file(name) {
             Ok(ret) => {
-                ret.copy_to(file_info);
+                ret.fill(file_info);
                 *status = Status::with_code(Code::kOk).into_raw();
             }
             Err(err) => *status = err.into_raw(),
@@ -225,7 +226,8 @@ mod test {
             } else {
                 EncryptionMethod::kPlaintext
             };
-            Ok(FileEncryptionInfo::new(method, vec![], vec![]))
+            // Set arbitrary key and iv to detect UAF
+            Ok(FileEncryptionInfo::new(method, vec![1, 2, 3, 4], vec![1, 2, 3, 4]))
         }
 
         fn new_file(&self, _: &str) -> Result<FileEncryptionInfo> {
@@ -235,7 +237,8 @@ mod test {
             } else {
                 EncryptionMethod::kPlaintext
             };
-            Ok(FileEncryptionInfo::new(method, vec![], vec![]))
+            // Set arbitrary key and iv to detect UAF
+            Ok(FileEncryptionInfo::new(method, vec![1, 2, 3, 4], vec![1, 2, 3, 4]))
         }
 
         fn delete_file(&self, _: &str) -> Result<()> {

@@ -3799,11 +3799,12 @@ void crocksdb_sequential_file_destroy(crocksdb_sequential_file_t* file) {
 }
 
 #ifdef OPENSSL
-inline void file_encryption_info_to_cpp(
-    const crocksdb_file_encryption_info_t& src, FileEncryptionInfo* dst) {
-  dst->method = src.method;
-  dst->key = std::string(src.key, src.key_len);
-  dst->iv = std::string(src.iv, src.iv_len);
+void crocksdb_file_encryption_info_init(FileEncryptionInfo* info,
+                                        EncryptionMethod method, Slice key,
+                                        Slice iv) {
+  info->method = method;
+  info->key = key.ToString();
+  info->iv = iv.ToString();
 }
 
 struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
@@ -3816,21 +3817,15 @@ struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
 
   virtual ~crocksdb_encryption_key_manager_impl_t() { destructor(state); }
 
-  Status GetFile(const std::string& fname,
-                 FileEncryptionInfo* file_info) override {
+  Status GetFile(const std::string& fname, FileEncryptionInfo* info) override {
     Status s;
-    crocksdb_file_encryption_info_t info;
-    get_file(state, fname, &info, &s);
-    file_encryption_info_to_cpp(info, file_info);
+    get_file(state, fname, info, &s);
     return s;
   }
 
-  Status NewFile(const std::string& fname,
-                 FileEncryptionInfo* file_info) override {
+  Status NewFile(const std::string& fname, FileEncryptionInfo* info) override {
     Status s;
-    crocksdb_file_encryption_info_t info;
-    new_file(state, fname, &info, &s);
-    file_encryption_info_to_cpp(info, file_info);
+    new_file(state, fname, info, &s);
     return s;
   }
 

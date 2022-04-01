@@ -238,16 +238,6 @@ typedef enum crocksdb_table_property_t {
   kCompressionName = 17,
 } crocksdb_table_property_t;
 
-#ifdef OPENSSL
-typedef struct crocksdb_file_encryption_info_t {
-  EncryptionMethod method = EncryptionMethod::kUnknown;
-  const char* key;
-  size_t key_len;
-  const char* iv;
-  size_t iv_len;
-} crocksdb_file_encryption_info_t;
-#endif
-
 typedef struct crocksdb_file_system_inspector_t
     crocksdb_file_system_inspector_t;
 
@@ -1537,13 +1527,12 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_sequential_file_destroy(
 /* KeyManagedEncryptedEnv */
 
 #ifdef OPENSSL
-
+extern C_ROCKSDB_LIBRARY_API void crocksdb_file_encryption_info_init(
+    FileEncryptionInfo* info, EncryptionMethod method, Slice key, Slice iv);
 typedef void (*crocksdb_encryption_key_manager_get_file_cb)(
-    void* state, Slice fname, crocksdb_file_encryption_info_t* file_info,
-    Status*);
+    void* state, Slice fname, FileEncryptionInfo* file_info, Status*);
 typedef void (*crocksdb_encryption_key_manager_new_file_cb)(
-    void* state, Slice fname, crocksdb_file_encryption_info_t* file_info,
-    Status*);
+    void* state, Slice fname, FileEncryptionInfo* file_info, Status*);
 typedef void (*crocksdb_encryption_key_manager_delete_file_cb)(void* state,
                                                                Slice fname,
                                                                Status*);
