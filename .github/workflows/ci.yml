@@ -70,7 +70,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - run: rustup default nightly
+    # See https://github.com/rust-lang/rust/issues/95561
+    - run: rustup default nightly-2022-03-31
     - run: which cargo && cargo version && clang --version && openssl version
     - run: cargo xtask submodule
     - run: RUSTFLAGS="-Z sanitizer=address" cargo test --features encryption,nightly --all --target x86_64-unknown-linux-gnu
