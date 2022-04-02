@@ -92,48 +92,6 @@ fn config_binding_path() {
     );
 }
 
-fn link_cpp(build: &mut Build) {
-    let tool = build.get_compiler();
-    let stdlib = if tool.is_like_gnu() {
-        "libstdc++.a"
-    } else if tool.is_like_clang() {
-        "libc++.a"
-    } else {
-        // Don't link to c++ statically on windows.
-        return;
-    };
-    let output = tool
-        .to_command()
-        .arg("--print-file-name")
-        .arg(stdlib)
-        .output()
-        .unwrap();
-    if !output.status.success() || output.stdout.is_empty() {
-        // fallback to dynamically
-        return;
-    }
-    let path = match str::from_utf8(&output.stdout) {
-        Ok(path) => PathBuf::from(path),
-        Err(_) => return,
-    };
-    if !path.is_absolute() {
-        return;
-    }
-    // remove lib prefix and .a postfix.
-    let libname = &stdlib[3..stdlib.len() - 2];
-    // optional static linking
-    if cfg!(feature = "static-libcpp") {
-        println!("cargo:rustc-link-lib=static={}", &libname);
-    } else {
-        println!("cargo:rustc-link-lib=dylib={}", &libname);
-    }
-    println!(
-        "cargo:rustc-link-search=native={}",
-        path.parent().unwrap().display()
-    );
-    build.cpp_link_stdlib(None);
-}
-
 fn patch_libz_env() {
     // cmake script expect libz.a being under ${DEP_Z_ROOT}/lib, but libz-sys crate put it
     // under ${DEP_Z_ROOT}/build. Append the path to CMAKE_PREFIX_PATH to get around it.
@@ -190,7 +148,7 @@ fn figure_link_lib(dst: &Path, name: &str) {
     println!("cargo:rustc-link-lib=static={}", name);
 }
 
-fn build_titan(build: &mut Build) {
+fn build_titan(build: &mut Build) -> PathBuf {
     let cur_dir = std::env::current_dir().unwrap();
     let mut cfg = cmake::Config::new("titan");
     configure_common_rocksdb_args(&mut cfg, "titan");
@@ -201,22 +159,20 @@ fn build_titan(build: &mut Build) {
         .build_target("titan")
         .very_verbose(true)
         .build();
-    figure_link_lib(&dst, "titan");
     build.include(cur_dir.join("titan").join("include"));
     build.include(cur_dir.join("titan"));
+    dst
 }
 
-fn build_rocksdb(build: &mut Build) {
+fn build_rocksdb(build: &mut Build) -> PathBuf {
     let target = env::var("TARGET").expect("TARGET was not set");
     let mut cfg = Config::new("rocksdb");
     cfg.out_dir(format!("{}/rocksdb", env::var("OUT_DIR").unwrap()));
     if cfg!(feature = "encryption") {
         cfg.register_dep("OPENSSL").define("WITH_OPENSSL", "ON");
-        println!("cargo:rustc-link-lib=static=crypto");
     }
     if cfg!(feature = "jemalloc") && NO_JEMALLOC_TARGETS.iter().all(|i| !target.contains(i)) {
         cfg.register_dep("JEMALLOC").define("WITH_JEMALLOC", "ON");
-        println!("cargo:rustc-link-lib=static=jemalloc");
     }
     configure_common_rocksdb_args(&mut cfg, "rocksdb");
     let dst = cfg
@@ -225,7 +181,6 @@ fn build_rocksdb(build: &mut Build) {
         .build_target("rocksdb")
         .very_verbose(true)
         .build();
-    figure_link_lib(&dst, "rocksdb");
 
     if cfg!(target_os = "windows") {
         build.define("OS_WIN", None);
@@ -251,6 +206,22 @@ fn build_rocksdb(build: &mut Build) {
         build.define("OPENSSL", None);
     }
 
+    dst
+}
+
+/// Links all libraries in the topological order
+fn link_all_libs(titan_dst: &Path, rocksdb_dst: &Path) {
+    figure_link_lib(titan_dst, "titan");
+    figure_link_lib(rocksdb_dst, "rocksdb");
+
+    if cfg!(feature = "encryption") {
+        println!("cargo:rustc-link-lib=static=crypto");
+    }
+    let target = env::var("TARGET").expect("TARGET was not set");
+    if cfg!(feature = "jemalloc") && NO_JEMALLOC_TARGETS.iter().all(|i| !target.contains(i)) {
+        println!("cargo:rustc-link-lib=static=jemalloc");
+    }
+
     println!("cargo:rustc-link-lib=static=z");
     println!("cargo:rustc-link-lib=static=bz2");
     println!("cargo:rustc-link-lib=static=lz4");
@@ -261,14 +232,15 @@ fn build_rocksdb(build: &mut Build) {
 fn main() {
     patch_libz_env();
     let mut build = Build::new();
-    build_titan(&mut build);
-    build_rocksdb(&mut build);
+    let titan_dst = build_titan(&mut build);
+    let rocksdb_dst = build_rocksdb(&mut build);
 
     build.cpp(true).file("crocksdb/c.cc");
     if !cfg!(target_os = "windows") {
         build.flag("-std=c++11");
         build.flag("-fno-rtti");
     }
-    link_cpp(&mut build);
     build.warnings(false).compile("libcrocksdb.a");
+
+    link_all_libs(&titan_dst, &rocksdb_dst);
 }
