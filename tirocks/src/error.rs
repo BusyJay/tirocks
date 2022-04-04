@@ -112,6 +112,11 @@ impl Status {
         self.code() == Code::kNotFound
             || self.code() == Code::kIOError && self.sub_code() == SubCode::kPathNotFound
     }
+
+    #[inline]
+    pub(crate) unsafe fn from_mut_ptr<'a>(ptr: *mut rocksdb_Status) -> &'a mut Status {
+        &mut *(ptr as *mut Status)
+    }
 }
 
 impl Default for Status {

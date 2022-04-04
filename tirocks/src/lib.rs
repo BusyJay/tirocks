@@ -4,7 +4,11 @@
 
 pub mod env;
 mod error;
+mod listener;
 pub mod option;
 pub mod rate_limiter;
+mod statistics;
+pub mod table_properties;
 
 pub use error::{Code, Result, Severity, Status, SubCode};
+pub use statistics::Statistics;

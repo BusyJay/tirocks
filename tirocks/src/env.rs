@@ -45,6 +45,7 @@ impl Drop for EnvOptions {
 /// operating system functionality like the filesystem etc.  Callers
 /// may wish to provide a custom Env object when opening a database to
 /// get fine gain control; e.g., to rate limit file system operations.
+#[derive(Debug)]
 pub struct Env {
     ptr: *mut tirocks_sys::rocksdb_Env,
     // Some env is based on other instance. And base should outlive `ptr`.
@@ -185,6 +186,11 @@ impl Env {
         unsafe {
             tirocks_sys::crocksdb_env_join_all_threads(self.ptr);
         }
+    }
+
+    #[inline]
+    pub(crate) fn as_mut_ptr(&self) -> *mut tirocks_sys::rocksdb_Env {
+        self.ptr
     }
 }
 

@@ -1,5 +1,7 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
+use tirocks_sys::crocksdb_ratelimiter_t;
+
 use crate::env::IoPriority;
 use std::marker::PhantomData;
 use std::time::Duration;
@@ -136,6 +138,11 @@ impl RateLimiter {
     /// Total count of requests that go through rate limiter
     pub fn total_requests(&self, pri: IoPriority) -> i64 {
         unsafe { tirocks_sys::crocksdb_ratelimiter_get_total_requests(self.ptr, pri) }
+    }
+
+    #[inline]
+    pub(crate) fn as_mut_ptr(&self) -> *mut crocksdb_ratelimiter_t {
+        self.ptr
     }
 }
 

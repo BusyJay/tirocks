@@ -12,7 +12,7 @@ pub struct SequentialFile {
 
 impl SequentialFile {
     #[inline]
-    pub(crate) fn from_ptr(ptr: *mut crocksdb_sequential_file_t) -> SequentialFile {
+    pub(crate) unsafe fn from_ptr(ptr: *mut crocksdb_sequential_file_t) -> SequentialFile {
         SequentialFile { ptr }
     }
 

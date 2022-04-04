@@ -1,5 +1,6 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
+mod db;
 mod flush;
 mod read;
 mod write;
