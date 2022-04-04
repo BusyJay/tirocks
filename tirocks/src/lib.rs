@@ -6,5 +6,8 @@ pub mod env;
 mod error;
 pub mod option;
 pub mod rate_limiter;
+// TODO: remove this when options are all implemented.
+#[allow(unused)]
+pub mod table_properties;
 
 pub use error::{Code, Result, Severity, Status, SubCode};

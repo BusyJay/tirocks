@@ -119,6 +119,26 @@ pub enum rocksdb_TableFileCreationReason {
     kRecovery = 2,
     kMisc = 3,
 }
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_EntryType {
+    kEntryPut = 0,
+    kEntryDelete = 1,
+    kEntrySingleDelete = 2,
+    kEntryMerge = 3,
+    kEntryRangeDeletion = 4,
+    kEntryBlobIndex = 5,
+    kEntryOther = 6,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_TablePropertiesCollectorFactory_Context {
+    pub column_family_id: u32,
+}
+extern "C" {
+    #[link_name = "\u{1}__ZN7rocksdb31TablePropertiesCollectorFactory7Context20kUnknownColumnFamilyE"]
+    pub static rocksdb_TablePropertiesCollectorFactory_Context_kUnknownColumnFamily: u32;
+}
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_BackgroundErrorReason {
@@ -885,22 +905,7 @@ pub struct crocksdb_pinnableslice_t {
 }
 #[repr(C)]
 #[derive(Debug)]
-pub struct crocksdb_user_collected_properties_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
 pub struct crocksdb_user_collected_properties_iterator_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_table_properties_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_table_properties_collection_t {
     _unused: [u8; 0],
 }
 #[repr(C)]
@@ -1156,27 +1161,6 @@ pub struct crocksdb_sst_partitioner_context_t {
 #[derive(Debug)]
 pub struct crocksdb_sst_partitioner_factory_t {
     _unused: [u8; 0],
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum crocksdb_table_property_t {
-    kDataSize = 1,
-    kIndexSize = 2,
-    kFilterSize = 3,
-    kRawKeySize = 4,
-    kRawValueSize = 5,
-    kNumDataBlocks = 6,
-    kNumEntries = 7,
-    kFormatVersion = 8,
-    kFixedKeyLen = 9,
-    kColumnFamilyID = 10,
-    kColumnFamilyName = 11,
-    kFilterPolicyName = 12,
-    kComparatorName = 13,
-    kMergeOperatorName = 14,
-    kPrefixExtractorName = 15,
-    kPropertyCollectorsNames = 16,
-    kCompressionName = 17,
 }
 #[repr(C)]
 #[derive(Debug)]
@@ -2305,7 +2289,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_flushjobinfo_table_properties(
         arg1: *const crocksdb_flushjobinfo_t,
-    ) -> *const crocksdb_table_properties_t;
+    ) -> *const rocksdb_TableProperties;
 }
 extern "C" {
     pub fn crocksdb_flushjobinfo_triggered_writes_slowdown(
@@ -2356,7 +2340,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_compactionjobinfo_table_properties(
         arg1: *const crocksdb_compactionjobinfo_t,
-    ) -> *const crocksdb_table_properties_collection_t;
+    ) -> *const rocksdb_TablePropertiesCollection;
 }
 extern "C" {
     pub fn crocksdb_compactionjobinfo_elapsed_micros(
@@ -2450,7 +2434,7 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_externalfileingestioninfo_table_properties(
         arg1: *const crocksdb_externalfileingestioninfo_t,
-    ) -> *const crocksdb_table_properties_t;
+    ) -> *const rocksdb_TableProperties;
 }
 extern "C" {
     pub fn crocksdb_externalfileingestioninfo_picked_level(
@@ -2656,9 +2640,6 @@ extern "C" {
         arg1: *mut crocksdb_options_t,
         arg2: *mut crocksdb_compactionfilterfactory_t,
     );
-}
-extern "C" {
-    pub fn crocksdb_options_compaction_readahead_size(arg1: *mut crocksdb_options_t, arg2: usize);
 }
 extern "C" {
     pub fn crocksdb_options_set_comparator(
@@ -3509,7 +3490,7 @@ extern "C" {
     pub fn crocksdb_compactionfiltercontext_table_properties(
         context: *mut crocksdb_compactionfiltercontext_t,
         offset: usize,
-    ) -> *mut crocksdb_table_properties_t;
+    ) -> *const rocksdb_TableProperties;
 }
 extern "C" {
     pub fn crocksdb_compactionfilterfactory_create(
@@ -3655,7 +3636,7 @@ extern "C" {
         table_filter: ::std::option::Option<
             unsafe extern "C" fn(
                 arg1: *mut libc::c_void,
-                arg2: *const crocksdb_table_properties_t,
+                arg2: *const rocksdb_TableProperties,
             ) -> libc::c_uchar,
         >,
         destory: ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void)>,
@@ -3977,13 +3958,9 @@ extern "C" {
     ) -> *mut crocksdb_iterator_t;
 }
 extern "C" {
-    pub fn crocksdb_sstfilereader_read_table_properties(
+    pub fn crocksdb_sstfilereader_get_table_properties(
         reader: *const crocksdb_sstfilereader_t,
-        ctx: *mut libc::c_void,
-        cb: ::std::option::Option<
-            unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: *const crocksdb_table_properties_t),
-        >,
-    );
+    ) -> *const rocksdb_TableProperties;
 }
 extern "C" {
     pub fn crocksdb_sstfilereader_verify_checksum(
@@ -4375,48 +4352,173 @@ extern "C" {
     pub fn crocksdb_get_supported_compression(arg1: *mut rocksdb_CompressionType, arg2: usize);
 }
 extern "C" {
-    pub fn crocksdb_table_properties_get_u64(
-        arg1: *const crocksdb_table_properties_t,
-        prop: crocksdb_table_property_t,
+    pub fn crocksdb_table_properties_get_data_size(arg1: *const rocksdb_TableProperties) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_index_size(arg1: *const rocksdb_TableProperties) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_index_partitions(
+        arg1: *const rocksdb_TableProperties,
     ) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_table_properties_get_str(
-        arg1: *const crocksdb_table_properties_t,
-        prop: crocksdb_table_property_t,
-        slen: *mut usize,
-    ) -> *const libc::c_char;
+    pub fn crocksdb_table_properties_get_top_level_index_size(
+        arg1: *const rocksdb_TableProperties,
+    ) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_index_key_is_user_key(
+        arg1: *const rocksdb_TableProperties,
+    ) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_index_value_is_delta_encoded(
+        arg1: *const rocksdb_TableProperties,
+    ) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_filter_size(arg1: *const rocksdb_TableProperties) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_raw_key_size(arg1: *const rocksdb_TableProperties) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_raw_value_size(
+        arg1: *const rocksdb_TableProperties,
+    ) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_num_data_blocks(
+        arg1: *const rocksdb_TableProperties,
+    ) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_num_entries(arg1: *const rocksdb_TableProperties) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_num_deletions(arg1: *const rocksdb_TableProperties)
+        -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_num_merge_operands(
+        arg1: *const rocksdb_TableProperties,
+    ) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_num_range_deletions(
+        arg1: *const rocksdb_TableProperties,
+    ) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_format_version(
+        arg1: *const rocksdb_TableProperties,
+    ) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_fixed_key_len(arg1: *const rocksdb_TableProperties)
+        -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_column_family_id(
+        arg1: *const rocksdb_TableProperties,
+    ) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_creation_time(arg1: *const rocksdb_TableProperties)
+        -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_oldest_key_time(
+        arg1: *const rocksdb_TableProperties,
+    ) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_file_creation_time(
+        arg1: *const rocksdb_TableProperties,
+    ) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_column_family_name(
+        arg1: *const rocksdb_TableProperties,
+        val: *mut rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_filter_policy_name(
+        arg1: *const rocksdb_TableProperties,
+        val: *mut rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_comparator_name(
+        arg1: *const rocksdb_TableProperties,
+        val: *mut rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_merge_operator_name(
+        arg1: *const rocksdb_TableProperties,
+        val: *mut rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_prefix_extractor_name(
+        arg1: *const rocksdb_TableProperties,
+        val: *mut rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_property_collectors_names(
+        arg1: *const rocksdb_TableProperties,
+        val: *mut rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_compression_name(
+        arg1: *const rocksdb_TableProperties,
+        val: *mut rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_table_properties_get_compression_options(
+        arg1: *const rocksdb_TableProperties,
+        val: *mut rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_table_properties_to_string(
+        arg1: *const rocksdb_TableProperties,
+        len: *mut usize,
+    ) -> *mut libc::c_char;
 }
 extern "C" {
     pub fn crocksdb_table_properties_get_user_properties(
-        arg1: *const crocksdb_table_properties_t,
-    ) -> *const crocksdb_user_collected_properties_t;
+        arg1: *const rocksdb_TableProperties,
+    ) -> *const rocksdb_UserCollectedProperties;
 }
 extern "C" {
     pub fn crocksdb_user_collected_properties_get(
-        props: *const crocksdb_user_collected_properties_t,
-        key: *const libc::c_char,
-        klen: usize,
-        vlen: *mut usize,
-    ) -> *const libc::c_char;
+        props: *const rocksdb_UserCollectedProperties,
+        zkey: rocksdb_Slice,
+        value: *mut rocksdb_Slice,
+    ) -> bool;
 }
 extern "C" {
     pub fn crocksdb_user_collected_properties_len(
-        arg1: *const crocksdb_user_collected_properties_t,
+        arg1: *const rocksdb_UserCollectedProperties,
     ) -> usize;
 }
 extern "C" {
     pub fn crocksdb_user_collected_properties_add(
-        arg1: *mut crocksdb_user_collected_properties_t,
-        key: *const libc::c_char,
-        key_len: usize,
-        value: *const libc::c_char,
-        value_len: usize,
+        arg1: *mut rocksdb_UserCollectedProperties,
+        key: rocksdb_Slice,
+        value: rocksdb_Slice,
     );
 }
 extern "C" {
     pub fn crocksdb_user_collected_properties_iter_create(
-        arg1: *const crocksdb_user_collected_properties_t,
+        arg1: *const rocksdb_UserCollectedProperties,
     ) -> *mut crocksdb_user_collected_properties_iterator_t;
 }
 extern "C" {
@@ -4425,40 +4527,31 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_user_collected_properties_iter_valid(
-        arg1: *const crocksdb_user_collected_properties_iterator_t,
-    ) -> libc::c_uchar;
-}
-extern "C" {
     pub fn crocksdb_user_collected_properties_iter_next(
         arg1: *mut crocksdb_user_collected_properties_iterator_t,
-    );
+        key: *mut rocksdb_Slice,
+        val: *mut rocksdb_Slice,
+    ) -> bool;
 }
 extern "C" {
-    pub fn crocksdb_user_collected_properties_iter_key(
-        arg1: *const crocksdb_user_collected_properties_iterator_t,
-        klen: *mut usize,
-    ) -> *const libc::c_char;
-}
-extern "C" {
-    pub fn crocksdb_user_collected_properties_iter_value(
-        arg1: *const crocksdb_user_collected_properties_iterator_t,
-        vlen: *mut usize,
-    ) -> *const libc::c_char;
+    pub fn crocksdb_table_properties_collection_get(
+        arg1: *const rocksdb_TablePropertiesCollection,
+        arg2: rocksdb_Slice,
+    ) -> *const rocksdb_TableProperties;
 }
 extern "C" {
     pub fn crocksdb_table_properties_collection_len(
-        arg1: *const crocksdb_table_properties_collection_t,
+        arg1: *const rocksdb_TablePropertiesCollection,
     ) -> usize;
 }
 extern "C" {
     pub fn crocksdb_table_properties_collection_destroy(
-        arg1: *mut crocksdb_table_properties_collection_t,
+        arg1: *mut rocksdb_TablePropertiesCollection,
     );
 }
 extern "C" {
     pub fn crocksdb_table_properties_collection_iter_create(
-        arg1: *const crocksdb_table_properties_collection_t,
+        arg1: *const rocksdb_TablePropertiesCollection,
     ) -> *mut crocksdb_table_properties_collection_iterator_t;
 }
 extern "C" {
@@ -4467,25 +4560,11 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_table_properties_collection_iter_valid(
-        arg1: *const crocksdb_table_properties_collection_iterator_t,
-    ) -> libc::c_uchar;
-}
-extern "C" {
     pub fn crocksdb_table_properties_collection_iter_next(
         arg1: *mut crocksdb_table_properties_collection_iterator_t,
-    );
-}
-extern "C" {
-    pub fn crocksdb_table_properties_collection_iter_key(
-        arg1: *const crocksdb_table_properties_collection_iterator_t,
-        klen: *mut usize,
-    ) -> *const libc::c_char;
-}
-extern "C" {
-    pub fn crocksdb_table_properties_collection_iter_value(
-        arg1: *const crocksdb_table_properties_collection_iterator_t,
-    ) -> *const crocksdb_table_properties_t;
+        key: *mut rocksdb_Slice,
+        val: *mut *const rocksdb_TableProperties,
+    ) -> bool;
 }
 extern "C" {
     pub fn crocksdb_table_properties_collector_create(
@@ -4497,19 +4576,19 @@ extern "C" {
         add: ::std::option::Option<
             unsafe extern "C" fn(
                 arg1: *mut libc::c_void,
-                key: *const libc::c_char,
-                key_len: usize,
-                value: *const libc::c_char,
-                value_len: usize,
-                entry_type: libc::c_int,
-                seq: u64,
+                key: rocksdb_Slice,
+                value: rocksdb_Slice,
+                entry_type: rocksdb_EntryType,
+                seq: rocksdb_SequenceNumber,
                 file_size: u64,
+                arg2: *mut rocksdb_Status,
             ),
         >,
         finish: ::std::option::Option<
             unsafe extern "C" fn(
                 arg1: *mut libc::c_void,
-                props: *mut crocksdb_user_collected_properties_t,
+                arg2: *mut rocksdb_UserCollectedProperties,
+                arg3: *mut rocksdb_Status,
             ),
         >,
     ) -> *mut crocksdb_table_properties_collector_t;
@@ -4529,7 +4608,7 @@ extern "C" {
         create_table_properties_collector: ::std::option::Option<
             unsafe extern "C" fn(
                 arg1: *mut libc::c_void,
-                cf: u32,
+                context: rocksdb_TablePropertiesCollectorFactory_Context,
             ) -> *mut crocksdb_table_properties_collector_t,
         >,
     ) -> *mut crocksdb_table_properties_collector_factory_t;
@@ -4556,14 +4635,14 @@ extern "C" {
     pub fn crocksdb_get_properties_of_all_tables(
         db: *mut crocksdb_t,
         s: *mut rocksdb_Status,
-    ) -> *mut crocksdb_table_properties_collection_t;
+    ) -> *mut rocksdb_TablePropertiesCollection;
 }
 extern "C" {
     pub fn crocksdb_get_properties_of_all_tables_cf(
         db: *mut crocksdb_t,
         cf: *mut crocksdb_column_family_handle_t,
         s: *mut rocksdb_Status,
-    ) -> *mut crocksdb_table_properties_collection_t;
+    ) -> *mut rocksdb_TablePropertiesCollection;
 }
 extern "C" {
     pub fn crocksdb_get_properties_of_tables_in_range(
@@ -4575,7 +4654,7 @@ extern "C" {
         limit_keys: *const *const libc::c_char,
         limit_keys_lens: *const usize,
         s: *mut rocksdb_Status,
-    ) -> *mut crocksdb_table_properties_collection_t;
+    ) -> *mut rocksdb_TablePropertiesCollection;
 }
 extern "C" {
     pub fn crocksdb_keyversions_destroy(kvs: *mut crocksdb_keyversions_t);
