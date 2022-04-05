@@ -13,7 +13,20 @@ use crate::Status;
 
 pub type SequenceNumber = tirocks_sys::rocksdb_SequenceNumber;
 pub type EntryType = tirocks_sys::rocksdb_EntryType;
-pub type Context = tirocks_sys::rocksdb_TablePropertiesCollectorFactory_Context;
+
+#[derive(Debug)]
+pub struct Context {
+    column_family_id: u32,
+}
+
+impl Context {
+    const UNKNOWN_COLUMN_FAMILY_ID: u32 = i32::MAX as u32;
+
+    #[inline]
+    pub fn column_family_id(&self) -> u32 {
+        self.column_family_id
+    }
+}
 
 /// Other than basic table properties, each table may also have the user
 /// collected properties.
@@ -234,11 +247,11 @@ extern "C" fn factory_destruct<T: TablePropertiesCollectorFactory>(handle: *mut 
 
 extern "C" fn create_table_properties_collector<T: TablePropertiesCollectorFactory>(
     handle: *mut c_void,
-    ctx: Context,
+    column_family_id: u32,
 ) -> *mut crocksdb_table_properties_collector_t {
     unsafe {
         let handle = &mut *(handle as *mut T);
-        let collector = handle.create_table_properties_collector(ctx);
+        let collector = handle.create_table_properties_collector(Context { column_family_id });
         tirocks_sys::crocksdb_table_properties_collector_create(
             Box::into_raw(Box::new(collector)) as *mut c_void,
             Some(collector_name::<T::Collector>),

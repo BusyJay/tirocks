@@ -1921,7 +1921,7 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_table_properties_collector_factory_t*
 crocksdb_table_properties_collector_factory_create(
     void* state, const char* (*name)(void*), void (*destruct)(void*),
     crocksdb_table_properties_collector_t* (*create_table_properties_collector)(
-        void*, TablePropertiesCollectorFactory::Context context));
+        void*, uint32_t column_family_id));
 
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_table_properties_collector_factory_destroy(

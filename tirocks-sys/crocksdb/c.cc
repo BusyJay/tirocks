@@ -4823,7 +4823,7 @@ struct crocksdb_table_properties_collector_factory_t
   const char* (*name_)(void*);
   void (*destruct_)(void*);
   crocksdb_table_properties_collector_t* (*create_table_properties_collector_)(
-      void*, TablePropertiesCollectorFactory::Context context);
+      void*, uint32_t column_family_id);
 
   virtual ~crocksdb_table_properties_collector_factory_t() {
     destruct_(state_);
@@ -4831,7 +4831,7 @@ struct crocksdb_table_properties_collector_factory_t
 
   virtual TablePropertiesCollector* CreateTablePropertiesCollector(
       TablePropertiesCollectorFactory::Context ctx) override {
-    return create_table_properties_collector_(state_, ctx);
+    return create_table_properties_collector_(state_, ctx.column_family_id);
   }
 
   const char* Name() const override { return name_(state_); }
@@ -4841,7 +4841,7 @@ crocksdb_table_properties_collector_factory_t*
 crocksdb_table_properties_collector_factory_create(
     void* state, const char* (*name)(void*), void (*destruct)(void*),
     crocksdb_table_properties_collector_t* (*create_table_properties_collector)(
-        void*, TablePropertiesCollectorFactory::Context context)) {
+        void*, uint32_t column_family_id)) {
   auto f = new crocksdb_table_properties_collector_factory_t;
   f->state_ = state;
   f->name_ = name;

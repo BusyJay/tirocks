@@ -130,15 +130,6 @@ pub enum rocksdb_EntryType {
     kEntryBlobIndex = 5,
     kEntryOther = 6,
 }
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct rocksdb_TablePropertiesCollectorFactory_Context {
-    pub column_family_id: u32,
-}
-extern "C" {
-    #[link_name = "\u{1}__ZN7rocksdb31TablePropertiesCollectorFactory7Context20kUnknownColumnFamilyE"]
-    pub static rocksdb_TablePropertiesCollectorFactory_Context_kUnknownColumnFamily: u32;
-}
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_BackgroundErrorReason {
@@ -4608,7 +4599,7 @@ extern "C" {
         create_table_properties_collector: ::std::option::Option<
             unsafe extern "C" fn(
                 arg1: *mut libc::c_void,
-                context: rocksdb_TablePropertiesCollectorFactory_Context,
+                column_family_id: u32,
             ) -> *mut crocksdb_table_properties_collector_t,
         >,
     ) -> *mut crocksdb_table_properties_collector_factory_t;
