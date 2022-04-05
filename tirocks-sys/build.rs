@@ -43,7 +43,7 @@ fn bindgen_rocksdb(file_path: &Path) {
         .allowlist_type(r"\brocksdb::titandb::HistogramType")
         .opaque_type(r"\brocksdb::Env")
         // Just blocking the type will still include its dependencies.
-        .opaque_type(r"\brocksdb::(TableProperties|titandb::TitanDBOptions|FlushJobInfo|UserCollectedProperties)")
+        .opaque_type(r"\brocksdb::(TableProperties|titandb::TitanDBOptions|FlushJobInfo|UserCollectedProperties|TablePropertiesCollection|CompactionJobInfo|CompactionJobStats|SubcompactionJobInfo|ExternalFileIngestionInfo|WriteStallInfo)")
         // Block all system headers
         .blocklist_file(r"^/.*")
         .blocklist_type(r"\brocksdb::Env_FileAttributes")
