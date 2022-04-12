@@ -336,24 +336,6 @@ struct crocksdb_histogramdata_t {
 struct crocksdb_pinnableslice_t {
   PinnableSlice rep;
 };
-struct crocksdb_flushjobinfo_t {
-  FlushJobInfo rep;
-};
-struct crocksdb_writestallcondition_t {
-  WriteStallCondition rep;
-};
-struct crocksdb_writestallinfo_t {
-  WriteStallInfo rep;
-};
-struct crocksdb_compactionjobinfo_t {
-  CompactionJobInfo rep;
-};
-struct crocksdb_subcompactionjobinfo_t {
-  SubcompactionJobInfo rep;
-};
-struct crocksdb_externalfileingestioninfo_t {
-  ExternalFileIngestionInfo rep;
-};
 
 struct crocksdb_keyversions_t {
   std::vector<KeyVersion> rep;
@@ -2075,199 +2057,181 @@ size_t crocksdb_options_get_block_cache_capacity(crocksdb_options_t* opt) {
 
 /* FlushJobInfo */
 
-const char* crocksdb_flushjobinfo_cf_name(const crocksdb_flushjobinfo_t* info,
-                                          size_t* size) {
-  *size = info->rep.cf_name.size();
-  return info->rep.cf_name.data();
+int crocksdb_flushjobinfo_job_id(const FlushJobInfo* info) {
+  return info->job_id;
 }
 
-const char* crocksdb_flushjobinfo_file_path(const crocksdb_flushjobinfo_t* info,
-                                            size_t* size) {
-  *size = info->rep.file_path.size();
-  return info->rep.file_path.data();
+void crocksdb_flushjobinfo_cf_name(const FlushJobInfo* info, Slice* cf_name) {
+  *cf_name = info->cf_name;
+}
+
+void crocksdb_flushjobinfo_file_path(const FlushJobInfo* info, Slice* path) {
+  *path = info->file_path;
 }
 
 const TableProperties* crocksdb_flushjobinfo_table_properties(
-    const crocksdb_flushjobinfo_t* info) {
-  return &info->rep.table_properties;
+    const FlushJobInfo* info) {
+  return &info->table_properties;
 }
 
-unsigned char crocksdb_flushjobinfo_triggered_writes_slowdown(
-    const crocksdb_flushjobinfo_t* info) {
-  return info->rep.triggered_writes_slowdown;
+bool crocksdb_flushjobinfo_triggered_writes_slowdown(const FlushJobInfo* info) {
+  return info->triggered_writes_slowdown;
 }
 
-unsigned char crocksdb_flushjobinfo_triggered_writes_stop(
-    const crocksdb_flushjobinfo_t* info) {
-  return info->rep.triggered_writes_stop;
+bool crocksdb_flushjobinfo_triggered_writes_stop(const FlushJobInfo* info) {
+  return info->triggered_writes_stop;
 }
 
 /* CompactionJobInfo */
 
-void crocksdb_compactionjobinfo_status(const crocksdb_compactionjobinfo_t* info,
+void crocksdb_compactionjobinfo_status(const CompactionJobInfo* info,
                                        Status* s) {
-  *s = info->rep.status;
+  *s = info->status;
 }
 
-const char* crocksdb_compactionjobinfo_cf_name(
-    const crocksdb_compactionjobinfo_t* info, size_t* size) {
-  *size = info->rep.cf_name.size();
-  return info->rep.cf_name.data();
+void crocksdb_compactionjobinfo_cf_name(const CompactionJobInfo* info,
+                                        Slice* name) {
+  *name = info->cf_name;
 }
 
 size_t crocksdb_compactionjobinfo_input_files_count(
-    const crocksdb_compactionjobinfo_t* info) {
-  return info->rep.input_files.size();
+    const CompactionJobInfo* info) {
+  return info->input_files.size();
 }
 
-const char* crocksdb_compactionjobinfo_input_file_at(
-    const crocksdb_compactionjobinfo_t* info, size_t pos, size_t* size) {
-  const std::string& path = info->rep.input_files[pos];
-  *size = path.size();
-  return path.data();
+void crocksdb_compactionjobinfo_input_file_at(const CompactionJobInfo* info,
+                                              size_t pos, Slice* file) {
+  *file = info->input_files[pos];
 }
 
 size_t crocksdb_compactionjobinfo_output_files_count(
-    const crocksdb_compactionjobinfo_t* info) {
-  return info->rep.output_files.size();
+    const CompactionJobInfo* info) {
+  return info->output_files.size();
 }
 
-const char* crocksdb_compactionjobinfo_output_file_at(
-    const crocksdb_compactionjobinfo_t* info, size_t pos, size_t* size) {
-  const std::string& path = info->rep.output_files[pos];
-  *size = path.size();
-  return path.data();
+void crocksdb_compactionjobinfo_output_file_at(const CompactionJobInfo* info,
+                                               size_t pos, Slice* file) {
+  *file = info->output_files[pos];
 }
 
 const TablePropertiesCollection* crocksdb_compactionjobinfo_table_properties(
-    const crocksdb_compactionjobinfo_t* info) {
-  return &info->rep.table_properties;
+    const CompactionJobInfo* info) {
+  return &info->table_properties;
 }
 
 uint64_t crocksdb_compactionjobinfo_elapsed_micros(
-    const crocksdb_compactionjobinfo_t* info) {
-  return info->rep.stats.elapsed_micros;
+    const CompactionJobInfo* info) {
+  return info->stats.elapsed_micros;
 }
 
 uint64_t crocksdb_compactionjobinfo_num_corrupt_keys(
-    const crocksdb_compactionjobinfo_t* info) {
-  return info->rep.stats.num_corrupt_keys;
+    const CompactionJobInfo* info) {
+  return info->stats.num_corrupt_keys;
 }
 
-int crocksdb_compactionjobinfo_base_input_level(
-    const crocksdb_compactionjobinfo_t* info) {
-  return info->rep.base_input_level;
+int crocksdb_compactionjobinfo_base_input_level(const CompactionJobInfo* info) {
+  return info->base_input_level;
 }
 
-int crocksdb_compactionjobinfo_output_level(
-    const crocksdb_compactionjobinfo_t* info) {
-  return info->rep.output_level;
+int crocksdb_compactionjobinfo_output_level(const CompactionJobInfo* info) {
+  return info->output_level;
 }
 
 size_t crocksdb_compactionjobinfo_num_input_files(
-    const crocksdb_compactionjobinfo_t* info) {
-  return info->rep.stats.num_input_files;
+    const CompactionJobInfo* info) {
+  return info->stats.num_input_files;
 }
 
 size_t crocksdb_compactionjobinfo_num_input_files_at_output_level(
-    const crocksdb_compactionjobinfo_t* info) {
-  return info->rep.stats.num_input_files_at_output_level;
+    const CompactionJobInfo* info) {
+  return info->stats.num_input_files_at_output_level;
 }
 
 uint64_t crocksdb_compactionjobinfo_input_records(
-    const crocksdb_compactionjobinfo_t* info) {
-  return info->rep.stats.num_input_records;
+    const CompactionJobInfo* info) {
+  return info->stats.num_input_records;
 }
 
 uint64_t crocksdb_compactionjobinfo_output_records(
-    const crocksdb_compactionjobinfo_t* info) {
-  return info->rep.stats.num_output_records;
+    const CompactionJobInfo* info) {
+  return info->stats.num_output_records;
 }
 
 uint64_t crocksdb_compactionjobinfo_total_input_bytes(
-    const crocksdb_compactionjobinfo_t* info) {
-  return info->rep.stats.total_input_bytes;
+    const CompactionJobInfo* info) {
+  return info->stats.total_input_bytes;
 }
 
 uint64_t crocksdb_compactionjobinfo_total_output_bytes(
-    const crocksdb_compactionjobinfo_t* info) {
-  return info->rep.stats.total_output_bytes;
+    const CompactionJobInfo* info) {
+  return info->stats.total_output_bytes;
 }
 
 CompactionReason crocksdb_compactionjobinfo_compaction_reason(
-    const crocksdb_compactionjobinfo_t* info) {
-  return info->rep.compaction_reason;
+    const CompactionJobInfo* info) {
+  return info->compaction_reason;
 }
 
 /* SubcompactionJobInfo */
 
-void crocksdb_subcompactionjobinfo_status(
-    const crocksdb_subcompactionjobinfo_t* info, Status* s) {
-  *s = info->rep.status;
+void crocksdb_subcompactionjobinfo_status(const SubcompactionJobInfo* info,
+                                          Status* s) {
+  *s = info->status;
 }
 
-const char* crocksdb_subcompactionjobinfo_cf_name(
-    const crocksdb_subcompactionjobinfo_t* info, size_t* size) {
-  *size = info->rep.cf_name.size();
-  return info->rep.cf_name.data();
+void crocksdb_subcompactionjobinfo_cf_name(const SubcompactionJobInfo* info,
+                                           Slice* cf_name) {
+  *cf_name = info->cf_name;
 }
 
 uint64_t crocksdb_subcompactionjobinfo_thread_id(
-    const crocksdb_subcompactionjobinfo_t* info) {
-  return info->rep.thread_id;
+    const SubcompactionJobInfo* info) {
+  return info->thread_id;
 }
 
 int crocksdb_subcompactionjobinfo_base_input_level(
-    const crocksdb_subcompactionjobinfo_t* info) {
-  return info->rep.base_input_level;
+    const SubcompactionJobInfo* info) {
+  return info->base_input_level;
 }
 
 int crocksdb_subcompactionjobinfo_output_level(
-    const crocksdb_subcompactionjobinfo_t* info) {
-  return info->rep.output_level;
+    const SubcompactionJobInfo* info) {
+  return info->output_level;
 }
 
 /* ExternalFileIngestionInfo */
 
-const char* crocksdb_externalfileingestioninfo_cf_name(
-    const crocksdb_externalfileingestioninfo_t* info, size_t* size) {
-  *size = info->rep.cf_name.size();
-  return info->rep.cf_name.data();
+void crocksdb_externalfileingestioninfo_cf_name(
+    const ExternalFileIngestionInfo* info, Slice* cf_name) {
+  *cf_name = info->cf_name;
 }
 
-const char* crocksdb_externalfileingestioninfo_internal_file_path(
-    const crocksdb_externalfileingestioninfo_t* info, size_t* size) {
-  *size = info->rep.internal_file_path.size();
-  return info->rep.internal_file_path.data();
+void crocksdb_externalfileingestioninfo_internal_file_path(
+    const ExternalFileIngestionInfo* info, Slice* file) {
+  *file = info->internal_file_path;
 }
 
 const TableProperties* crocksdb_externalfileingestioninfo_table_properties(
-    const crocksdb_externalfileingestioninfo_t* info) {
-  return &info->rep.table_properties;
+    const ExternalFileIngestionInfo* info) {
+  return &info->table_properties;
 }
 
-const int crocksdb_externalfileingestioninfo_picked_level(
-    const crocksdb_externalfileingestioninfo_t* info) {
-  return info->rep.picked_level;
+int crocksdb_externalfileingestioninfo_picked_level(
+    const ExternalFileIngestionInfo* info) {
+  return info->picked_level;
 }
 
 /* External write stall info */
-extern C_ROCKSDB_LIBRARY_API const char* crocksdb_writestallinfo_cf_name(
-    const crocksdb_writestallinfo_t* info, size_t* size) {
-  *size = info->rep.cf_name.size();
-  return info->rep.cf_name.data();
+void crocksdb_writestallinfo_cf_name(const WriteStallInfo* info, Slice* name) {
+  *name = info->cf_name;
 }
 
-const crocksdb_writestallcondition_t* crocksdb_writestallinfo_cur(
-    const crocksdb_writestallinfo_t* info) {
-  return reinterpret_cast<const crocksdb_writestallcondition_t*>(
-      &info->rep.condition.cur);
+WriteStallCondition crocksdb_writestallinfo_cur(const WriteStallInfo* info) {
+  return info->condition.cur;
 }
 
-const crocksdb_writestallcondition_t* crocksdb_writestallinfo_prev(
-    const crocksdb_writestallinfo_t* info) {
-  return reinterpret_cast<const crocksdb_writestallcondition_t*>(
-      &info->rep.condition.prev);
+WriteStallCondition crocksdb_writestallinfo_prev(const WriteStallInfo* info) {
+  return info->condition.prev;
 }
 
 /* event listener */
@@ -2275,65 +2239,49 @@ const crocksdb_writestallcondition_t* crocksdb_writestallinfo_prev(
 struct crocksdb_eventlistener_t : public EventListener {
   void* state_;
   void (*destructor_)(void*);
-  void (*on_flush_begin)(void*, crocksdb_t*, const crocksdb_flushjobinfo_t*);
-  void (*on_flush_completed)(void*, crocksdb_t*,
-                             const crocksdb_flushjobinfo_t*);
-  void (*on_compaction_begin)(void*, crocksdb_t*,
-                              const crocksdb_compactionjobinfo_t*);
-  void (*on_compaction_completed)(void*, crocksdb_t*,
-                                  const crocksdb_compactionjobinfo_t*);
-  void (*on_subcompaction_begin)(void*, const crocksdb_subcompactionjobinfo_t*);
-  void (*on_subcompaction_completed)(void*,
-                                     const crocksdb_subcompactionjobinfo_t*);
-  void (*on_external_file_ingested)(
-      void*, crocksdb_t*, const crocksdb_externalfileingestioninfo_t*);
+  void (*on_flush_begin)(void*, crocksdb_t*, const FlushJobInfo*);
+  void (*on_flush_completed)(void*, crocksdb_t*, const FlushJobInfo*);
+  void (*on_compaction_begin)(void*, crocksdb_t*, const CompactionJobInfo*);
+  void (*on_compaction_completed)(void*, crocksdb_t*, const CompactionJobInfo*);
+  void (*on_subcompaction_begin)(void*, const SubcompactionJobInfo*);
+  void (*on_subcompaction_completed)(void*, const SubcompactionJobInfo*);
+  void (*on_external_file_ingested)(void*, crocksdb_t*,
+                                    const ExternalFileIngestionInfo*);
   void (*on_background_error)(void*, rocksdb::BackgroundErrorReason, Status*);
-  void (*on_stall_conditions_changed)(void*, const crocksdb_writestallinfo_t*);
+  void (*on_stall_conditions_changed)(void*, const WriteStallInfo*);
 
   virtual void OnFlushBegin(DB* db, const FlushJobInfo& info) {
     crocksdb_t c_db = {db};
-    on_flush_begin(state_, &c_db,
-                   reinterpret_cast<const crocksdb_flushjobinfo_t*>(&info));
+    on_flush_begin(state_, &c_db, &info);
   }
 
   virtual void OnFlushCompleted(DB* db, const FlushJobInfo& info) {
     crocksdb_t c_db = {db};
-    on_flush_completed(state_, &c_db,
-                       reinterpret_cast<const crocksdb_flushjobinfo_t*>(&info));
+    on_flush_completed(state_, &c_db, &info);
   }
 
   virtual void OnCompactionBegin(DB* db, const CompactionJobInfo& info) {
     crocksdb_t c_db = {db};
-    on_compaction_begin(
-        state_, &c_db,
-        reinterpret_cast<const crocksdb_compactionjobinfo_t*>(&info));
+    on_compaction_begin(state_, &c_db, &info);
   }
 
   virtual void OnCompactionCompleted(DB* db, const CompactionJobInfo& info) {
     crocksdb_t c_db = {db};
-    on_compaction_completed(
-        state_, &c_db,
-        reinterpret_cast<const crocksdb_compactionjobinfo_t*>(&info));
+    on_compaction_completed(state_, &c_db, &info);
   }
 
   virtual void OnSubcompactionBegin(const SubcompactionJobInfo& info) {
-    on_subcompaction_begin(
-        state_,
-        reinterpret_cast<const crocksdb_subcompactionjobinfo_t*>(&info));
+    on_subcompaction_begin(state_, &info);
   }
 
   virtual void OnSubcompactionCompleted(const SubcompactionJobInfo& info) {
-    on_subcompaction_completed(
-        state_,
-        reinterpret_cast<const crocksdb_subcompactionjobinfo_t*>(&info));
+    on_subcompaction_completed(state_, &info);
   }
 
   virtual void OnExternalFileIngested(DB* db,
                                       const ExternalFileIngestionInfo& info) {
     crocksdb_t c_db = {db};
-    on_external_file_ingested(
-        state_, &c_db,
-        reinterpret_cast<const crocksdb_externalfileingestioninfo_t*>(&info));
+    on_external_file_ingested(state_, &c_db, &info);
   }
 
   virtual void OnBackgroundError(BackgroundErrorReason reason, Status* status) {
@@ -2341,8 +2289,7 @@ struct crocksdb_eventlistener_t : public EventListener {
   }
 
   virtual void OnStallConditionsChanged(const WriteStallInfo& info) {
-    on_stall_conditions_changed(
-        state_, reinterpret_cast<const crocksdb_writestallinfo_t*>(&info));
+    on_stall_conditions_changed(state_, &info);
   }
 
   virtual ~crocksdb_eventlistener_t() { destructor_(state_); }
