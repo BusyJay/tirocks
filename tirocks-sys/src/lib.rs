@@ -10,6 +10,10 @@ extern crate bzip2_sys;
 
 #[allow(clippy::all)]
 mod bindings {
+    // We don't want it be generated as it has different size on different platform
+    // so we declare it manually.
+    pub enum rocksdb_encryption_FileEncryptionInfo {}
+
     include!(env!("BINDING_PATH"));
 }
 

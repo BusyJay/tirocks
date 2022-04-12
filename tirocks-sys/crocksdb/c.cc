@@ -732,16 +732,6 @@ struct crocksdb_writebatch_iterator_t {
   rocksdb::WriteBatch::Iterator* rep;
 };
 
-#ifdef OPENSSL
-struct crocksdb_file_encryption_info_t {
-  FileEncryptionInfo* rep;
-};
-
-struct crocksdb_encryption_key_manager_t {
-  std::shared_ptr<KeyManager> rep;
-};
-#endif
-
 struct crocksdb_sst_partitioner_t {
   std::unique_ptr<SstPartitioner> rep;
 };
@@ -3809,61 +3799,12 @@ void crocksdb_sequential_file_destroy(crocksdb_sequential_file_t* file) {
 }
 
 #ifdef OPENSSL
-crocksdb_file_encryption_info_t* crocksdb_file_encryption_info_create() {
-  crocksdb_file_encryption_info_t* file_info =
-      new crocksdb_file_encryption_info_t;
-  file_info->rep = new FileEncryptionInfo;
-  return file_info;
-}
-
-void crocksdb_file_encryption_info_destroy(
-    crocksdb_file_encryption_info_t* file_info) {
-  delete file_info->rep;
-  delete file_info;
-}
-
-EncryptionMethod crocksdb_file_encryption_info_method(
-    crocksdb_file_encryption_info_t* file_info) {
-  assert(file_info != nullptr);
-  assert(file_info->rep != nullptr);
-  return file_info->rep->method;
-}
-
-const char* crocksdb_file_encryption_info_key(
-    crocksdb_file_encryption_info_t* file_info, size_t* keylen) {
-  assert(file_info != nullptr);
-  assert(file_info->rep != nullptr);
-  assert(keylen != nullptr);
-  *keylen = file_info->rep->key.size();
-  return file_info->rep->key.c_str();
-}
-
-const char* crocksdb_file_encryption_info_iv(
-    crocksdb_file_encryption_info_t* file_info, size_t* ivlen) {
-  assert(file_info != nullptr);
-  assert(file_info->rep != nullptr);
-  assert(ivlen != nullptr);
-  *ivlen = file_info->rep->iv.size();
-  return file_info->rep->iv.c_str();
-}
-
-void crocksdb_file_encryption_info_set_method(
-    crocksdb_file_encryption_info_t* file_info, EncryptionMethod method) {
-  assert(file_info != nullptr);
-  file_info->rep->method = method;
-}
-
-void crocksdb_file_encryption_info_set_key(
-    crocksdb_file_encryption_info_t* file_info, const char* key,
-    size_t keylen) {
-  assert(file_info != nullptr);
-  file_info->rep->key = std::string(key, keylen);
-}
-
-void crocksdb_file_encryption_info_set_iv(
-    crocksdb_file_encryption_info_t* file_info, const char* iv, size_t ivlen) {
-  assert(file_info != nullptr);
-  file_info->rep->iv = std::string(iv, ivlen);
+void crocksdb_file_encryption_info_init(FileEncryptionInfo* info,
+                                        EncryptionMethod method, Slice key,
+                                        Slice iv) {
+  info->method = method;
+  info->key = key.ToString();
+  info->iv = iv.ToString();
 }
 
 struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
@@ -3876,90 +3817,56 @@ struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
 
   virtual ~crocksdb_encryption_key_manager_impl_t() { destructor(state); }
 
-  Status GetFile(const std::string& fname,
-                 FileEncryptionInfo* file_info) override {
-    crocksdb_file_encryption_info_t info;
-    info.rep = file_info;
+  Status GetFile(const std::string& fname, FileEncryptionInfo* info) override {
     Status s;
-    get_file(state, fname.c_str(), &info, &s);
+    get_file(state, fname, info, &s);
     return s;
   }
 
-  Status NewFile(const std::string& fname,
-                 FileEncryptionInfo* file_info) override {
-    crocksdb_file_encryption_info_t info;
-    info.rep = file_info;
+  Status NewFile(const std::string& fname, FileEncryptionInfo* info) override {
     Status s;
-    new_file(state, fname.c_str(), &info, &s);
+    new_file(state, fname, info, &s);
     return s;
   }
 
   Status DeleteFile(const std::string& fname) override {
     Status s;
-    delete_file(state, fname.c_str(), &s);
+    delete_file(state, fname, &s);
     return s;
   }
 
   Status LinkFile(const std::string& src_fname,
                   const std::string& dst_fname) override {
     Status s;
-    link_file(state, src_fname.c_str(), dst_fname.c_str(), &s);
+    link_file(state, src_fname, dst_fname, &s);
     return s;
   }
 };
 
-crocksdb_encryption_key_manager_t* crocksdb_encryption_key_manager_create(
+KeyManager* crocksdb_encryption_key_manager_create(
     void* state, void (*destructor)(void*),
     crocksdb_encryption_key_manager_get_file_cb get_file,
     crocksdb_encryption_key_manager_new_file_cb new_file,
     crocksdb_encryption_key_manager_delete_file_cb delete_file,
     crocksdb_encryption_key_manager_link_file_cb link_file) {
-  std::shared_ptr<crocksdb_encryption_key_manager_impl_t> key_manager_impl =
-      std::make_shared<crocksdb_encryption_key_manager_impl_t>();
+  auto key_manager_impl = new crocksdb_encryption_key_manager_impl_t;
   key_manager_impl->state = state;
   key_manager_impl->destructor = destructor;
   key_manager_impl->get_file = get_file;
   key_manager_impl->new_file = new_file;
   key_manager_impl->delete_file = delete_file;
   key_manager_impl->link_file = link_file;
-  crocksdb_encryption_key_manager_t* key_manager =
-      new crocksdb_encryption_key_manager_t;
-  key_manager->rep = key_manager_impl;
-  return key_manager;
+  return key_manager_impl;
 }
 
-void crocksdb_encryption_key_manager_destroy(
-    crocksdb_encryption_key_manager_t* key_manager) {
+void crocksdb_encryption_key_manager_destroy(KeyManager* key_manager) {
   delete key_manager;
 }
 
-void crocksdb_encryption_key_manager_get_file(
-    crocksdb_encryption_key_manager_t* key_manager, const char* fname,
-    crocksdb_file_encryption_info_t* file_info, Status* s) {
-  *s = key_manager->rep->GetFile(fname, file_info->rep);
-}
-
-void crocksdb_encryption_key_manager_new_file(
-    crocksdb_encryption_key_manager_t* key_manager, const char* fname,
-    crocksdb_file_encryption_info_t* file_info, Status* s) {
-  *s = key_manager->rep->NewFile(fname, file_info->rep);
-}
-
-void crocksdb_encryption_key_manager_delete_file(
-    crocksdb_encryption_key_manager_t* key_manager, const char* fname,
-    Status* s) {
-  *s = key_manager->rep->DeleteFile(fname);
-}
-
-void crocksdb_encryption_key_manager_link_file(
-    crocksdb_encryption_key_manager_t* key_manager, const char* src_fname,
-    const char* dst_fname, Status* s) {
-  *s = key_manager->rep->LinkFile(src_fname, dst_fname);
-}
-
-Env* crocksdb_key_managed_encrypted_env_create(
-    Env* base_env, crocksdb_encryption_key_manager_t* key_manager) {
-  return NewKeyManagedEncryptedEnv(base_env, key_manager->rep);
+Env* crocksdb_key_managed_encrypted_env_create(Env* base_env,
+                                               KeyManager* key_manager) {
+  std::shared_ptr<KeyManager> p(key_manager);
+  return NewKeyManagedEncryptedEnv(base_env, p);
 }
 #endif
 
