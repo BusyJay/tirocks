@@ -8,6 +8,7 @@ keywords = ["rocksdb", "bindings"]
 
 [features]
 nightly = []
+encryption = ["tirocks-sys/encryption"]
 
 [dependencies]
 libc = "0.2.11"
