@@ -22,6 +22,18 @@ fn bindgen_rocksdb(file_path: &Path) {
     if env::var("CARGO_CFG_TARGET_OS").map_or(false, |s| s == "windows") {
         builder = builder.clang_arg("-D _WIN32_WINNT=0x600");
     }
+    let pre_defined: Vec<_> = std::fs::read_to_string("src/pre_defined.rs")
+        .unwrap()
+        .lines()
+        .map(|l| {
+            (l[17..])
+                .split_whitespace()
+                .next()
+                .unwrap()
+                .replace('_', "::")
+        })
+        .collect();
+    let filter_exp = format!("\\brocksdb::({})", pre_defined.join("|"));
     let builder = builder
         .header("crocksdb/crocksdb/c.h")
         .header("rocksdb/include/rocksdb/statistics.h")
@@ -43,12 +55,12 @@ fn bindgen_rocksdb(file_path: &Path) {
         .allowlist_type(r"\brocksdb::titandb::HistogramType")
         .opaque_type(r"\brocksdb::Env")
         // Just blocking the type will still include its dependencies.
-        .opaque_type(r"\brocksdb::(TableProperties|titandb::TitanDBOptions|FlushJobInfo|UserCollectedProperties)")
+        .opaque_type(&filter_exp)
         // Block all system headers
         .blocklist_file(r"^/.*")
         .blocklist_type(r"\brocksdb::Env_FileAttributes")
         // `TableProperties` has different size on different platform.
-        .blocklist_type(r"\brocksdb::(TableProperties|titandb::TitanDBOptions|FlushJobInfo|UserCollectedProperties|TablePropertiesCollection|CompactionJobInfo|CompactionJobStats|SubcompactionJobInfo|ExternalFileIngestionInfo|WriteStallInfo)")
+        .blocklist_type(&filter_exp)
         .with_codegen_config(
             bindgen::CodegenConfig::FUNCTIONS
                 | bindgen::CodegenConfig::VARS

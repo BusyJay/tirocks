@@ -144,7 +144,7 @@ impl TableProperties {
         }
     }
 
-    // Timestamp of the latest key. 0 means unknown.
+    /// Timestamp of the latest key. 0 means unknown.
     #[inline]
     pub fn creation_time(&self) -> u64 {
         unsafe { tirocks_sys::crocksdb_table_properties_get_creation_time(self as *const _ as _) }
@@ -219,8 +219,8 @@ impl TableProperties {
         }
     }
 
-    // The name of the prefix extractor used in this table
-    // If no prefix extractor is used, `prefix_extractor_name` will be "nullptr".
+    /// The name of the prefix extractor used in this table
+    /// If no prefix extractor is used, `prefix_extractor_name` will be "nullptr".
     #[inline]
     pub fn prefix_extractor_name(&self) -> std::result::Result<&str, Utf8Error> {
         unsafe {

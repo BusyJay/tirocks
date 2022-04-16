@@ -1,15 +1,16 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
 use std::{os::unix::prelude::OsStrExt, path::Path, sync::Arc, time::Duration};
-use tirocks_sys::{r, rocksdb_titandb_TitanDBOptions};
+use tirocks_sys::{r, rocksdb_DBOptions};
 
 use crate::{
     env::{
         logger::{LogLevel, SysInfoLogger},
         Env,
     },
+    listener::SysEventListener,
     rate_limiter::RateLimiter,
-    Statistics, listener::SysEventListener,
+    Statistics,
 };
 
 pub type AccessHint = tirocks_sys::rocksdb_DBOptions_AccessHint;
@@ -17,14 +18,14 @@ pub type WalRecoveryMode = tirocks_sys::rocksdb_WALRecoveryMode;
 
 #[derive(Debug)]
 pub struct DbOptions {
-    ptr: *mut rocksdb_titandb_TitanDBOptions,
+    ptr: *mut rocksdb_DBOptions,
     env: Option<Arc<Env>>,
 }
 
 impl Default for DbOptions {
     #[inline]
     fn default() -> DbOptions {
-        let ptr = unsafe { tirocks_sys::ctitandb_options_create() };
+        let ptr = unsafe { tirocks_sys::crocksdb_dboptions_create() };
         DbOptions { ptr, env: None }
     }
 }
@@ -32,7 +33,7 @@ impl Default for DbOptions {
 impl Drop for DbOptions {
     #[inline]
     fn drop(&mut self) {
-        unsafe { tirocks_sys::ctitandb_options_destroy(self.ptr) }
+        unsafe { tirocks_sys::crocksdb_dboptions_destroy(self.ptr) }
     }
 }
 

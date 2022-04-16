@@ -7,6 +7,7 @@ mod write;
 
 use std::ptr;
 
+pub use db::DbOptions;
 pub use flush::{
     BottommostLevelCompaction, CompactRangeOptions, CompactionOptions, FlushOptions,
     IngestExternalFileOptions,

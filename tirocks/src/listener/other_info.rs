@@ -2,7 +2,9 @@
 
 use std::str::{self, Utf8Error};
 
-use tirocks_sys::{rocksdb_ExternalFileIngestionInfo, rocksdb_WriteStallInfo, r, s, rocksdb_WriteStallCondition};
+use tirocks_sys::{
+    r, rocksdb_ExternalFileIngestionInfo, rocksdb_WriteStallCondition, rocksdb_WriteStallInfo, s,
+};
 
 use crate::table_properties::builtin::TableProperties;
 
@@ -63,15 +65,12 @@ impl ExternalFileIngestionInfo {
     }
 }
 
-
 #[repr(transparent)]
 pub struct WriteStallInfo(rocksdb_WriteStallInfo);
 
 impl WriteStallInfo {
     #[inline]
-    pub(crate) unsafe fn from_ptr<'a>(
-        ptr: *const rocksdb_WriteStallInfo,
-    ) -> &'a WriteStallInfo {
+    pub(crate) unsafe fn from_ptr<'a>(ptr: *const rocksdb_WriteStallInfo) -> &'a WriteStallInfo {
         &*(ptr as *const WriteStallInfo)
     }
 
@@ -89,7 +88,7 @@ impl WriteStallInfo {
             str::from_utf8(s(buf))
         }
     }
-    
+
     /// Current state of the write controller
     #[inline]
     pub fn cur_state(&self) -> WriteStallCondition {

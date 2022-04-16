@@ -1,11 +1,18 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
 use libc::c_void;
-use tirocks_sys::{rocksdb_BackgroundErrorReason, crocksdb_t, rocksdb_FlushJobInfo, rocksdb_CompactionJobInfo, rocksdb_SubcompactionJobInfo, rocksdb_ExternalFileIngestionInfo, rocksdb_Status, rocksdb_WriteStallInfo, crocksdb_eventlistener_t};
+use tirocks_sys::{
+    crocksdb_eventlistener_t, crocksdb_t, rocksdb_BackgroundErrorReason, rocksdb_CompactionJobInfo,
+    rocksdb_ExternalFileIngestionInfo, rocksdb_FlushJobInfo, rocksdb_Status,
+    rocksdb_SubcompactionJobInfo, rocksdb_WriteStallInfo,
+};
 
 use crate::Status;
 
-use self::{job_info::{FlushJobInfo, CompactionJobInfo, SubcompactionJobInfo}, other_info::{WriteStallInfo, ExternalFileIngestionInfo}};
+use self::{
+    job_info::{CompactionJobInfo, FlushJobInfo, SubcompactionJobInfo},
+    other_info::{ExternalFileIngestionInfo, WriteStallInfo},
+};
 
 pub mod job_info;
 pub mod other_info;
