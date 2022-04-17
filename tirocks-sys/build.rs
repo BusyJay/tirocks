@@ -26,14 +26,26 @@ fn bindgen_rocksdb(file_path: &Path) {
         .unwrap()
         .lines()
         .map(|l| {
-            (l[17..])
-                .split_whitespace()
-                .next()
-                .unwrap()
-                .replace('_', "::")
+            let mut new_string = String::new();
+            let mut visited = false;
+            for part in (l[17..]).split_whitespace().next().unwrap().split('_') {
+                if visited {
+                    new_string.push('_');
+                } else {
+                    if !part.chars().next().unwrap().is_lowercase() {
+                        visited = true;
+                    }
+                    if !new_string.is_empty() {
+                        new_string.push_str("::");
+                    }
+                }
+                new_string.push_str(part);
+            }
+            new_string
         })
         .collect();
     let filter_exp = format!("\\brocksdb::({})", pre_defined.join("|"));
+    println!("filtering {}", filter_exp);
     let builder = builder
         .header("crocksdb/crocksdb/c.h")
         .header("rocksdb/include/rocksdb/statistics.h")

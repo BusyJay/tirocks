@@ -12,6 +12,7 @@ nightly = []
 [dependencies]
 libc = "0.2.11"
 tirocks-sys = { path = "../tirocks-sys" }
+paste = "1.0"
 
 [dev-dependencies]
 tempfile = "3.0"

@@ -341,10 +341,6 @@ struct crocksdb_keyversions_t {
   std::vector<KeyVersion> rep;
 };
 
-struct crocksdb_compactionfiltercontext_t {
-  CompactionFilter::Context rep;
-};
-
 struct crocksdb_column_family_meta_data_t {
   ColumnFamilyMetaData rep;
 };
@@ -453,34 +449,31 @@ struct crocksdb_map_property_t {
 struct crocksdb_compactionfilter_t : public CompactionFilter {
   void* state_;
   void (*destructor_)(void*);
-  Decision (*filter_)(void*, int level, const char* key, size_t key_length,
-                      uint64_t seqno, ValueType value_type,
-                      const char* existing_value, size_t value_length,
-                      char** new_value, size_t* new_value_length,
-                      char** skip_until, size_t* skip_until_length);
+  CompactionFilter::Decision (*filter_)(void*, int level, Slice key,
+                                        SequenceNumber seqno,
+                                        CompactionFilter::ValueType value_type,
+                                        Slice existing_value, Slice* new_value,
+                                        Slice* skip_until);
 
   const char* (*name_)(void*);
 
   virtual ~crocksdb_compactionfilter_t() { (*destructor_)(state_); }
 
-  virtual Decision FilterV3(int level, const Slice& key, uint64_t seqno,
+  virtual Decision FilterV3(int level, const Slice& key, SequenceNumber seqno,
                             ValueType value_type, const Slice& existing_value,
                             std::string* new_value,
                             std::string* skip_until) const override {
-    char* c_new_value = nullptr;
-    char* c_skip_until = nullptr;
+    Slice new_value_slice;
+    Slice skip_until_slice;
     size_t new_value_length, skip_until_length = 0;
 
     Decision result =
-        (*filter_)(state_, level, key.data(), key.size(), seqno, value_type,
-                   existing_value.data(), existing_value.size(), &c_new_value,
-                   &new_value_length, &c_skip_until, &skip_until_length);
+        (*filter_)(state_, level, key, seqno, value_type, existing_value,
+                   &new_value_slice, &skip_until_slice);
     if (result == Decision::kChangeValue) {
-      new_value->assign(c_new_value, new_value_length);
-      free(c_new_value);
+      new_value->assign(new_value_slice.data(), new_value_slice.size());
     } else if (result == Decision::kRemoveAndSkipUntil) {
-      skip_until->assign(c_skip_until, skip_until_length);
-      free(c_skip_until);
+      skip_until->assign(skip_until_slice.data(), skip_until_slice.size());
     }
     return result;
   }
@@ -491,19 +484,17 @@ struct crocksdb_compactionfilter_t : public CompactionFilter {
 struct CRocksDBCompactionFilterFactory : public CompactionFilterFactory {
   void* state_;
   void (*destructor_)(void*);
-  crocksdb_compactionfilter_t* (*create_compaction_filter_)(
-      void*, crocksdb_compactionfiltercontext_t* context);
-  unsigned char (*should_filter_table_file_creation_)(
-      void*, TableFileCreationReason reason);
+  CompactionFilter* (*create_compaction_filter_)(
+      void*, const CompactionFilter::Context* context);
+  bool (*should_filter_table_file_creation_)(void*,
+                                             TableFileCreationReason reason);
   const char* (*name_)(void*);
 
   virtual ~CRocksDBCompactionFilterFactory() { (*destructor_)(state_); }
 
   virtual std::unique_ptr<CompactionFilter> CreateCompactionFilter(
       const CompactionFilter::Context& context) override {
-    crocksdb_compactionfiltercontext_t ccontext;
-    ccontext.rep = context;
-    CompactionFilter* cf = (*create_compaction_filter_)(state_, &ccontext);
+    CompactionFilter* cf = (*create_compaction_filter_)(state_, &context);
     return std::unique_ptr<CompactionFilter>(cf);
   }
 
@@ -522,14 +513,13 @@ struct crocksdb_compactionfilterfactory_t {
 struct crocksdb_comparator_t : public Comparator {
   void* state_;
   void (*destructor_)(void*);
-  int (*compare_)(void*, const char* a, size_t alen, const char* b,
-                  size_t blen);
+  int (*compare_)(void*, Slice lhs, Slice rhs);
   const char* (*name_)(void*);
 
   virtual ~crocksdb_comparator_t() { (*destructor_)(state_); }
 
   virtual int Compare(const Slice& a, const Slice& b) const override {
-    return (*compare_)(state_, a.data(), a.size(), b.data(), b.size());
+    return (*compare_)(state_, a, b);
   }
 
   virtual const char* Name() const override { return (*name_)(state_); }
@@ -689,28 +679,32 @@ struct EncryptedEnvWrapper : EnvWrapper {
 struct CRocksDBSliceTransform : public SliceTransform {
   void* state_;
   void (*destructor_)(void*);
+  void (*transform_)(void*, Slice, Slice* dst);
+  bool (*in_domain_)(void*, const Slice);
+  bool (*full_length_enabled_)(void*, size_t*);
+  bool (*same_result_when_appended_)(void*, Slice);
   const char* (*name_)(void*);
-  char* (*transform_)(void*, const char* key, size_t length,
-                      size_t* dst_length);
-  unsigned char (*in_domain_)(void*, const char* key, size_t length);
-  unsigned char (*in_range_)(void*, const char* key, size_t length);
 
   virtual ~CRocksDBSliceTransform() { (*destructor_)(state_); }
 
   virtual const char* Name() const override { return (*name_)(state_); }
 
   virtual Slice Transform(const Slice& src) const override {
-    size_t len;
-    char* dst = (*transform_)(state_, src.data(), src.size(), &len);
-    return Slice(dst, len);
+    Slice dst;
+    (*transform_)(state_, src, &dst);
+    return dst;
   }
 
   virtual bool InDomain(const Slice& src) const override {
-    return (*in_domain_)(state_, src.data(), src.size());
+    return (*in_domain_)(state_, src);
   }
 
-  virtual bool InRange(const Slice& src) const override {
-    return (*in_range_)(state_, src.data(), src.size());
+  virtual bool FullLengthEnabled(size_t* len) const override {
+    return (*full_length_enabled_)(state_, len);
+  }
+
+  virtual bool SameResultWhenAppended(const Slice& prefix) const override {
+    return (*same_result_when_appended_)(state_, prefix);
   }
 };
 
@@ -2554,7 +2548,7 @@ uint64_t crocksdb_options_get_max_compaction_bytes(
 }
 
 void crocksdb_options_set_max_bytes_for_level_multiplier_additional(
-    ColumnFamilyOptions* opt, int* level_values, size_t num_levels) {
+    ColumnFamilyOptions* opt, const int* level_values, size_t num_levels) {
   opt->max_bytes_for_level_multiplier_additional.resize(num_levels);
   for (size_t i = 0; i < num_levels; ++i) {
     opt->max_bytes_for_level_multiplier_additional[i] = level_values[i];
@@ -2695,7 +2689,7 @@ void crocksdb_options_set_memtable_insert_with_hint_prefix_extractor(
   opt->memtable_insert_with_hint_prefix_extractor = prefix_extractor->rep;
 }
 
-void crocksdb_options_set_use_fsync(DBOptions* opt, int use_fsync) {
+void crocksdb_options_set_use_fsync(DBOptions* opt, bool use_fsync) {
   opt->use_fsync = use_fsync;
 }
 
@@ -2870,21 +2864,21 @@ void crocksdb_options_set_recycle_log_file_num(DBOptions* opt, size_t v) {
 }
 
 void crocksdb_options_set_soft_pending_compaction_bytes_limit(
-    ColumnFamilyOptions* opt, size_t v) {
+    ColumnFamilyOptions* opt, uint64_t v) {
   opt->soft_pending_compaction_bytes_limit = v;
 }
 
-size_t crocksdb_options_get_soft_pending_compaction_bytes_limit(
+uint64_t crocksdb_options_get_soft_pending_compaction_bytes_limit(
     const ColumnFamilyOptions* opt) {
   return opt->soft_pending_compaction_bytes_limit;
 }
 
 void crocksdb_options_set_hard_pending_compaction_bytes_limit(
-    ColumnFamilyOptions* opt, size_t v) {
+    ColumnFamilyOptions* opt, uint64_t v) {
   opt->hard_pending_compaction_bytes_limit = v;
 }
 
-size_t crocksdb_options_get_hard_pending_compaction_bytes_limit(
+uint64_t crocksdb_options_get_hard_pending_compaction_bytes_limit(
     const ColumnFamilyOptions* opt) {
   return opt->hard_pending_compaction_bytes_limit;
 }
@@ -3008,7 +3002,7 @@ void crocksdb_options_set_inplace_update_num_locks(ColumnFamilyOptions* opt,
   opt->inplace_update_num_locks = v;
 }
 
-void crocksdb_options_set_report_bg_io_stats(ColumnFamilyOptions* opt, int v) {
+void crocksdb_options_set_report_bg_io_stats(ColumnFamilyOptions* opt, bool v) {
   opt->report_bg_io_stats = v;
 }
 
@@ -3034,6 +3028,11 @@ CompactionOptionsUniversal* crocksdb_options_get_universal_compaction_options(
 void crocksdb_options_set_fifo_compaction_options(
     ColumnFamilyOptions* opt, const CompactionOptionsFIFO* fifo) {
   opt->compaction_options_fifo = *fifo;
+}
+
+CompactionOptionsFIFO* crocksdb_options_get_fifo_compaction_options(
+    ColumnFamilyOptions* opt) {
+  return &opt->compaction_options_fifo;
 }
 
 void crocksdb_options_set_compaction_priority(ColumnFamilyOptions* opt,
@@ -3232,13 +3231,13 @@ custom cache
 table_properties_collectors
 */
 
-crocksdb_compactionfilter_t* crocksdb_compactionfilter_create(
+CompactionFilter* crocksdb_compactionfilter_create(
     void* state, void (*destructor)(void*),
-    CompactionFilter::Decision (*filter)(
-        void*, int level, const char* key, size_t key_length, uint64_t seqno,
-        CompactionFilter::ValueType value_type, const char* existing_value,
-        size_t value_length, char** new_value, size_t* new_value_length,
-        char** skip_until, size_t* skip_until_length),
+    CompactionFilter::Decision (*filter)(void*, int level, Slice key,
+                                         SequenceNumber seqno,
+                                         CompactionFilter::ValueType value_type,
+                                         Slice existing_value, Slice* new_value,
+                                         Slice* skip_until),
     const char* (*name)(void*)) {
   crocksdb_compactionfilter_t* result = new crocksdb_compactionfilter_t;
   result->state_ = state;
@@ -3248,57 +3247,49 @@ crocksdb_compactionfilter_t* crocksdb_compactionfilter_create(
   return result;
 }
 
-void crocksdb_compactionfilter_destroy(crocksdb_compactionfilter_t* filter) {
-  delete filter;
+bool crocksdb_compactionfiltercontext_is_full_compaction(
+    const CompactionFilter::Context* context) {
+  return context->is_full_compaction;
 }
 
-unsigned char crocksdb_compactionfiltercontext_is_full_compaction(
-    crocksdb_compactionfiltercontext_t* context) {
-  return context->rep.is_full_compaction;
+bool crocksdb_compactionfiltercontext_is_manual_compaction(
+    const CompactionFilter::Context* context) {
+  return context->is_manual_compaction;
 }
 
-unsigned char crocksdb_compactionfiltercontext_is_manual_compaction(
-    crocksdb_compactionfiltercontext_t* context) {
-  return context->rep.is_manual_compaction;
-}
-
-unsigned char crocksdb_compactionfiltercontext_is_bottommost_level(
-    crocksdb_compactionfiltercontext_t* context) {
-  return context->rep.is_bottommost_level;
+bool crocksdb_compactionfiltercontext_is_bottommost_level(
+    const CompactionFilter::Context* context) {
+  return context->is_bottommost_level;
 }
 
 void crocksdb_compactionfiltercontext_file_numbers(
-    crocksdb_compactionfiltercontext_t* context, const uint64_t** buffer,
+    const CompactionFilter::Context* context, const uint64_t** buffer,
     size_t* len) {
-  *buffer = context->rep.file_numbers.data();
-  *len = context->rep.file_numbers.size();
+  *buffer = context->file_numbers.data();
+  *len = context->file_numbers.size();
 }
 
 const TableProperties* crocksdb_compactionfiltercontext_table_properties(
-    crocksdb_compactionfiltercontext_t* context, size_t offset) {
-  return context->rep.table_properties[offset].get();
+    const CompactionFilter::Context* context, size_t offset) {
+  return context->table_properties[offset].get();
 }
 
-const char* crocksdb_compactionfiltercontext_start_key(
-    crocksdb_compactionfiltercontext_t* context, size_t* key_len) {
-  const Slice& result = context->rep.start_key;
-  *key_len = result.size();
-  return result.data();
+void crocksdb_compactionfiltercontext_start_key(
+    const CompactionFilter::Context* context, Slice* start_key) {
+  *start_key = context->start_key;
 }
 
-const char* crocksdb_compactionfiltercontext_end_key(
-    crocksdb_compactionfiltercontext_t* context, size_t* key_len) {
-  const Slice& result = context->rep.end_key;
-  *key_len = result.size();
-  return result.data();
+void crocksdb_compactionfiltercontext_end_key(
+    const CompactionFilter::Context* context, Slice* end_key) {
+  *end_key = context->end_key;
 }
 
 crocksdb_compactionfilterfactory_t* crocksdb_compactionfilterfactory_create(
     void* state, void (*destructor)(void*),
-    crocksdb_compactionfilter_t* (*create_compaction_filter)(
-        void*, crocksdb_compactionfiltercontext_t* context),
-    unsigned char (*should_filter_table_file_creation)(
-        void*, TableFileCreationReason reason),
+    CompactionFilter* (*create_compaction_filter)(
+        void*, const CompactionFilter::Context* context),
+    bool (*should_filter_table_file_creation)(void*,
+                                              TableFileCreationReason reason),
     const char* (*name)(void*)) {
   auto result = std::make_shared<CRocksDBCompactionFilterFactory>();
   result->state_ = state;
@@ -3319,9 +3310,7 @@ void crocksdb_compactionfilterfactory_destroy(
 
 crocksdb_comparator_t* crocksdb_comparator_create(
     void* state, void (*destructor)(void*),
-    int (*compare)(void*, const char* a, size_t alen, const char* b,
-                   size_t blen),
-    const char* (*name)(void*)) {
+    int (*compare)(void*, Slice lhs, Slice rhs), const char* (*name)(void*)) {
   crocksdb_comparator_t* result = new crocksdb_comparator_t;
   result->state_ = state;
   result->destructor_ = destructor;
@@ -3973,17 +3962,18 @@ unsigned char crocksdb_ingest_external_file_optimized(
 
 crocksdb_slicetransform_t* crocksdb_slicetransform_create(
     void* state, void (*destructor)(void*),
-    char* (*transform)(void*, const char* key, size_t length,
-                       size_t* dst_length),
-    unsigned char (*in_domain)(void*, const char* key, size_t length),
-    unsigned char (*in_range)(void*, const char* key, size_t length),
+    void (*transform)(void*, Slice, Slice* dst),
+    bool (*in_domain)(void*, Slice),
+    bool (*full_length_enabled)(void*, size_t*),
+    bool (*same_result_when_appended)(void*, Slice),
     const char* (*name)(void*)) {
   auto result = std::make_shared<CRocksDBSliceTransform>();
   result->state_ = state;
   result->destructor_ = destructor;
   result->transform_ = transform;
   result->in_domain_ = in_domain;
-  result->in_range_ = in_range;
+  result->full_length_enabled_ = full_length_enabled;
+  result->same_result_when_appended_ = same_result_when_appended;
   result->name_ = name;
   auto t = new crocksdb_slicetransform_t;
   t->rep = result;
@@ -4624,8 +4614,8 @@ TablePropertiesCollection* crocksdb_get_properties_of_tables_in_range(
   }
 }
 
-void crocksdb_set_bottommost_compression(ColumnFamilyOptions* opt,
-                                         CompressionType c) {
+void crocksdb_options_set_bottommost_compression(ColumnFamilyOptions* opt,
+                                                 CompressionType c) {
   opt->bottommost_compression = c;
 }
 // Get All Key Versions
@@ -5316,56 +5306,6 @@ uint64_t crocksdb_iostats_context_logger_nanos(
   return ctx->rep.logger_nanos;
 }
 
-crocksdb_sst_partitioner_request_t* crocksdb_sst_partitioner_request_create() {
-  auto* req = new crocksdb_sst_partitioner_request_t;
-  req->rep =
-      new PartitionerRequest(req->prev_user_key, req->current_user_key, 0);
-  return req;
-}
-
-void crocksdb_sst_partitioner_request_destroy(
-    crocksdb_sst_partitioner_request_t* req) {
-  delete req->rep;
-  delete req;
-}
-
-const char* crocksdb_sst_partitioner_request_prev_user_key(
-    crocksdb_sst_partitioner_request_t* req, size_t* len) {
-  const Slice* prev_key = req->rep->prev_user_key;
-  *len = prev_key->size();
-  return prev_key->data();
-}
-
-const char* crocksdb_sst_partitioner_request_current_user_key(
-    crocksdb_sst_partitioner_request_t* req, size_t* len) {
-  const Slice* current_key = req->rep->current_user_key;
-  *len = current_key->size();
-  return current_key->data();
-}
-
-uint64_t crocksdb_sst_partitioner_request_current_output_file_size(
-    crocksdb_sst_partitioner_request_t* req) {
-  return req->rep->current_output_file_size;
-}
-
-void crocksdb_sst_partitioner_request_set_prev_user_key(
-    crocksdb_sst_partitioner_request_t* req, const char* key, size_t len) {
-  req->prev_user_key = Slice(key, len);
-  req->rep->prev_user_key = &req->prev_user_key;
-}
-
-void crocksdb_sst_partitioner_request_set_current_user_key(
-    crocksdb_sst_partitioner_request_t* req, const char* key, size_t len) {
-  req->current_user_key = Slice(key, len);
-  req->rep->current_user_key = &req->current_user_key;
-}
-
-void crocksdb_sst_partitioner_request_set_current_output_file_size(
-    crocksdb_sst_partitioner_request_t* req,
-    uint64_t current_output_file_size) {
-  req->rep->current_output_file_size = current_output_file_size;
-}
-
 struct crocksdb_sst_partitioner_impl_t : public SstPartitioner {
   void* underlying;
   void (*destructor)(void*);
@@ -5378,20 +5318,17 @@ struct crocksdb_sst_partitioner_impl_t : public SstPartitioner {
 
   PartitionerResult ShouldPartition(
       const PartitionerRequest& request) override {
-    crocksdb_sst_partitioner_request_t req;
-    req.rep = const_cast<PartitionerRequest*>(&request);
-    return should_partition_cb(underlying, &req);
+    return should_partition_cb(underlying, &request);
   }
 
   bool CanDoTrivialMove(const Slice& smallest_user_key,
                         const Slice& largest_user_key) override {
-    return can_do_trivial_move_cb(
-        underlying, smallest_user_key.data(), smallest_user_key.size(),
-        largest_user_key.data(), largest_user_key.size());
+    return can_do_trivial_move_cb(underlying, smallest_user_key,
+                                  largest_user_key);
   }
 };
 
-crocksdb_sst_partitioner_t* crocksdb_sst_partitioner_create(
+SstPartitioner* crocksdb_sst_partitioner_create(
     void* underlying, void (*destructor)(void*),
     crocksdb_sst_partitioner_should_partition_cb should_partition_cb,
     crocksdb_sst_partitioner_can_do_trivial_move_cb can_do_trivial_move_cb) {
@@ -5401,99 +5338,7 @@ crocksdb_sst_partitioner_t* crocksdb_sst_partitioner_create(
   sst_partitioner_impl->destructor = destructor;
   sst_partitioner_impl->should_partition_cb = should_partition_cb;
   sst_partitioner_impl->can_do_trivial_move_cb = can_do_trivial_move_cb;
-  crocksdb_sst_partitioner_t* sst_partitioner = new crocksdb_sst_partitioner_t;
-  sst_partitioner->rep.reset(sst_partitioner_impl);
-  return sst_partitioner;
-}
-
-void crocksdb_sst_partitioner_destroy(crocksdb_sst_partitioner_t* partitioner) {
-  delete partitioner;
-}
-
-rocksdb::PartitionerResult crocksdb_sst_partitioner_should_partition(
-    crocksdb_sst_partitioner_t* partitioner,
-    crocksdb_sst_partitioner_request_t* req) {
-  return partitioner->rep->ShouldPartition(*req->rep);
-}
-
-unsigned char crocksdb_sst_partitioner_can_do_trivial_move(
-    crocksdb_sst_partitioner_t* partitioner, const char* smallest_user_key,
-    size_t smallest_user_key_len, const char* largest_user_key,
-    size_t largest_user_key_len) {
-  Slice smallest_key(smallest_user_key, smallest_user_key_len);
-  Slice largest_key(largest_user_key, largest_user_key_len);
-  return partitioner->rep->CanDoTrivialMove(smallest_key, largest_key);
-}
-
-crocksdb_sst_partitioner_context_t* crocksdb_sst_partitioner_context_create() {
-  auto* rep = new SstPartitioner::Context;
-  auto* context = new crocksdb_sst_partitioner_context_t;
-  context->rep = rep;
-  return context;
-}
-
-void crocksdb_sst_partitioner_context_destroy(
-    crocksdb_sst_partitioner_context_t* context) {
-  delete context->rep;
-  delete context;
-}
-
-unsigned char crocksdb_sst_partitioner_context_is_full_compaction(
-    crocksdb_sst_partitioner_context_t* context) {
-  return context->rep->is_full_compaction;
-}
-
-unsigned char crocksdb_sst_partitioner_context_is_manual_compaction(
-    crocksdb_sst_partitioner_context_t* context) {
-  return context->rep->is_manual_compaction;
-}
-
-int crocksdb_sst_partitioner_context_output_level(
-    crocksdb_sst_partitioner_context_t* context) {
-  return context->rep->output_level;
-}
-
-const char* crocksdb_sst_partitioner_context_smallest_key(
-    crocksdb_sst_partitioner_context_t* context, size_t* key_len) {
-  auto& smallest_key = context->rep->smallest_user_key;
-  *key_len = smallest_key.size();
-  return smallest_key.data();
-}
-
-const char* crocksdb_sst_partitioner_context_largest_key(
-    crocksdb_sst_partitioner_context_t* context, size_t* key_len) {
-  auto& largest_key = context->rep->largest_user_key;
-  *key_len = largest_key.size();
-  return largest_key.data();
-}
-
-void crocksdb_sst_partitioner_context_set_is_full_compaction(
-    crocksdb_sst_partitioner_context_t* context,
-    unsigned char is_full_compaction) {
-  context->rep->is_full_compaction = is_full_compaction;
-}
-
-void crocksdb_sst_partitioner_context_set_is_manual_compaction(
-    crocksdb_sst_partitioner_context_t* context,
-    unsigned char is_manual_compaction) {
-  context->rep->is_manual_compaction = is_manual_compaction;
-}
-
-void crocksdb_sst_partitioner_context_set_output_level(
-    crocksdb_sst_partitioner_context_t* context, int output_level) {
-  context->rep->output_level = output_level;
-}
-
-void crocksdb_sst_partitioner_context_set_smallest_key(
-    crocksdb_sst_partitioner_context_t* context, const char* smallest_key,
-    size_t key_len) {
-  context->rep->smallest_user_key = Slice(smallest_key, key_len);
-}
-
-void crocksdb_sst_partitioner_context_set_largest_key(
-    crocksdb_sst_partitioner_context_t* context, const char* largest_key,
-    size_t key_len) {
-  context->rep->largest_user_key = Slice(largest_key, key_len);
+  return sst_partitioner_impl;
 }
 
 struct crocksdb_sst_partitioner_factory_impl_t : public SstPartitionerFactory {
@@ -5508,16 +5353,11 @@ struct crocksdb_sst_partitioner_factory_impl_t : public SstPartitionerFactory {
 
   std::unique_ptr<SstPartitioner> CreatePartitioner(
       const SstPartitioner::Context& partitioner_context) const override {
-    crocksdb_sst_partitioner_context_t context;
-    context.rep = const_cast<SstPartitioner::Context*>(&partitioner_context);
-    crocksdb_sst_partitioner_t* partitioner =
-        create_partitioner_cb(underlying, &context);
+    auto* partitioner = create_partitioner_cb(underlying, &partitioner_context);
     if (partitioner == nullptr) {
       return nullptr;
     }
-    std::unique_ptr<SstPartitioner> rep = std::move(partitioner->rep);
-    crocksdb_sst_partitioner_destroy(partitioner);
-    return rep;
+    return std::unique_ptr<SstPartitioner>(partitioner);
   }
 };
 
@@ -5541,24 +5381,6 @@ crocksdb_sst_partitioner_factory_t* crocksdb_sst_partitioner_factory_create(
 void crocksdb_sst_partitioner_factory_destroy(
     crocksdb_sst_partitioner_factory_t* factory) {
   delete factory;
-}
-
-const char* crocksdb_sst_partitioner_factory_name(
-    crocksdb_sst_partitioner_factory_t* factory) {
-  return factory->rep->Name();
-}
-
-crocksdb_sst_partitioner_t* crocksdb_sst_partitioner_factory_create_partitioner(
-    crocksdb_sst_partitioner_factory_t* factory,
-    crocksdb_sst_partitioner_context_t* context) {
-  std::unique_ptr<SstPartitioner> rep =
-      factory->rep->CreatePartitioner(*context->rep);
-  if (rep == nullptr) {
-    return nullptr;
-  }
-  crocksdb_sst_partitioner_t* partitioner = new crocksdb_sst_partitioner_t;
-  partitioner->rep = std::move(rep);
-  return partitioner;
 }
 
 /* Tools */
@@ -5673,9 +5495,9 @@ void ctitandb_options_set_blob_file_compression(TitanCFOptions* opts,
   opts->blob_file_compression = type;
 }
 
-void ctitandb_options_set_compression_options(
-    TitanCFOptions* opt, const CompressionOptions* compress) {
-  opt->blob_file_compression_options = *compress;
+CompressionOptions* ctitandb_options_get_blob_file_compression_options(
+    TitanCFOptions* opt) {
+  return &opt->blob_file_compression_options;
 }
 
 void ctitandb_options_set_gc_merge_rewrite(TitanCFOptions* opts, bool enable) {
@@ -5755,7 +5577,7 @@ void ctitandb_options_set_max_background_gc(TitanDBOptions* options,
 }
 
 void ctitandb_options_set_purge_obsolete_files_period_sec(
-    TitanDBOptions* options, unsigned int period) {
+    TitanDBOptions* options, uint32_t period) {
   options->purge_obsolete_files_period_sec = period;
 }
 
