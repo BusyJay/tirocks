@@ -1,7 +1,7 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
 use std::{
-    mem,
+    mem::{self},
     ops::{Deref, DerefMut},
     path::Path,
     sync::Arc,
@@ -25,29 +25,53 @@ use super::PathToSlice;
 pub type AccessHint = tirocks_sys::rocksdb_DBOptions_AccessHint;
 pub type WalRecoveryMode = tirocks_sys::rocksdb_WALRecoveryMode;
 
+#[repr(transparent)]
+pub struct RawDbOptions(rocksdb_DBOptions);
+
 #[derive(Debug)]
 #[repr(C)]
 pub struct DbOptions {
-    ptr: *mut rocksdb_DBOptions,
+    ptr: *mut RawDbOptions,
     env: Option<Arc<Env>>,
+}
+
+impl Deref for DbOptions {
+    type Target = RawDbOptions;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.ptr }
+    }
+}
+
+impl DerefMut for DbOptions {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut *self.ptr }
+    }
 }
 
 impl Default for DbOptions {
     #[inline]
     fn default() -> DbOptions {
-        let ptr = unsafe { tirocks_sys::crocksdb_dboptions_create() };
-        DbOptions { ptr, env: None }
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_dboptions_create();
+            DbOptions {
+                ptr: ptr as _,
+                env: None,
+            }
+        }
     }
 }
 
 impl Drop for DbOptions {
     #[inline]
     fn drop(&mut self) {
-        unsafe { tirocks_sys::crocksdb_dboptions_destroy(self.ptr) }
+        unsafe { tirocks_sys::crocksdb_dboptions_destroy(self.ptr as _) }
     }
 }
 
-impl DbOptions {
+impl RawDbOptions {
     /// By default, RocksDB uses only one background thread for flush and
     /// compaction. Calling this function will set it up such that total of
     /// `total_threads` is used. Good value for `total_threads` is the number of
@@ -56,7 +80,7 @@ impl DbOptions {
     #[inline]
     pub fn increase_parallelism(&mut self, total_threads: i32) -> &mut Self {
         unsafe {
-            tirocks_sys::crocksdb_options_increase_parallelism(self.ptr, total_threads);
+            tirocks_sys::crocksdb_options_increase_parallelism(self.as_mut_ptr(), total_threads);
         }
         self
     }
@@ -86,13 +110,12 @@ impl DbOptions {
     /// Use the specified object to interact with the environment,
     /// e.g. to read/write files, schedule background work, etc.
     /// Default: Env::Default()
+    ///
+    /// # Safety
+    /// It's undefinied behavior if `RawDbOptions` outlives `Env`.
     #[inline]
-    pub fn set_env(&mut self, env: Arc<Env>) -> &mut Self {
-        unsafe {
-            tirocks_sys::crocksdb_options_set_env(self.ptr, env.as_mut_ptr());
-        }
-        // It may be unsafe to drop the old env if the options is still used for other db.
-        self.env = Some(env);
+    pub unsafe fn set_env(&mut self, env: &Env) -> &mut Self {
+        tirocks_sys::crocksdb_options_set_env(self.as_mut_ptr(), env.as_mut_ptr());
         self
     }
 
@@ -180,7 +203,11 @@ impl DbOptions {
     #[inline]
     pub fn add_db_path(&mut self, path: impl AsRef<Path>, target_size: u64) -> &mut Self {
         unsafe {
-            tirocks_sys::crocksdb_options_add_db_paths(self.ptr, path.path_to_slice(), target_size);
+            tirocks_sys::crocksdb_options_add_db_paths(
+                self.as_mut_ptr(),
+                path.path_to_slice(),
+                target_size,
+            );
         }
         self
     }
@@ -557,20 +584,40 @@ impl DbOptions {
         /// independently if the process crashes later and tries to recover.
         atomic_flush: bool
     }
+
+    pub(crate) unsafe fn from_ptr<'a>(ptr: *const rocksdb_DBOptions) -> &'a RawDbOptions {
+        &*(ptr as *const RawDbOptions)
+    }
+
+    pub(crate) unsafe fn from_ptr_mut<'a>(ptr: *mut rocksdb_DBOptions) -> &'a mut RawDbOptions {
+        &mut *(ptr as *mut RawDbOptions)
+    }
+
+    pub(crate) fn as_mut_ptr(&mut self) -> *mut rocksdb_DBOptions {
+        self as *mut _ as _
+    }
 }
 
-#[derive(Debug)]
-#[repr(C)]
-pub struct TitanDbOptions {
-    ptr: *mut rocksdb_titandb_TitanDBOptions,
-    env: Option<Arc<Env>>,
+impl DbOptions {
+    /// Same as `RawDbOptions::set_env` but manage the lifetime of `env`.
+    #[inline]
+    pub fn set_env(&mut self, env: Arc<Env>) -> &mut Self {
+        unsafe {
+            (**self).set_env(&env);
+        }
+        self.env = Some(env);
+        self
+    }
 }
 
-impl Deref for TitanDbOptions {
-    type Target = DbOptions;
+#[repr(transparent)]
+pub struct RawTitanDbOptions(rocksdb_titandb_TitanDBOptions);
+
+impl Deref for RawTitanDbOptions {
+    type Target = RawDbOptions;
 
     #[inline]
-    fn deref(&self) -> &DbOptions {
+    fn deref(&self) -> &Self::Target {
         unsafe {
             // TitanDBOptions inherits DBOptions, so the two structs are identical.
             mem::transmute(self)
@@ -578,7 +625,7 @@ impl Deref for TitanDbOptions {
     }
 }
 
-impl DerefMut for TitanDbOptions {
+impl DerefMut for RawTitanDbOptions {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe {
@@ -588,7 +635,30 @@ impl DerefMut for TitanDbOptions {
     }
 }
 
-impl TitanDbOptions {
+#[derive(Debug)]
+#[repr(C)]
+pub struct TitanDbOptions {
+    ptr: *mut RawTitanDbOptions,
+    env: Option<Arc<Env>>,
+}
+
+impl Deref for TitanDbOptions {
+    type Target = RawTitanDbOptions;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.ptr }
+    }
+}
+
+impl DerefMut for TitanDbOptions {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut *self.ptr }
+    }
+}
+
+impl RawTitanDbOptions {
     simple_access! {
         ctitandb_options
 
@@ -615,19 +685,50 @@ impl TitanDbOptions {
         /// Default: 10s
         purge_obsolete_files_period / purge_obsolete_files_period_sec / : Duration [ .as_secs() as u32 ]
     }
+
+    pub(crate) unsafe fn from_ptr<'a>(ptr: *const rocksdb_titandb_TitanDBOptions) -> &'a Self {
+        &*(ptr as *const RawTitanDbOptions)
+    }
+
+    pub(crate) unsafe fn from_ptr_mut<'a>(
+        ptr: *mut rocksdb_titandb_TitanDBOptions,
+    ) -> &'a mut Self {
+        &mut *(ptr as *mut RawTitanDbOptions)
+    }
+
+    pub(crate) fn as_mut_ptr(&mut self) -> *mut rocksdb_titandb_TitanDBOptions {
+        self as *mut _ as _
+    }
 }
 
 impl Default for TitanDbOptions {
     #[inline]
     fn default() -> TitanDbOptions {
-        let ptr = unsafe { tirocks_sys::ctitandb_dboptions_create() };
-        TitanDbOptions { ptr, env: None }
+        unsafe {
+            let ptr = tirocks_sys::ctitandb_dboptions_create();
+            TitanDbOptions {
+                ptr: ptr as _,
+                env: None,
+            }
+        }
+    }
+}
+
+impl TitanDbOptions {
+    /// Same as `DbOptions::set_env`.
+    #[inline]
+    pub fn set_env(&mut self, env: Arc<Env>) -> &mut Self {
+        unsafe {
+            (**self).set_env(&env);
+        }
+        self.env = Some(env);
+        self
     }
 }
 
 impl Drop for TitanDbOptions {
     #[inline]
     fn drop(&mut self) {
-        unsafe { tirocks_sys::ctitandb_dboptions_destroy(self.ptr) }
+        unsafe { tirocks_sys::ctitandb_dboptions_destroy(self.ptr as _) }
     }
 }

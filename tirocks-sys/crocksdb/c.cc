@@ -5401,6 +5401,18 @@ crocksdb_column_family_handle_t* ctitandb_create_column_family(
 
 /* TitanDBOptions */
 
+TitanOptions* ctitandb_options_create() { return new TitanOptions; }
+
+TitanDBOptions* ctitandb_options_get_dboptions(TitanOptions* opt) {
+  return static_cast<TitanDBOptions*>(opt);
+}
+
+TitanCFOptions* ctitandb_options_get_cfoptions(TitanOptions* opt) {
+  return static_cast<TitanCFOptions*>(opt);
+}
+
+void ctitandb_options_destroy(TitanOptions* opt) { delete opt; }
+
 TitanDBOptions* ctitandb_dboptions_create() { return new TitanDBOptions(); }
 
 void ctitandb_dboptions_destroy(TitanDBOptions* opt) { delete opt; }

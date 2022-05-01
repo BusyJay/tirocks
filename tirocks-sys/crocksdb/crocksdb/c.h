@@ -2182,6 +2182,12 @@ ctitandb_create_column_family(crocksdb_t* db,
 
 /* TitanDBOptions */
 
+extern C_ROCKSDB_LIBRARY_API TitanOptions* ctitandb_options_create();
+extern C_ROCKSDB_LIBRARY_API TitanDBOptions* ctitandb_options_get_dboptions(
+    TitanOptions*);
+extern C_ROCKSDB_LIBRARY_API TitanCFOptions* ctitandb_options_get_cfoptions(
+    TitanOptions*);
+extern C_ROCKSDB_LIBRARY_API void ctitandb_options_destroy(TitanOptions*);
 extern C_ROCKSDB_LIBRARY_API TitanDBOptions* ctitandb_dboptions_create();
 extern C_ROCKSDB_LIBRARY_API void ctitandb_dboptions_destroy(TitanDBOptions*);
 extern C_ROCKSDB_LIBRARY_API TitanCFOptions* ctitandb_cfoptions_create();

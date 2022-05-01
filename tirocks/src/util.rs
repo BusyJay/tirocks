@@ -28,7 +28,7 @@ macro_rules! simple_access {
             #[inline]
             pub fn [<$op _ $field>](&mut self, val: $ty) -> &mut Self {
                 unsafe {
-                    tirocks_sys::[<$prefix _ $op _ $rename>](self.ptr, val $($($new_tt)*)?)
+                    tirocks_sys::[<$prefix _ $op _ $rename>](self.as_mut_ptr(), val $($($new_tt)*)?)
                 }
                 self
             }

@@ -54,6 +54,11 @@ impl LruCacheBuilder {
         }
     }
 
+    #[inline]
+    fn as_mut_ptr(&mut self) -> *mut rocksdb_LRUCacheOptions {
+        self.ptr
+    }
+
     pub fn build(&self) -> SysCache {
         unsafe {
             let ptr = tirocks_sys::crocksdb_cache_create_lru(self.ptr);

@@ -5185,6 +5185,22 @@ extern "C" {
     ) -> *mut crocksdb_column_family_handle_t;
 }
 extern "C" {
+    pub fn ctitandb_options_create() -> *mut rocksdb_titandb_TitanOptions;
+}
+extern "C" {
+    pub fn ctitandb_options_get_dboptions(
+        arg1: *mut rocksdb_titandb_TitanOptions,
+    ) -> *mut rocksdb_titandb_TitanDBOptions;
+}
+extern "C" {
+    pub fn ctitandb_options_get_cfoptions(
+        arg1: *mut rocksdb_titandb_TitanOptions,
+    ) -> *mut rocksdb_titandb_TitanCFOptions;
+}
+extern "C" {
+    pub fn ctitandb_options_destroy(arg1: *mut rocksdb_titandb_TitanOptions);
+}
+extern "C" {
     pub fn ctitandb_dboptions_create() -> *mut rocksdb_titandb_TitanDBOptions;
 }
 extern "C" {

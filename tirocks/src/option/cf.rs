@@ -1,7 +1,7 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
 use std::{
-    mem,
+    mem::{self},
     ops::{Deref, DerefMut},
     sync::Arc,
 };
@@ -23,20 +23,41 @@ pub type FifoCompactionOptions = tirocks_sys::rocksdb_CompactionOptionsFIFO;
 pub type UniversalCompactionOptions = tirocks_sys::rocksdb_CompactionOptionsUniversal;
 pub type TitanBlobRunMode = tirocks_sys::rocksdb_titandb_TitanBlobRunMode;
 
+#[repr(transparent)]
+pub struct RawCfOptions(rocksdb_ColumnFamilyOptions);
+
 #[derive(Debug)]
 #[repr(C)]
 pub struct CfOptions {
-    ptr: *mut rocksdb_ColumnFamilyOptions,
+    ptr: *mut RawCfOptions,
     comparator: Option<Arc<SysComparator>>,
+}
+
+impl Deref for CfOptions {
+    type Target = RawCfOptions;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.ptr }
+    }
+}
+
+impl DerefMut for CfOptions {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut *self.ptr }
+    }
 }
 
 impl Default for CfOptions {
     #[inline]
     fn default() -> CfOptions {
-        let ptr = unsafe { tirocks_sys::crocksdb_cfoptions_create() };
-        CfOptions {
-            ptr,
-            comparator: None,
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_cfoptions_create();
+            CfOptions {
+                ptr: ptr as _,
+                comparator: None,
+            }
         }
     }
 }
@@ -44,11 +65,13 @@ impl Default for CfOptions {
 impl Drop for CfOptions {
     #[inline]
     fn drop(&mut self) {
-        unsafe { tirocks_sys::crocksdb_cfoptions_destroy(self.ptr) }
+        unsafe {
+            tirocks_sys::crocksdb_cfoptions_destroy(self.ptr as _);
+        }
     }
 }
 
-impl CfOptions {
+impl RawCfOptions {
     simple_access! {
         /// The maximum number of write buffers that are built up in memory.
         /// The default and the minimum number is 2, so that when 1 write buffer
@@ -214,7 +237,7 @@ impl CfOptions {
     ) -> &mut Self {
         unsafe {
             tirocks_sys::crocksdb_options_set_compression_per_level(
-                self.ptr,
+                self.as_mut_ptr(),
                 compression_per_level.as_ptr(),
                 compression_per_level.len(),
             );
@@ -360,7 +383,7 @@ impl CfOptions {
     pub fn set_max_bytes_for_level_multiplier_additional(&mut self, level: &[i32]) -> &mut Self {
         unsafe {
             tirocks_sys::crocksdb_options_set_max_bytes_for_level_multiplier_additional(
-                self.ptr,
+                self.as_mut_ptr(),
                 level.as_ptr(),
                 level.len(),
             );
@@ -410,7 +433,9 @@ impl CfOptions {
     /// SetOptions("compaction_options_universal", "{size_ratio=2;}")
     #[inline]
     pub fn compaction_options_universal_mut(&mut self) -> &mut UniversalCompactionOptions {
-        unsafe { &mut *tirocks_sys::crocksdb_options_get_universal_compaction_options(self.ptr) }
+        unsafe {
+            &mut *tirocks_sys::crocksdb_options_get_universal_compaction_options(self.as_mut_ptr())
+        }
     }
 
     /// The options for FIFO compaction style
@@ -420,7 +445,9 @@ impl CfOptions {
     /// SetOptions("compaction_options_fifo", "{max_table_files_size=100;}")
     #[inline]
     pub fn compaction_options_fifo_mut(&mut self) -> &mut FifoCompactionOptions {
-        unsafe { &mut *tirocks_sys::crocksdb_options_get_fifo_compaction_options(self.ptr) }
+        unsafe {
+            &mut *tirocks_sys::crocksdb_options_get_fifo_compaction_options(self.as_mut_ptr())
+        }
     }
 
     simple_access! {
@@ -509,7 +536,7 @@ impl CfOptions {
     pub fn optimize_for_point_lookup(&mut self, block_cache_size: u64) -> &mut Self {
         unsafe {
             tirocks_sys::crocksdb_options_optimize_for_point_lookup(
-                self.ptr,
+                self.as_mut_ptr(),
                 block_cache_size / 1024 / 1024,
             );
         }
@@ -530,7 +557,7 @@ impl CfOptions {
     pub fn optimize_level_style_compaction(&mut self, memtable_memory_budget: u64) -> &mut Self {
         unsafe {
             tirocks_sys::crocksdb_options_optimize_level_style_compaction(
-                self.ptr,
+                self.as_mut_ptr(),
                 memtable_memory_budget,
             );
         }
@@ -555,7 +582,7 @@ impl CfOptions {
     ) -> &mut Self {
         unsafe {
             tirocks_sys::crocksdb_options_optimize_universal_style_compaction(
-                self.ptr,
+                self.as_mut_ptr(),
                 memtable_memory_budget,
             );
         }
@@ -568,12 +595,12 @@ impl CfOptions {
     /// REQUIRES: The client must ensure that the comparator supplied
     /// here has the same name and orders keys *exactly* the same as the
     /// comparator provided to previous open calls on the same DB.
+    ///
+    /// # Safety
+    /// It's undefinied behavior if `RawCfOptions` outlives `SysComparator`.
     #[inline]
-    pub fn set_comparator(&mut self, c: Arc<SysComparator>) -> &mut Self {
-        unsafe {
-            tirocks_sys::crocksdb_options_set_comparator(self.ptr, c.get());
-        }
-        self.comparator = Some(c);
+    pub unsafe fn set_comparator(&mut self, c: &SysComparator) -> &mut Self {
+        tirocks_sys::crocksdb_options_set_comparator(self.as_mut_ptr(), c.get());
         self
     }
 
@@ -665,13 +692,17 @@ impl CfOptions {
     /// CompressionOptions.
     #[inline]
     pub fn bottommost_compression_opts_mut(&mut self) -> &mut CompressionOptions {
-        unsafe { &mut *tirocks_sys::crocksdb_options_get_bottommost_compression_options(self.ptr) }
+        unsafe {
+            &mut *tirocks_sys::crocksdb_options_get_bottommost_compression_options(
+                self.as_mut_ptr(),
+            )
+        }
     }
 
     /// Different options for compression algorithms
     #[inline]
     pub fn compression_opts_mut(&mut self) -> &mut CompressionOptions {
-        unsafe { &mut *tirocks_sys::crocksdb_options_get_compression_options(self.ptr) }
+        unsafe { &mut *tirocks_sys::crocksdb_options_get_compression_options(self.as_mut_ptr()) }
     }
 
     simple_access! {
@@ -735,20 +766,40 @@ impl CfOptions {
         /// THE FEATURE IS STILL EXPERIMENTAL
         sst_partitioner_factory: &SysSstParitionerFactory [ .get() ]
     }
+
+    pub(crate) unsafe fn from_ptr<'a>(ptr: *const rocksdb_ColumnFamilyOptions) -> &'a Self {
+        &*(ptr as *const RawCfOptions)
+    }
+
+    pub(crate) unsafe fn from_ptr_mut<'a>(ptr: *mut rocksdb_ColumnFamilyOptions) -> &'a mut Self {
+        &mut *(ptr as *mut RawCfOptions)
+    }
+
+    pub(crate) fn as_mut_ptr(&mut self) -> *mut rocksdb_ColumnFamilyOptions {
+        self as *mut _ as _
+    }
 }
 
-#[derive(Debug)]
-#[repr(C)]
-pub struct TitanCfOptions {
-    ptr: *mut rocksdb_titandb_TitanCFOptions,
-    _comparator: Option<Arc<SysComparator>>,
+impl CfOptions {
+    /// Same as `RawCfOptions::set_comparator` but manages the lifetime of `c`.
+    #[inline]
+    pub fn set_comparator(&mut self, c: Arc<SysComparator>) -> &mut Self {
+        unsafe {
+            (**self).set_comparator(&c);
+        }
+        self.comparator = Some(c);
+        self
+    }
 }
 
-impl Deref for TitanCfOptions {
-    type Target = CfOptions;
+#[repr(transparent)]
+pub struct RawTitanCfOptions(rocksdb_titandb_TitanCFOptions);
+
+impl Deref for RawTitanCfOptions {
+    type Target = RawCfOptions;
 
     #[inline]
-    fn deref(&self) -> &CfOptions {
+    fn deref(&self) -> &Self::Target {
         unsafe {
             // TitanCFOptions inherits CFOptions, so the two structs are identical.
             mem::transmute(self)
@@ -756,7 +807,7 @@ impl Deref for TitanCfOptions {
     }
 }
 
-impl DerefMut for TitanCfOptions {
+impl DerefMut for RawTitanCfOptions {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe {
@@ -766,7 +817,30 @@ impl DerefMut for TitanCfOptions {
     }
 }
 
-impl TitanCfOptions {
+#[derive(Debug)]
+#[repr(C)]
+pub struct TitanCfOptions {
+    ptr: *mut RawTitanCfOptions,
+    comparator: Option<Arc<SysComparator>>,
+}
+
+impl Deref for TitanCfOptions {
+    type Target = RawTitanCfOptions;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.ptr }
+    }
+}
+
+impl DerefMut for TitanCfOptions {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut *self.ptr }
+    }
+}
+
+impl RawTitanCfOptions {
     simple_access! {
         ctitandb_options
 
@@ -787,7 +861,9 @@ impl TitanCfOptions {
     /// blob file is compressed. We use this options mainly to configure the
     /// compression dictionary.
     pub fn blob_file_compression_options_mut(&mut self) -> &mut CompressionOptions {
-        unsafe { &mut *tirocks_sys::ctitandb_options_get_blob_file_compression_options(self.ptr) }
+        unsafe {
+            &mut *tirocks_sys::ctitandb_options_get_blob_file_compression_options(self.as_mut_ptr())
+        }
     }
 
     simple_access! {
@@ -868,15 +944,43 @@ impl TitanCfOptions {
         /// Default: false
         gc_merge_rewrite: bool
     }
+
+    pub(crate) unsafe fn from_ptr<'a>(ptr: *const rocksdb_titandb_TitanCFOptions) -> &'a Self {
+        &*(ptr as *const RawTitanCfOptions)
+    }
+
+    pub(crate) unsafe fn from_ptr_mut<'a>(
+        ptr: *mut rocksdb_titandb_TitanCFOptions,
+    ) -> &'a mut Self {
+        &mut *(ptr as *mut RawTitanCfOptions)
+    }
+
+    pub(crate) fn as_mut_ptr(&mut self) -> *mut rocksdb_titandb_TitanCFOptions {
+        self as *mut _ as _
+    }
+}
+
+impl TitanCfOptions {
+    /// Same as `CfOptions::set_comparator`.
+    #[inline]
+    pub fn set_comparator(&mut self, c: Arc<SysComparator>) -> &mut Self {
+        unsafe {
+            (**self).set_comparator(&c);
+        }
+        self.comparator = Some(c);
+        self
+    }
 }
 
 impl Default for TitanCfOptions {
     #[inline]
-    fn default() -> TitanCfOptions {
-        let ptr = unsafe { tirocks_sys::ctitandb_cfoptions_create() };
-        TitanCfOptions {
-            ptr,
-            _comparator: None,
+    fn default() -> Self {
+        unsafe {
+            let ptr = tirocks_sys::ctitandb_cfoptions_create();
+            Self {
+                ptr: ptr as _,
+                comparator: None,
+            }
         }
     }
 }
@@ -884,6 +988,6 @@ impl Default for TitanCfOptions {
 impl Drop for TitanCfOptions {
     #[inline]
     fn drop(&mut self) {
-        unsafe { tirocks_sys::ctitandb_cfoptions_destroy(self.ptr) }
+        unsafe { tirocks_sys::ctitandb_cfoptions_destroy(self.ptr as _) }
     }
 }
