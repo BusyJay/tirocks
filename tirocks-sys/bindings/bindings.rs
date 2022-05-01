@@ -288,6 +288,13 @@ pub struct rocksdb_SstPartitioner_Context {
     pub smallest_user_key: rocksdb_Slice,
     pub largest_user_key: rocksdb_Slice,
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_JemallocAllocatorOptions {
+    pub limit_tcache_size: bool,
+    pub tcache_size_lower_bound: usize,
+    pub tcache_size_upper_bound: usize,
+}
 #[repr(u32)]
 #[doc = " Keep adding ticker's here."]
 #[doc = "  1. Any ticker should be added before TICKER_ENUM_MAX."]
@@ -765,6 +772,19 @@ pub enum rocksdb_BlockBasedTableOptions_IndexType {
     kTwoLevelIndexSearch = 2,
     kBinarySearchWithFirstKey = 3,
 }
+#[repr(i8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_BlockBasedTableOptions_DataBlockIndexType {
+    kDataBlockBinarySearch = 0,
+    kDataBlockBinaryAndHash = 1,
+}
+#[repr(i8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_BlockBasedTableOptions_IndexShorteningMode {
+    kNoShortening = 0,
+    kShortenSeparators = 1,
+    kShortenSeparatorsAndSuccessor = 2,
+}
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_titandb_TitanBlobRunMode {
@@ -856,22 +876,12 @@ pub struct crocksdb_restore_options_t {
 }
 #[repr(C)]
 #[derive(Debug)]
-pub struct crocksdb_lru_cache_options_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
 pub struct crocksdb_cache_t {
     _unused: [u8; 0],
 }
 #[repr(C)]
 #[derive(Debug)]
 pub struct crocksdb_statistics_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_memory_allocator_t {
     _unused: [u8; 0],
 }
 #[repr(C)]
@@ -917,11 +927,6 @@ pub struct crocksdb_mergeoperator_t {
 #[repr(C)]
 #[derive(Debug)]
 pub struct crocksdb_column_family_descriptor {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_block_based_table_options_t {
     _unused: [u8; 0],
 }
 #[repr(C)]
@@ -2208,123 +2213,123 @@ extern "C" {
     ) -> u32;
 }
 extern "C" {
-    pub fn crocksdb_block_based_options_create() -> *mut crocksdb_block_based_table_options_t;
+    pub fn crocksdb_block_based_options_create() -> *mut rocksdb_BlockBasedTableOptions;
 }
 extern "C" {
-    pub fn crocksdb_block_based_options_destroy(options: *mut crocksdb_block_based_table_options_t);
+    pub fn crocksdb_block_based_options_destroy(options: *mut rocksdb_BlockBasedTableOptions);
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_metadata_block_size(
-        options: *mut crocksdb_block_based_table_options_t,
+        options: *mut rocksdb_BlockBasedTableOptions,
         block_size: usize,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_block_size(
-        options: *mut crocksdb_block_based_table_options_t,
+        options: *mut rocksdb_BlockBasedTableOptions,
         block_size: usize,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_block_size_deviation(
-        options: *mut crocksdb_block_based_table_options_t,
+        options: *mut rocksdb_BlockBasedTableOptions,
         block_size_deviation: libc::c_int,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_block_restart_interval(
-        options: *mut crocksdb_block_based_table_options_t,
+        options: *mut rocksdb_BlockBasedTableOptions,
         block_restart_interval: libc::c_int,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_filter_policy(
-        options: *mut crocksdb_block_based_table_options_t,
+        options: *mut rocksdb_BlockBasedTableOptions,
         filter_policy: *mut crocksdb_filterpolicy_t,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_no_block_cache(
-        options: *mut crocksdb_block_based_table_options_t,
-        no_block_cache: libc::c_uchar,
+        options: *mut rocksdb_BlockBasedTableOptions,
+        no_block_cache: bool,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_block_cache(
-        options: *mut crocksdb_block_based_table_options_t,
+        options: *mut rocksdb_BlockBasedTableOptions,
         block_cache: *mut crocksdb_cache_t,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_block_cache_compressed(
-        options: *mut crocksdb_block_based_table_options_t,
+        options: *mut rocksdb_BlockBasedTableOptions,
         block_cache_compressed: *mut crocksdb_cache_t,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_whole_key_filtering(
-        arg1: *mut crocksdb_block_based_table_options_t,
-        arg2: libc::c_uchar,
+        arg1: *mut rocksdb_BlockBasedTableOptions,
+        arg2: bool,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_format_version(
-        arg1: *mut crocksdb_block_based_table_options_t,
+        arg1: *mut rocksdb_BlockBasedTableOptions,
         arg2: libc::c_int,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_index_type(
-        arg1: *mut crocksdb_block_based_table_options_t,
+        arg1: *mut rocksdb_BlockBasedTableOptions,
         arg2: rocksdb_BlockBasedTableOptions_IndexType,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_hash_index_allow_collision(
-        arg1: *mut crocksdb_block_based_table_options_t,
-        arg2: libc::c_uchar,
+        arg1: *mut rocksdb_BlockBasedTableOptions,
+        arg2: bool,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_partition_filters(
-        arg1: *mut crocksdb_block_based_table_options_t,
-        arg2: libc::c_uchar,
+        arg1: *mut rocksdb_BlockBasedTableOptions,
+        arg2: bool,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_cache_index_and_filter_blocks(
-        arg1: *mut crocksdb_block_based_table_options_t,
-        arg2: libc::c_uchar,
+        arg1: *mut rocksdb_BlockBasedTableOptions,
+        arg2: bool,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_pin_top_level_index_and_filter(
-        arg1: *mut crocksdb_block_based_table_options_t,
-        arg2: libc::c_uchar,
+        arg1: *mut rocksdb_BlockBasedTableOptions,
+        arg2: bool,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_cache_index_and_filter_blocks_with_high_priority(
-        arg1: *mut crocksdb_block_based_table_options_t,
-        arg2: libc::c_uchar,
+        arg1: *mut rocksdb_BlockBasedTableOptions,
+        arg2: bool,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_pin_l0_filter_and_index_blocks_in_cache(
-        arg1: *mut crocksdb_block_based_table_options_t,
-        arg2: libc::c_uchar,
+        arg1: *mut rocksdb_BlockBasedTableOptions,
+        arg2: bool,
     );
 }
 extern "C" {
     pub fn crocksdb_block_based_options_set_read_amp_bytes_per_bit(
-        arg1: *mut crocksdb_block_based_table_options_t,
+        arg1: *mut rocksdb_BlockBasedTableOptions,
         arg2: libc::c_int,
     );
 }
 extern "C" {
     pub fn crocksdb_options_set_block_based_table_factory(
         opt: *mut rocksdb_ColumnFamilyOptions,
-        table_options: *mut crocksdb_block_based_table_options_t,
+        table_options: *mut rocksdb_BlockBasedTableOptions,
     );
 }
 extern "C" {
@@ -3753,53 +3758,41 @@ extern "C" {
     pub fn crocksdb_flushoptions_init(arg1: *mut rocksdb_FlushOptions);
 }
 extern "C" {
-    pub fn crocksdb_jemalloc_nodump_allocator_create(
-        s: *mut rocksdb_Status,
-    ) -> *mut crocksdb_memory_allocator_t;
+    pub fn crocksdb_lru_cache_options_create() -> *mut rocksdb_LRUCacheOptions;
 }
 extern "C" {
-    pub fn crocksdb_memory_allocator_destroy(arg1: *mut crocksdb_memory_allocator_t);
+    pub fn crocksdb_lru_cache_options_destroy(arg1: *mut rocksdb_LRUCacheOptions);
 }
 extern "C" {
-    pub fn crocksdb_lru_cache_options_create() -> *mut crocksdb_lru_cache_options_t;
-}
-extern "C" {
-    pub fn crocksdb_lru_cache_options_destroy(arg1: *mut crocksdb_lru_cache_options_t);
-}
-extern "C" {
-    pub fn crocksdb_lru_cache_options_set_capacity(
-        arg1: *mut crocksdb_lru_cache_options_t,
-        arg2: usize,
-    );
+    pub fn crocksdb_lru_cache_options_set_capacity(arg1: *mut rocksdb_LRUCacheOptions, arg2: usize);
 }
 extern "C" {
     pub fn crocksdb_lru_cache_options_set_num_shard_bits(
-        arg1: *mut crocksdb_lru_cache_options_t,
+        arg1: *mut rocksdb_LRUCacheOptions,
         arg2: libc::c_int,
     );
 }
 extern "C" {
     pub fn crocksdb_lru_cache_options_set_strict_capacity_limit(
-        arg1: *mut crocksdb_lru_cache_options_t,
-        arg2: libc::c_uchar,
+        arg1: *mut rocksdb_LRUCacheOptions,
+        arg2: bool,
     );
 }
 extern "C" {
     pub fn crocksdb_lru_cache_options_set_high_pri_pool_ratio(
-        arg1: *mut crocksdb_lru_cache_options_t,
+        arg1: *mut rocksdb_LRUCacheOptions,
         arg2: f64,
     );
 }
 extern "C" {
-    pub fn crocksdb_lru_cache_options_set_memory_allocator(
-        arg1: *mut crocksdb_lru_cache_options_t,
-        arg2: *mut crocksdb_memory_allocator_t,
+    pub fn crocksdb_lru_cache_options_set_use_jemalloc(
+        arg1: *mut rocksdb_LRUCacheOptions,
+        arg2: *const rocksdb_JemallocAllocatorOptions,
+        arg3: *mut rocksdb_Status,
     );
 }
 extern "C" {
-    pub fn crocksdb_cache_create_lru(
-        arg1: *mut crocksdb_lru_cache_options_t,
-    ) -> *mut crocksdb_cache_t;
+    pub fn crocksdb_cache_create_lru(arg1: *mut rocksdb_LRUCacheOptions) -> *mut crocksdb_cache_t;
 }
 extern "C" {
     pub fn crocksdb_cache_destroy(cache: *mut crocksdb_cache_t);

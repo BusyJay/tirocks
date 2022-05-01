@@ -190,8 +190,6 @@ using rocksdb::titandb::TitanDBOptions;
 using rocksdb::titandb::TitanOptions;
 using rocksdb::titandb::TitanReadOptions;
 
-using rocksdb::MemoryAllocator;
-
 #ifdef OPENSSL
 using rocksdb::encryption::EncryptionMethod;
 using rocksdb::encryption::FileEncryptionInfo;
@@ -233,9 +231,6 @@ struct crocksdb_fifo_compaction_options_t {
 };
 struct crocksdb_column_family_descriptor {
   ColumnFamilyDescriptor rep;
-};
-struct crocksdb_block_based_table_options_t {
-  BlockBasedTableOptions rep;
 };
 struct crocksdb_cuckoo_table_options_t {
   CuckooTableOptions rep;
@@ -294,17 +289,11 @@ struct crocksdb_logger_impl_t : public Logger {
     delete[] buffer_;
   }
 };
-struct crocksdb_lru_cache_options_t {
-  LRUCacheOptions rep;
-};
 struct crocksdb_cache_t {
   shared_ptr<Cache> rep;
 };
 struct crocksdb_statistics_t {
   std::shared_ptr<Statistics> statistics;
-};
-struct crocksdb_memory_allocator_t {
-  shared_ptr<MemoryAllocator> rep;
 };
 struct crocksdb_livefiles_t {
   std::vector<LiveFileMetaData> rep;
@@ -1881,121 +1870,115 @@ uint32_t crocksdb_writebatch_iterator_column_family_id(
   return it->rep->GetColumnFamilyId();
 }
 
-crocksdb_block_based_table_options_t* crocksdb_block_based_options_create() {
-  return new crocksdb_block_based_table_options_t;
+BlockBasedTableOptions* crocksdb_block_based_options_create() {
+  return new BlockBasedTableOptions;
 }
 
 void crocksdb_block_based_options_destroy(
-    crocksdb_block_based_table_options_t* options) {
+    BlockBasedTableOptions* options) {
   delete options;
 }
 
 void crocksdb_block_based_options_set_metadata_block_size(
-    crocksdb_block_based_table_options_t* options, size_t block_size) {
-  options->rep.metadata_block_size = block_size;
+    BlockBasedTableOptions* options, size_t block_size) {
+  options->metadata_block_size = block_size;
 }
 
 void crocksdb_block_based_options_set_block_size(
-    crocksdb_block_based_table_options_t* options, size_t block_size) {
-  options->rep.block_size = block_size;
+    BlockBasedTableOptions* options, size_t block_size) {
+  options->block_size = block_size;
 }
 
 void crocksdb_block_based_options_set_block_size_deviation(
-    crocksdb_block_based_table_options_t* options, int block_size_deviation) {
-  options->rep.block_size_deviation = block_size_deviation;
+    BlockBasedTableOptions* options, int block_size_deviation) {
+  options->block_size_deviation = block_size_deviation;
 }
 
 void crocksdb_block_based_options_set_block_restart_interval(
-    crocksdb_block_based_table_options_t* options, int block_restart_interval) {
-  options->rep.block_restart_interval = block_restart_interval;
+    BlockBasedTableOptions* options, int block_restart_interval) {
+  options->block_restart_interval = block_restart_interval;
 }
 
 void crocksdb_block_based_options_set_filter_policy(
-    crocksdb_block_based_table_options_t* options,
+    BlockBasedTableOptions* options,
     crocksdb_filterpolicy_t* filter_policy) {
-  options->rep.filter_policy.reset(filter_policy);
+  options->filter_policy.reset(filter_policy);
 }
 
 void crocksdb_block_based_options_set_no_block_cache(
-    crocksdb_block_based_table_options_t* options,
-    unsigned char no_block_cache) {
-  options->rep.no_block_cache = no_block_cache;
+    BlockBasedTableOptions* options,
+    bool no_block_cache) {
+  options->no_block_cache = no_block_cache;
 }
 
 void crocksdb_block_based_options_set_block_cache(
-    crocksdb_block_based_table_options_t* options,
+    BlockBasedTableOptions* options,
     crocksdb_cache_t* block_cache) {
-  if (block_cache) {
-    options->rep.block_cache = block_cache->rep;
-  }
+  options->block_cache = block_cache->rep;
 }
 
 void crocksdb_block_based_options_set_block_cache_compressed(
-    crocksdb_block_based_table_options_t* options,
+    BlockBasedTableOptions* options,
     crocksdb_cache_t* block_cache_compressed) {
-  if (block_cache_compressed) {
-    options->rep.block_cache_compressed = block_cache_compressed->rep;
-  }
+  options->block_cache_compressed = block_cache_compressed->rep;
 }
 
 void crocksdb_block_based_options_set_whole_key_filtering(
-    crocksdb_block_based_table_options_t* options, unsigned char v) {
-  options->rep.whole_key_filtering = v;
+    BlockBasedTableOptions* options, bool v) {
+  options->whole_key_filtering = v;
 }
 
 void crocksdb_block_based_options_set_format_version(
-    crocksdb_block_based_table_options_t* options, int v) {
-  options->rep.format_version = v;
+    BlockBasedTableOptions* options, int v) {
+  options->format_version = v;
 }
 
 void crocksdb_block_based_options_set_index_type(
-    crocksdb_block_based_table_options_t* options,
+    BlockBasedTableOptions* options,
     BlockBasedTableOptions::IndexType v) {
-  options->rep.index_type = v;
+  options->index_type = v;
 }
 
 void crocksdb_block_based_options_set_hash_index_allow_collision(
-    crocksdb_block_based_table_options_t* options, unsigned char v) {
-  options->rep.hash_index_allow_collision = v;
+    BlockBasedTableOptions* options, bool v) {
+  options->hash_index_allow_collision = v;
 }
 
 void crocksdb_block_based_options_set_partition_filters(
-    crocksdb_block_based_table_options_t* options, unsigned char v) {
-  options->rep.partition_filters = v;
+    BlockBasedTableOptions* options, bool v) {
+  options->partition_filters = v;
 }
 
 void crocksdb_block_based_options_set_cache_index_and_filter_blocks(
-    crocksdb_block_based_table_options_t* options, unsigned char v) {
-  options->rep.cache_index_and_filter_blocks = v;
+    BlockBasedTableOptions* options, bool v) {
+  options->cache_index_and_filter_blocks = v;
 }
 
 void crocksdb_block_based_options_set_pin_top_level_index_and_filter(
-    crocksdb_block_based_table_options_t* options, unsigned char v) {
-  options->rep.pin_top_level_index_and_filter = v;
+    BlockBasedTableOptions* options, bool v) {
+  options->pin_top_level_index_and_filter = v;
 }
 
 void crocksdb_block_based_options_set_cache_index_and_filter_blocks_with_high_priority(
-    crocksdb_block_based_table_options_t* options, unsigned char v) {
-  options->rep.cache_index_and_filter_blocks_with_high_priority = v;
+    BlockBasedTableOptions* options, bool v) {
+  options->cache_index_and_filter_blocks_with_high_priority = v;
 }
 
 void crocksdb_block_based_options_set_pin_l0_filter_and_index_blocks_in_cache(
-    crocksdb_block_based_table_options_t* options, unsigned char v) {
-  options->rep.pin_l0_filter_and_index_blocks_in_cache = v;
+    BlockBasedTableOptions* options, bool v) {
+  options->pin_l0_filter_and_index_blocks_in_cache = v;
 }
 
 void crocksdb_block_based_options_set_read_amp_bytes_per_bit(
-    crocksdb_block_based_table_options_t* options, int v) {
-  options->rep.read_amp_bytes_per_bit = v;
+    BlockBasedTableOptions* options, int v) {
+  options->read_amp_bytes_per_bit = v;
 }
 
 void crocksdb_options_set_block_based_table_factory(
     ColumnFamilyOptions* opt,
-    crocksdb_block_based_table_options_t* table_options) {
-  if (table_options) {
-    opt->table_factory.reset(
-        rocksdb::NewBlockBasedTableFactory(table_options->rep));
-  }
+    BlockBasedTableOptions* table_options) {
+  opt->table_factory.reset(
+      rocksdb::NewBlockBasedTableFactory(*table_options));
 }
 
 void crocksdb_options_set_max_subcompactions(DBOptions* opt, uint32_t v) {
@@ -3464,58 +3447,41 @@ void crocksdb_compactrangeoptions_init(CompactRangeOptions* opt) {
 
 void crocksdb_flushoptions_init(FlushOptions* opt) { *opt = FlushOptions(); }
 
-crocksdb_memory_allocator_t* crocksdb_jemalloc_nodump_allocator_create(
-    Status* s) {
-  crocksdb_memory_allocator_t* allocator = new crocksdb_memory_allocator_t;
-  rocksdb::JemallocAllocatorOptions options;
-  *s = rocksdb::NewJemallocNodumpAllocator(options, &allocator->rep);
-  if (!s->ok()) {
-    delete allocator;
-    return nullptr;
-  }
-  return allocator;
+LRUCacheOptions* crocksdb_lru_cache_options_create() {
+  return new LRUCacheOptions;
 }
 
-void crocksdb_memory_allocator_destroy(crocksdb_memory_allocator_t* allocator) {
-  delete allocator;
-}
-
-crocksdb_lru_cache_options_t* crocksdb_lru_cache_options_create() {
-  return new crocksdb_lru_cache_options_t;
-}
-
-void crocksdb_lru_cache_options_destroy(crocksdb_lru_cache_options_t* opt) {
+void crocksdb_lru_cache_options_destroy(LRUCacheOptions* opt) {
   delete opt;
 }
 
-void crocksdb_lru_cache_options_set_capacity(crocksdb_lru_cache_options_t* opt,
+void crocksdb_lru_cache_options_set_capacity(LRUCacheOptions* opt,
                                              size_t capacity) {
-  opt->rep.capacity = capacity;
+  opt->capacity = capacity;
 }
 
 void crocksdb_lru_cache_options_set_num_shard_bits(
-    crocksdb_lru_cache_options_t* opt, int num_shard_bits) {
-  opt->rep.num_shard_bits = num_shard_bits;
+    LRUCacheOptions* opt, int num_shard_bits) {
+  opt->num_shard_bits = num_shard_bits;
 }
 
 void crocksdb_lru_cache_options_set_strict_capacity_limit(
-    crocksdb_lru_cache_options_t* opt, unsigned char strict_capacity_limit) {
-  opt->rep.strict_capacity_limit = strict_capacity_limit;
+    LRUCacheOptions* opt, bool strict_capacity_limit) {
+  opt->strict_capacity_limit = strict_capacity_limit;
 }
 
 void crocksdb_lru_cache_options_set_high_pri_pool_ratio(
-    crocksdb_lru_cache_options_t* opt, double high_pri_pool_ratio) {
-  opt->rep.high_pri_pool_ratio = high_pri_pool_ratio;
+    LRUCacheOptions* opt, double high_pri_pool_ratio) {
+  opt->high_pri_pool_ratio = high_pri_pool_ratio;
 }
 
-void crocksdb_lru_cache_options_set_memory_allocator(
-    crocksdb_lru_cache_options_t* opt, crocksdb_memory_allocator_t* allocator) {
-  opt->rep.memory_allocator = allocator->rep;
+void crocksdb_lru_cache_options_set_use_jemalloc(LRUCacheOptions* opt, JemallocAllocatorOptions* j_opt, Status* s) {
+  *s = rocksdb::NewJemallocNodumpAllocator(*j_opt, &opt->memory_allocator);
 }
 
-crocksdb_cache_t* crocksdb_cache_create_lru(crocksdb_lru_cache_options_t* opt) {
+crocksdb_cache_t* crocksdb_cache_create_lru(LRUCacheOptions* opt) {
   crocksdb_cache_t* c = new crocksdb_cache_t;
-  c->rep = NewLRUCache(opt->rep);
+  c->rep = NewLRUCache(*opt);
   return c;
 }
 

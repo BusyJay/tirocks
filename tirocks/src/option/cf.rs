@@ -9,11 +9,11 @@ use std::{
 use crate::{
     compaction_filter::SysCompactionFilterFactory, comparator::SysComparator,
     slice_transform::SysSliceTransform, sst_partitioner::SysSstParitionerFactory,
-    table_properties::user::SysTablePropertiesCollectorFactory,
+    table_properties::user::SysTablePropertiesCollectorFactory, util::simple_access,
 };
 use tirocks_sys::{rocksdb_ColumnFamilyOptions, rocksdb_titandb_TitanCFOptions};
 
-use super::{simple_access, CompressionType};
+use super::CompressionType;
 
 pub type CompactionStyle = tirocks_sys::rocksdb_CompactionStyle;
 pub type CompactionPriority = tirocks_sys::rocksdb_CompactionPri;

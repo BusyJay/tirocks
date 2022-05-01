@@ -2,6 +2,7 @@
 
 #![cfg_attr(feature = "nightly", feature(io_error_more))]
 
+pub mod cache;
 pub mod compaction_filter;
 pub mod comparator;
 pub mod env;
@@ -12,7 +13,9 @@ pub mod rate_limiter;
 mod slice_transform;
 pub mod sst_partitioner;
 mod statistics;
+pub mod table;
 pub mod table_properties;
+mod util;
 
 pub use error::{Code, Result, Severity, Status, SubCode};
 pub use statistics::Statistics;

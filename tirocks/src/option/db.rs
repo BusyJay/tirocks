@@ -17,9 +17,10 @@ use crate::{
     listener::SysEventListener,
     rate_limiter::RateLimiter,
     Statistics,
+    util::simple_access, cache::SysCache,
 };
 
-use super::{simple_access, PathToSlice};
+use super::PathToSlice;
 
 pub type AccessHint = tirocks_sys::rocksdb_DBOptions_AccessHint;
 pub type WalRecoveryMode = tirocks_sys::rocksdb_WALRecoveryMode;
@@ -541,6 +542,19 @@ impl DbOptions {
         /// Currently, any WAL-enabled writes after atomic flush may be replayed
         /// independently if the process crashes later and tries to recover.
         atomic_flush: bool
+    }
+
+    /// By default, RocksDB uses only one background thread for flush and
+    /// compaction. Calling this function will set it up such that total of
+    /// `total_threads` is used. Good value for `total_threads` is the number of
+    /// cores. You almost definitely want to call this function if your system is
+    /// bottlenecked by RocksDB.
+    #[inline]
+    pub fn increase_parallelism(&mut self, total_threads: i32) -> &mut Self {
+        unsafe {
+            tirocks_sys::crocksdb_options_increase_parallelism(self.ptr, total_threads);
+        }
+        self
     }
 }
 

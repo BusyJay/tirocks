@@ -15,3 +15,5 @@ pub enum rocksdb_titandb_TitanDBOptions {}
 pub enum rocksdb_titandb_TitanCFOptions {}
 pub enum rocksdb_titandb_TitanOptions {}
 pub enum rocksdb_CompactionFilter_Context {}
+pub enum rocksdb_LRUCacheOptions {}
+pub enum rocksdb_BlockBasedTableOptions {}
