@@ -98,6 +98,7 @@ typedef struct crocksdb_comparator_t crocksdb_comparator_t;
 typedef struct crocksdb_filelock_t crocksdb_filelock_t;
 typedef struct crocksdb_filterpolicy_t crocksdb_filterpolicy_t;
 typedef struct crocksdb_tablefactory_t crocksdb_tablefactory_t;
+typedef struct crocksdb_memtablerepfactory_t crocksdb_memtablerepfactory_t;
 typedef struct crocksdb_iterator_t crocksdb_iterator_t;
 typedef struct crocksdb_logger_t crocksdb_logger_t;
 typedef struct crocksdb_logger_impl_t crocksdb_logger_impl_t;
@@ -1190,8 +1191,6 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_prepare_for_bulk_load(
     Options*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_get_memtable_factory_name(
     ColumnFamilyOptions* opt, Slice* name);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_memtable_vector_rep(
-    ColumnFamilyOptions*);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_options_set_memtable_prefix_bloom_size_ratio(ColumnFamilyOptions*,
                                                       double);
@@ -1199,12 +1198,19 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_max_compaction_bytes(
     ColumnFamilyOptions*, uint64_t);
 extern C_ROCKSDB_LIBRARY_API uint64_t
 crocksdb_options_get_max_compaction_bytes(const ColumnFamilyOptions*);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_hash_skip_list_rep(
-    ColumnFamilyOptions*, size_t, int32_t, int32_t);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_hash_link_list_rep(
-    ColumnFamilyOptions*, size_t);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_doubly_skip_list_rep(
-    ColumnFamilyOptions* opt);
+
+extern C_ROCKSDB_LIBRARY_API crocksdb_memtablerepfactory_t*
+    crocksdb_memtablerepfactory_create_hash_skip_list(size_t, int32_t, int32_t);
+extern C_ROCKSDB_LIBRARY_API crocksdb_memtablerepfactory_t*
+    crocksdb_memtablerepfactory_create_hash_link_list(size_t);
+extern C_ROCKSDB_LIBRARY_API crocksdb_memtablerepfactory_t*
+    crocksdb_memtablerepfactory_create_doubly_skip_list(size_t);
+extern C_ROCKSDB_LIBRARY_API crocksdb_memtablerepfactory_t*
+crocksdb_memtablerepfactory_create_vector(uint64_t reserved_bytes);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_memtablerepfactory_destroy(
+    crocksdb_memtablerepfactory_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_memtable_factory(
+    ColumnFamilyOptions* opt, const crocksdb_memtablerepfactory_t*);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_min_level_to_compress(
     ColumnFamilyOptions* opt, int level);
@@ -1249,8 +1255,6 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_ratelimiter(
     DBOptions* opt, crocksdb_ratelimiter_t* limiter);
 extern C_ROCKSDB_LIBRARY_API crocksdb_ratelimiter_t*
 crocksdb_options_get_ratelimiter(const DBOptions* opt);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_vector_memtable_factory(
-    ColumnFamilyOptions* opt, uint64_t reserved_bytes);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_atomic_flush(
     DBOptions* opt, bool enable);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_compaction_priority(

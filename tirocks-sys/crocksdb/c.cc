@@ -2928,10 +2928,6 @@ void crocksdb_options_prepare_for_bulk_load(Options* opt) {
   opt->PrepareForBulkLoad();
 }
 
-void crocksdb_options_set_memtable_vector_rep(ColumnFamilyOptions* opt) {
-  opt->memtable_factory.reset(new rocksdb::VectorRepFactory);
-}
-
 void crocksdb_options_set_memtable_prefix_bloom_size_ratio(
     ColumnFamilyOptions* opt, double v) {
   opt->memtable_prefix_bloom_size_ratio = v;
@@ -2950,22 +2946,49 @@ void crocksdb_options_get_memtable_factory_name(ColumnFamilyOptions* opt,
   }
 }
 
-void crocksdb_options_set_hash_skip_list_rep(
-    ColumnFamilyOptions* opt, size_t bucket_count, int32_t skiplist_height,
+struct crocksdb_memtablerepfactory_t {
+  shared_ptr<MemTableRepFactory> factory;
+};
+
+crocksdb_memtablerepfactory_t*
+crocksdb_memtablerepfactory_create_hash_skip_list(
+    size_t bucket_count, int32_t skiplist_height,
     int32_t skiplist_branching_factor) {
-  rocksdb::MemTableRepFactory* factory = rocksdb::NewHashSkipListRepFactory(
-      bucket_count, skiplist_height, skiplist_branching_factor);
-  opt->memtable_factory.reset(factory);
+  auto result = new crocksdb_memtablerepfactory_t;
+  result->factory.reset(rocksdb::NewHashSkipListRepFactory(
+      bucket_count, skiplist_height, skiplist_branching_factor));
+  return result;
 }
 
-void crocksdb_options_set_hash_link_list_rep(ColumnFamilyOptions* opt,
-                                             size_t bucket_count) {
-  opt->memtable_factory.reset(rocksdb::NewHashLinkListRepFactory(bucket_count));
+crocksdb_memtablerepfactory_t*
+crocksdb_memtablerepfactory_create_hash_link_list(size_t bucket_count) {
+  auto result = new crocksdb_memtablerepfactory_t;
+  result->factory.reset(rocksdb::NewHashLinkListRepFactory(bucket_count));
+  return result;
 }
 
-void crocksdb_options_set_doubly_skip_list_rep(ColumnFamilyOptions* opt) {
-  rocksdb::MemTableRepFactory* factory = new rocksdb::DoublySkipListFactory();
-  opt->memtable_factory.reset(factory);
+crocksdb_memtablerepfactory_t*
+crocksdb_memtablerepfactory_create_doubly_skip_list(size_t lookahead) {
+  auto result = new crocksdb_memtablerepfactory_t;
+  result->factory.reset(new rocksdb::DoublySkipListFactory(lookahead));
+  return result;
+}
+
+crocksdb_memtablerepfactory_t* crocksdb_memtablerepfactory_create_vector(
+    uint64_t reserved_bytes) {
+  auto result = new crocksdb_memtablerepfactory_t;
+  result->factory.reset(new rocksdb::VectorRepFactory(reserved_bytes));
+  return result;
+}
+
+void crocksdb_memtablerepfactory_destroy(
+    crocksdb_memtablerepfactory_t* factory) {
+  delete factory;
+}
+
+void crocksdb_options_set_memtable_factory(
+    ColumnFamilyOptions* opt, const crocksdb_memtablerepfactory_t* factory) {
+  opt->memtable_factory = factory->factory;
 }
 
 void crocksdb_options_set_max_successive_merges(ColumnFamilyOptions* opt,
@@ -3095,11 +3118,6 @@ void crocksdb_statistics_get_histogram(crocksdb_statistics_t* ptr,
 void crocksdb_options_set_ratelimiter(DBOptions* opt,
                                       crocksdb_ratelimiter_t* limiter) {
   opt->rate_limiter = limiter->rep;
-}
-
-void crocksdb_options_set_vector_memtable_factory(ColumnFamilyOptions* opt,
-                                                  uint64_t reserved_bytes) {
-  opt->memtable_factory.reset(new VectorRepFactory(reserved_bytes));
 }
 
 void crocksdb_options_set_atomic_flush(DBOptions* opt, bool enable) {

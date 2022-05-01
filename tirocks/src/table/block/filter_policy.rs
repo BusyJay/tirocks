@@ -6,6 +6,9 @@ pub struct SysFilterPolicy {
     ptr: *mut crocksdb_filterpolicy_t,
 }
 
+unsafe impl Send for SysFilterPolicy {}
+unsafe impl Sync for SysFilterPolicy {}
+
 impl SysFilterPolicy {
     #[inline]
     pub fn new_bloom_filter_policy(bits_per_key: i32, use_block_based_builder: bool) -> Self {

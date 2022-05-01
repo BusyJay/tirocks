@@ -8,9 +8,9 @@ use std::{
 
 use crate::{
     cache::SysCache, compaction_filter::SysCompactionFilterFactory, comparator::SysComparator,
-    slice_transform::SysSliceTransform, sst_partitioner::SysSstParitionerFactory,
-    table::SysTableFactory, table_properties::user::SysTablePropertiesCollectorFactory,
-    util::simple_access,
+    mem_table::SysMemTableRepFactory, slice_transform::SysSliceTransform,
+    sst_partitioner::SysSstParitionerFactory, table::SysTableFactory,
+    table_properties::user::SysTablePropertiesCollectorFactory, util::simple_access,
 };
 use tirocks_sys::{rocksdb_ColumnFamilyOptions, rocksdb_titandb_TitanCFOptions};
 
@@ -434,6 +434,11 @@ impl CfOptions {
         /// Dynamically changeable through SetOptions() API
         max_sequential_skip_in_iterations: u64
 
+        /// This is a factory that provides MemTableRep objects.
+        /// Default: a factory that provides a skip-list-based implementation of
+        /// MemTableRep.
+        memtable_factory: &SysMemTableRepFactory [ .get() ]
+
         /// Block-based table related options are moved to BlockBasedTableOptions.
         /// Related options that were originally here but now moved include:
         ///   no_block_cache
@@ -496,6 +501,67 @@ impl CfOptions {
         report_bg_io_stats: bool
     }
 
+    /// Use this if you don't need to keep the data sorted, i.e. you'll never use
+    /// an iterator, only Put() and Get() API calls
+    ///
+    /// size is wiped up to MiB.
+    #[inline]
+    pub fn optimize_for_point_lookup(&mut self, block_cache_size: u64) -> &mut Self {
+        unsafe {
+            tirocks_sys::crocksdb_options_optimize_for_point_lookup(
+                self.ptr,
+                block_cache_size / 1024 / 1024,
+            );
+        }
+        self
+    }
+
+    /// Default values for some parameters in ColumnFamilyOptions are not optimized for heavy
+    /// workloads and big datasets, which means you might observe write stalls under some
+    /// conditions. As a starting point for tuning RocksDB options, use
+    /// `optimize_level_style_compaction` to optimize level style compaction.
+    ///
+    /// You can learn more about the different styles here:
+    /// https://github.com/facebook/rocksdb/wiki/Rocksdb-Architecture-Guide
+    /// Make sure to also call `increase_parallelism`, which will provide the
+    /// biggest performance gains.
+    /// Note: we might use more memory than memtable_memory_budget during high write rate period
+    #[inline]
+    pub fn optimize_level_style_compaction(&mut self, memtable_memory_budget: u64) -> &mut Self {
+        unsafe {
+            tirocks_sys::crocksdb_options_optimize_level_style_compaction(
+                self.ptr,
+                memtable_memory_budget,
+            );
+        }
+        self
+    }
+
+    /// Default values for some parameters in ColumnFamilyOptions are not optimized for heavy
+    /// workloads and big datasets, which means you might observe write stalls under some
+    /// conditions. As a starting point for tuning RocksDB options, use
+    /// `optimize_universal_style_compaction` to optimize universal style compaction
+    /// Universal style compaction is focused on reducing Write Amplification
+    /// Factor for big data sets, but increases Space Amplification. You can learn
+    /// more about the different styles here:
+    /// https://github.com/facebook/rocksdb/wiki/Rocksdb-Architecture-Guide
+    /// Make sure to also call `increase_parallelism`, which will provide the
+    /// biggest performance gains.
+    /// Note: we might use more memory than memtable_memory_budget during high write rate period
+    #[inline]
+    pub fn optimize_universal_style_compaction(
+        &mut self,
+        memtable_memory_budget: u64,
+    ) -> &mut Self {
+        unsafe {
+            tirocks_sys::crocksdb_options_optimize_universal_style_compaction(
+                self.ptr,
+                memtable_memory_budget,
+            );
+        }
+        self
+    }
+
     /// Comparator used to define the order of keys in the table.
     /// Default: a comparator that uses lexicographic byte-wise ordering
     ///
@@ -510,6 +576,19 @@ impl CfOptions {
         self.comparator = Some(c);
         self
     }
+
+    // REQUIRES: The client must provide a merge operator if Merge operation
+    // needs to be accessed. Calling Merge on a DB without a merge operator
+    // would result in Status::NotSupported. The client must ensure that the
+    // merge operator supplied here has the same name and *exactly* the same
+    // semantics as the merge operator provided to previous open calls on
+    // the same DB. The only exception is reserved for upgrade, where a DB
+    // previously without a merge operator is introduced to Merge operation
+    // for the first time. It's necessary to specify a merge operator when
+    // opening the DB in this case.
+    // Default: nullptr
+    // TODO: support merge
+    //merge_operator: &SysMergeOperator [ .get() ]
 
     simple_access! {
         /// This is a factory that provides `CompactionFilter` objects which allow

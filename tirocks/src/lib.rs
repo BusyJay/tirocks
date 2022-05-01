@@ -8,6 +8,7 @@ pub mod comparator;
 pub mod env;
 mod error;
 mod listener;
+pub mod mem_table;
 pub mod option;
 pub mod rate_limiter;
 mod slice_transform;

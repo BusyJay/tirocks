@@ -929,6 +929,11 @@ pub struct crocksdb_tablefactory_t {
 }
 #[repr(C)]
 #[derive(Debug)]
+pub struct crocksdb_memtablerepfactory_t {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug)]
 pub struct crocksdb_iterator_t {
     _unused: [u8; 0],
 }
@@ -3323,9 +3328,6 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_options_set_memtable_vector_rep(arg1: *mut rocksdb_ColumnFamilyOptions);
-}
-extern "C" {
     pub fn crocksdb_options_set_memtable_prefix_bloom_size_ratio(
         arg1: *mut rocksdb_ColumnFamilyOptions,
         arg2: f64,
@@ -3343,21 +3345,35 @@ extern "C" {
     ) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_options_set_hash_skip_list_rep(
-        arg1: *mut rocksdb_ColumnFamilyOptions,
-        arg2: usize,
+    pub fn crocksdb_memtablerepfactory_create_hash_skip_list(
+        arg1: usize,
+        arg2: i32,
         arg3: i32,
-        arg4: i32,
-    );
+    ) -> *mut crocksdb_memtablerepfactory_t;
 }
 extern "C" {
-    pub fn crocksdb_options_set_hash_link_list_rep(
-        arg1: *mut rocksdb_ColumnFamilyOptions,
-        arg2: usize,
-    );
+    pub fn crocksdb_memtablerepfactory_create_hash_link_list(
+        arg1: usize,
+    ) -> *mut crocksdb_memtablerepfactory_t;
 }
 extern "C" {
-    pub fn crocksdb_options_set_doubly_skip_list_rep(opt: *mut rocksdb_ColumnFamilyOptions);
+    pub fn crocksdb_memtablerepfactory_create_doubly_skip_list(
+        arg1: usize,
+    ) -> *mut crocksdb_memtablerepfactory_t;
+}
+extern "C" {
+    pub fn crocksdb_memtablerepfactory_create_vector(
+        reserved_bytes: u64,
+    ) -> *mut crocksdb_memtablerepfactory_t;
+}
+extern "C" {
+    pub fn crocksdb_memtablerepfactory_destroy(arg1: *mut crocksdb_memtablerepfactory_t);
+}
+extern "C" {
+    pub fn crocksdb_options_set_memtable_factory(
+        opt: *mut rocksdb_ColumnFamilyOptions,
+        arg1: *const crocksdb_memtablerepfactory_t,
+    );
 }
 extern "C" {
     pub fn crocksdb_options_set_min_level_to_compress(
@@ -3465,12 +3481,6 @@ extern "C" {
     pub fn crocksdb_options_get_ratelimiter(
         opt: *const rocksdb_DBOptions,
     ) -> *mut crocksdb_ratelimiter_t;
-}
-extern "C" {
-    pub fn crocksdb_options_set_vector_memtable_factory(
-        opt: *mut rocksdb_ColumnFamilyOptions,
-        reserved_bytes: u64,
-    );
 }
 extern "C" {
     pub fn crocksdb_options_set_atomic_flush(opt: *mut rocksdb_DBOptions, enable: bool);

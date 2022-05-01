@@ -84,6 +84,7 @@ impl SysCache {
 }
 
 impl Drop for SysCache {
+    #[inline]
     fn drop(&mut self) {
         unsafe {
             tirocks_sys::crocksdb_cache_destroy(self.ptr);
