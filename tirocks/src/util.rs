@@ -20,7 +20,6 @@ macro_rules! utf8_name {
 
 pub(crate) use utf8_name;
 
-
 // TODO: simplify the definition
 macro_rules! simple_access {
     ($(#[$outer:meta])* imp $prefix:ident <$op:ident> $field:ident / $rename:ident / :$ty:ty$([$($new_tt:tt)*])?) => {

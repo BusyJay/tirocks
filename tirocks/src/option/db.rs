@@ -16,8 +16,8 @@ use crate::{
     },
     listener::SysEventListener,
     rate_limiter::RateLimiter,
+    util::simple_access,
     Statistics,
-    util::simple_access, cache::SysCache,
 };
 
 use super::PathToSlice;
@@ -26,6 +26,7 @@ pub type AccessHint = tirocks_sys::rocksdb_DBOptions_AccessHint;
 pub type WalRecoveryMode = tirocks_sys::rocksdb_WALRecoveryMode;
 
 #[derive(Debug)]
+#[repr(C)]
 pub struct DbOptions {
     ptr: *mut rocksdb_DBOptions,
     env: Option<Arc<Env>>,
@@ -559,6 +560,7 @@ impl DbOptions {
 }
 
 #[derive(Debug)]
+#[repr(C)]
 pub struct TitanDbOptions {
     ptr: *mut rocksdb_titandb_TitanDBOptions,
     env: Option<Arc<Env>>,

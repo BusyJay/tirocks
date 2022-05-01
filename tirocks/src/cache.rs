@@ -1,6 +1,6 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use tirocks_sys::{rocksdb_LRUCacheOptions, crocksdb_cache_t};
+use tirocks_sys::{crocksdb_cache_t, rocksdb_LRUCacheOptions};
 
 use crate::util::simple_access;
 use crate::{Result, Status};
@@ -42,7 +42,7 @@ impl LruCacheBuilder {
 
     /// Uses jemalloc allocator instead of system allocator to allocate memory for cache.
     #[inline]
-    pub fn set_use_jemalloc(&mut self, opt: &JemallocAllocatorOptions) -> Result<&mut Self> {
+    pub fn set_use_jemalloc(&mut self, opt: &mut JemallocAllocatorOptions) -> Result<&mut Self> {
         unsafe {
             let mut s = Status::default();
             tirocks_sys::crocksdb_lru_cache_options_set_use_jemalloc(self.ptr, opt, s.as_mut_ptr());

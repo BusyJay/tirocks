@@ -7,9 +7,10 @@ use std::{
 };
 
 use crate::{
-    compaction_filter::SysCompactionFilterFactory, comparator::SysComparator,
+    cache::SysCache, compaction_filter::SysCompactionFilterFactory, comparator::SysComparator,
     slice_transform::SysSliceTransform, sst_partitioner::SysSstParitionerFactory,
-    table_properties::user::SysTablePropertiesCollectorFactory, util::simple_access,
+    table::SysTableFactory, table_properties::user::SysTablePropertiesCollectorFactory,
+    util::simple_access,
 };
 use tirocks_sys::{rocksdb_ColumnFamilyOptions, rocksdb_titandb_TitanCFOptions};
 
@@ -23,6 +24,7 @@ pub type UniversalCompactionOptions = tirocks_sys::rocksdb_CompactionOptionsUniv
 pub type TitanBlobRunMode = tirocks_sys::rocksdb_titandb_TitanBlobRunMode;
 
 #[derive(Debug)]
+#[repr(C)]
 pub struct CfOptions {
     ptr: *mut rocksdb_ColumnFamilyOptions,
     comparator: Option<Arc<SysComparator>>,
@@ -641,6 +643,12 @@ impl CfOptions {
         /// Dynamically changeable through SetOptions() API
         disable_write_stall: bool
 
+        /// This is a factory that provides TableFactory objects.
+        /// Default: a block-based table factory that provides a default
+        /// implementation of TableBuilder and TableReader with default
+        /// BlockBasedTableOptions.
+        table_factory: &SysTableFactory [ .get() ]
+
         /// If non-nullptr, use the specified factory for a function to determine the
         /// partitioning of sst files. This helps compaction to split the files
         /// on interesting boundaries (key prefixes) to make propagation of sst
@@ -651,9 +659,10 @@ impl CfOptions {
 }
 
 #[derive(Debug)]
+#[repr(C)]
 pub struct TitanCfOptions {
     ptr: *mut rocksdb_titandb_TitanCFOptions,
-    comparator: Option<Arc<SysComparator>>,
+    _comparator: Option<Arc<SysComparator>>,
 }
 
 impl Deref for TitanCfOptions {
@@ -704,6 +713,11 @@ impl TitanCfOptions {
 
     simple_access! {
         ctitandb_options
+
+        /// If non-NULL use the specified cache for blob records.
+        ///
+        /// Default: nullptr
+        blob_cache: &SysCache [ .get() ]
 
         /// Max batch size for GC.
         ///
@@ -783,7 +797,7 @@ impl Default for TitanCfOptions {
         let ptr = unsafe { tirocks_sys::ctitandb_cfoptions_create() };
         TitanCfOptions {
             ptr,
-            comparator: None,
+            _comparator: None,
         }
     }
 }

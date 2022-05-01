@@ -519,7 +519,11 @@ struct crocksdb_comparator_t : public Comparator {
   virtual void FindShortSuccessor(std::string*) const override {}
 };
 
-struct crocksdb_filterpolicy_t : public FilterPolicy {
+struct crocksdb_filterpolicy_t {
+  std::shared_ptr<const FilterPolicy> policy;
+};
+
+struct FilterPolicyWrapper : public FilterPolicy {
   void* state_;
   void (*destructor_)(void*);
   const char* (*name_)(void*);
@@ -530,7 +534,7 @@ struct crocksdb_filterpolicy_t : public FilterPolicy {
                               const char* filter, size_t filter_length);
   void (*delete_filter_)(void*, const char* filter, size_t filter_length);
 
-  virtual ~crocksdb_filterpolicy_t() { (*destructor_)(state_); }
+  virtual ~FilterPolicyWrapper() { (*destructor_)(state_); }
 
   virtual const char* Name() const override { return (*name_)(state_); }
 
@@ -1874,13 +1878,12 @@ BlockBasedTableOptions* crocksdb_block_based_options_create() {
   return new BlockBasedTableOptions;
 }
 
-void crocksdb_block_based_options_destroy(
-    BlockBasedTableOptions* options) {
+void crocksdb_block_based_options_destroy(BlockBasedTableOptions* options) {
   delete options;
 }
 
 void crocksdb_block_based_options_set_metadata_block_size(
-    BlockBasedTableOptions* options, size_t block_size) {
+    BlockBasedTableOptions* options, uint64_t block_size) {
   options->metadata_block_size = block_size;
 }
 
@@ -1900,26 +1903,22 @@ void crocksdb_block_based_options_set_block_restart_interval(
 }
 
 void crocksdb_block_based_options_set_filter_policy(
-    BlockBasedTableOptions* options,
-    crocksdb_filterpolicy_t* filter_policy) {
-  options->filter_policy.reset(filter_policy);
+    BlockBasedTableOptions* options, crocksdb_filterpolicy_t* filter_policy) {
+  options->filter_policy = filter_policy->policy;
 }
 
 void crocksdb_block_based_options_set_no_block_cache(
-    BlockBasedTableOptions* options,
-    bool no_block_cache) {
+    BlockBasedTableOptions* options, bool no_block_cache) {
   options->no_block_cache = no_block_cache;
 }
 
 void crocksdb_block_based_options_set_block_cache(
-    BlockBasedTableOptions* options,
-    crocksdb_cache_t* block_cache) {
+    BlockBasedTableOptions* options, crocksdb_cache_t* block_cache) {
   options->block_cache = block_cache->rep;
 }
 
 void crocksdb_block_based_options_set_block_cache_compressed(
-    BlockBasedTableOptions* options,
-    crocksdb_cache_t* block_cache_compressed) {
+    BlockBasedTableOptions* options, crocksdb_cache_t* block_cache_compressed) {
   options->block_cache_compressed = block_cache_compressed->rep;
 }
 
@@ -1929,13 +1928,12 @@ void crocksdb_block_based_options_set_whole_key_filtering(
 }
 
 void crocksdb_block_based_options_set_format_version(
-    BlockBasedTableOptions* options, int v) {
+    BlockBasedTableOptions* options, uint32_t v) {
   options->format_version = v;
 }
 
 void crocksdb_block_based_options_set_index_type(
-    BlockBasedTableOptions* options,
-    BlockBasedTableOptions::IndexType v) {
+    BlockBasedTableOptions* options, BlockBasedTableOptions::IndexType v) {
   options->index_type = v;
 }
 
@@ -1970,15 +1968,34 @@ void crocksdb_block_based_options_set_pin_l0_filter_and_index_blocks_in_cache(
 }
 
 void crocksdb_block_based_options_set_read_amp_bytes_per_bit(
-    BlockBasedTableOptions* options, int v) {
+    BlockBasedTableOptions* options, uint32_t v) {
   options->read_amp_bytes_per_bit = v;
 }
 
-void crocksdb_options_set_block_based_table_factory(
-    ColumnFamilyOptions* opt,
-    BlockBasedTableOptions* table_options) {
-  opt->table_factory.reset(
-      rocksdb::NewBlockBasedTableFactory(*table_options));
+struct crocksdb_tablefactory_t {
+  shared_ptr<TableFactory> factory;
+};
+
+crocksdb_tablefactory_t* crocksdb_tablefactory_create_block_based(
+    const BlockBasedTableOptions* opt) {
+  auto result = new crocksdb_tablefactory_t;
+  result->factory.reset(NewBlockBasedTableFactory(*opt));
+  return result;
+}
+
+crocksdb_tablefactory_t* crocksdb_tablefactory_create_plain(
+    const PlainTableOptions* opt) {
+  auto result = new crocksdb_tablefactory_t;
+  result->factory.reset(NewPlainTableFactory(*opt));
+  return result;
+}
+void crocksdb_tablefactory_destroy(crocksdb_tablefactory_t* factory) {
+  delete factory;
+}
+
+void crocksdb_options_set_table_factory(ColumnFamilyOptions* opt,
+                                        const crocksdb_tablefactory_t* table) {
+  opt->table_factory = table->factory;
 }
 
 void crocksdb_options_set_max_subcompactions(DBOptions* opt, uint32_t v) {
@@ -2951,21 +2968,6 @@ void crocksdb_options_set_doubly_skip_list_rep(ColumnFamilyOptions* opt) {
   opt->memtable_factory.reset(factory);
 }
 
-void crocksdb_options_set_plain_table_factory(ColumnFamilyOptions* opt,
-                                              uint32_t user_key_len,
-                                              int bloom_bits_per_key,
-                                              double hash_table_ratio,
-                                              size_t index_sparseness) {
-  rocksdb::PlainTableOptions options;
-  options.user_key_len = user_key_len;
-  options.bloom_bits_per_key = bloom_bits_per_key;
-  options.hash_table_ratio = hash_table_ratio;
-  options.index_sparseness = index_sparseness;
-
-  rocksdb::TableFactory* factory = rocksdb::NewPlainTableFactory(options);
-  opt->table_factory.reset(factory);
-}
-
 void crocksdb_options_set_max_successive_merges(ColumnFamilyOptions* opt,
                                                 size_t v) {
   opt->max_successive_merges = v;
@@ -3314,12 +3316,14 @@ crocksdb_filterpolicy_t* crocksdb_filterpolicy_create(
     void (*delete_filter)(void*, const char* filter, size_t filter_length),
     const char* (*name)(void*)) {
   crocksdb_filterpolicy_t* result = new crocksdb_filterpolicy_t;
-  result->state_ = state;
-  result->destructor_ = destructor;
-  result->create_ = create_filter;
-  result->key_match_ = key_may_match;
-  result->delete_filter_ = delete_filter;
-  result->name_ = name;
+  FilterPolicyWrapper* wrapper = new FilterPolicyWrapper;
+  wrapper->state_ = state;
+  wrapper->destructor_ = destructor;
+  wrapper->create_ = create_filter;
+  wrapper->key_match_ = key_may_match;
+  wrapper->delete_filter_ = delete_filter;
+  wrapper->name_ = name;
+  result->policy.reset(wrapper);
   return result;
 }
 
@@ -3328,45 +3332,11 @@ void crocksdb_filterpolicy_destroy(crocksdb_filterpolicy_t* filter) {
 }
 
 crocksdb_filterpolicy_t* crocksdb_filterpolicy_create_bloom_format(
-    int bits_per_key, bool original_format) {
-  // Make a crocksdb_filterpolicy_t, but override all of its methods so
-  // they delegate to a NewBloomFilterPolicy() instead of user
-  // supplied C functions.
-  struct Wrapper : public crocksdb_filterpolicy_t {
-    const FilterPolicy* rep_;
-    ~Wrapper() { delete rep_; }
-    const char* Name() const override { return rep_->Name(); }
-    void CreateFilter(const Slice* keys, int n,
-                      std::string* dst) const override {
-      return rep_->CreateFilter(keys, n, dst);
-    }
-    bool KeyMayMatch(const Slice& key, const Slice& filter) const override {
-      return rep_->KeyMayMatch(key, filter);
-    }
-    virtual FilterBitsBuilder* GetFilterBitsBuilder() const override {
-      return rep_->GetFilterBitsBuilder();
-    }
-    virtual FilterBitsReader* GetFilterBitsReader(
-        const Slice& contents) const override {
-      return rep_->GetFilterBitsReader(contents);
-    }
-    static void DoNothing(void*) {}
-  };
-  Wrapper* wrapper = new Wrapper;
-  wrapper->rep_ = NewBloomFilterPolicy(bits_per_key, original_format);
-  wrapper->state_ = nullptr;
-  wrapper->delete_filter_ = nullptr;
-  wrapper->destructor_ = &Wrapper::DoNothing;
-  return wrapper;
-}
-
-crocksdb_filterpolicy_t* crocksdb_filterpolicy_create_bloom_full(
-    int bits_per_key) {
-  return crocksdb_filterpolicy_create_bloom_format(bits_per_key, false);
-}
-
-crocksdb_filterpolicy_t* crocksdb_filterpolicy_create_bloom(int bits_per_key) {
-  return crocksdb_filterpolicy_create_bloom_format(bits_per_key, true);
+    int bits_per_key, bool use_block_based_builder) {
+  auto result = new crocksdb_filterpolicy_t;
+  result->policy.reset(
+      NewBloomFilterPolicy(bits_per_key, use_block_based_builder));
+  return result;
 }
 
 crocksdb_mergeoperator_t* crocksdb_mergeoperator_create(
@@ -3451,17 +3421,15 @@ LRUCacheOptions* crocksdb_lru_cache_options_create() {
   return new LRUCacheOptions;
 }
 
-void crocksdb_lru_cache_options_destroy(LRUCacheOptions* opt) {
-  delete opt;
-}
+void crocksdb_lru_cache_options_destroy(LRUCacheOptions* opt) { delete opt; }
 
 void crocksdb_lru_cache_options_set_capacity(LRUCacheOptions* opt,
                                              size_t capacity) {
   opt->capacity = capacity;
 }
 
-void crocksdb_lru_cache_options_set_num_shard_bits(
-    LRUCacheOptions* opt, int num_shard_bits) {
+void crocksdb_lru_cache_options_set_num_shard_bits(LRUCacheOptions* opt,
+                                                   int num_shard_bits) {
   opt->num_shard_bits = num_shard_bits;
 }
 
@@ -3475,7 +3443,8 @@ void crocksdb_lru_cache_options_set_high_pri_pool_ratio(
   opt->high_pri_pool_ratio = high_pri_pool_ratio;
 }
 
-void crocksdb_lru_cache_options_set_use_jemalloc(LRUCacheOptions* opt, JemallocAllocatorOptions* j_opt, Status* s) {
+void crocksdb_lru_cache_options_set_use_jemalloc(
+    LRUCacheOptions* opt, JemallocAllocatorOptions* j_opt, Status* s) {
   *s = rocksdb::NewJemallocNodumpAllocator(*j_opt, &opt->memory_allocator);
 }
 
