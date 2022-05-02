@@ -205,12 +205,6 @@ extern "C" {
 
 const char* block_base_table_str = "BlockBasedTable";
 
-struct crocksdb_t {
-  DB* rep;
-};
-struct crocksdb_backup_engine_t {
-  BackupEngine* rep;
-};
 struct crocksdb_backup_engine_info_t {
   std::vector<BackupInfo> rep;
 };
@@ -297,9 +291,6 @@ struct crocksdb_statistics_t {
 };
 struct crocksdb_livefiles_t {
   std::vector<LiveFileMetaData> rep;
-};
-struct crocksdb_column_family_handle_t {
-  ColumnFamilyHandle* rep;
 };
 struct crocksdb_envoptions_t {
   EnvOptions rep;
@@ -741,67 +732,58 @@ static char* CopyString(const std::string& str) {
   return result;
 }
 
-crocksdb_t* crocksdb_open(const Options* options, Slice name, Status* s) {
+DB* crocksdb_open(const Options* options, Slice name, Status* s) {
   DB* db;
   *s = DB::Open(*options, name.ToString(), &db);
   if (!s->ok()) {
     return nullptr;
   }
-  crocksdb_t* result = new crocksdb_t;
-  result->rep = db;
-  return result;
+  return db;
 }
 
-crocksdb_t* crocksdb_open_with_ttl(const Options* options, Slice name, int ttl,
-                                   Status* s) {
+DB* crocksdb_open_with_ttl(const Options* options, Slice name, int ttl,
+                           bool read_only, Status* s) {
   DBWithTTL* db;
-  *s = DBWithTTL::Open(*options, name.ToString(), &db, ttl);
+  *s = DBWithTTL::Open(*options, name.ToString(), &db, ttl, read_only);
   if (!s->ok()) {
     return nullptr;
   }
-  crocksdb_t* result = new crocksdb_t;
-  result->rep = db;
-  return result;
+  return db;
 }
 
-crocksdb_t* crocksdb_open_for_read_only(const Options* options, Slice name,
-                                        unsigned char error_if_log_file_exist,
-                                        Status* s) {
+DB* crocksdb_open_for_read_only(const Options* options, Slice name,
+                                bool error_if_log_file_exist, Status* s) {
   DB* db;
   *s = DB::OpenForReadOnly(*options, name.ToString(), &db,
                            error_if_log_file_exist);
   if (!s->ok()) {
     return nullptr;
   }
-  crocksdb_t* result = new crocksdb_t;
-  result->rep = db;
-  return result;
+  return db;
 }
 
-void crocksdb_resume(crocksdb_t* db, Status* s) { *s = db->rep->Resume(); }
+void crocksdb_resume(DB* db, Status* s) { *s = db->Resume(); }
 
-crocksdb_backup_engine_t* crocksdb_backup_engine_open(const Options* options,
-                                                      Slice path, Status* s) {
+BackupEngine* crocksdb_backup_engine_open(const Options* options, Slice path,
+                                          Status* s) {
   BackupEngine* be;
   *s = BackupEngine::Open(options->env, BackupableDBOptions(path.ToString()),
                           &be);
   if (!s->ok()) {
     return nullptr;
   }
-  crocksdb_backup_engine_t* result = new crocksdb_backup_engine_t;
-  result->rep = be;
-  return result;
+  return be;
 }
 
-void crocksdb_backup_engine_create_new_backup(crocksdb_backup_engine_t* be,
-                                              crocksdb_t* db, Status* s) {
-  *s = be->rep->CreateNewBackup(db->rep);
+void crocksdb_backup_engine_create_new_backup(BackupEngine* be, DB* db,
+                                              Status* s) {
+  *s = be->CreateNewBackup(db);
 }
 
-void crocksdb_backup_engine_purge_old_backups(crocksdb_backup_engine_t* be,
+void crocksdb_backup_engine_purge_old_backups(BackupEngine* be,
                                               uint32_t num_backups_to_keep,
                                               Status* s) {
-  *s = be->rep->PurgeOldBackups(num_backups_to_keep);
+  *s = be->PurgeOldBackups(num_backups_to_keep);
 }
 
 crocksdb_restore_options_t* crocksdb_restore_options_create() {
@@ -818,16 +800,16 @@ void crocksdb_restore_options_set_keep_log_files(
 }
 
 void crocksdb_backup_engine_restore_db_from_latest_backup(
-    crocksdb_backup_engine_t* be, Slice db_dir, Slice wal_dir,
+    BackupEngine* be, Slice db_dir, Slice wal_dir,
     const crocksdb_restore_options_t* restore_options, Status* s) {
-  *s = be->rep->RestoreDBFromLatestBackup(db_dir.ToString(), wal_dir.ToString(),
-                                          restore_options->rep);
+  *s = be->RestoreDBFromLatestBackup(db_dir.ToString(), wal_dir.ToString(),
+                                     restore_options->rep);
 }
 
 const crocksdb_backup_engine_info_t* crocksdb_backup_engine_get_backup_info(
-    crocksdb_backup_engine_t* be) {
+    BackupEngine* be) {
   crocksdb_backup_engine_info_t* result = new crocksdb_backup_engine_info_t;
-  be->rep->GetBackupInfo(&result->rep);
+  be->GetBackupInfo(&result->rep);
   return result;
 }
 
@@ -861,27 +843,21 @@ void crocksdb_backup_engine_info_destroy(
   delete info;
 }
 
-void crocksdb_backup_engine_close(crocksdb_backup_engine_t* be) {
-  delete be->rep;
-  delete be;
-}
+void crocksdb_backup_engine_close(BackupEngine* be) { delete be; }
 
-void crocksdb_close(crocksdb_t* db) {
-  delete db->rep;
-  delete db;
-}
+void crocksdb_close(DB* db, Status* s) { *s = db->Close(); }
 
-void crocksdb_pause_bg_work(crocksdb_t* db) { db->rep->PauseBackgroundWork(); }
+void crocksdb_destroy(DB* db) { delete db; }
 
-void crocksdb_continue_bg_work(crocksdb_t* db) {
-  db->rep->ContinueBackgroundWork();
-}
+void crocksdb_pause_bg_work(DB* db) { db->PauseBackgroundWork(); }
 
-crocksdb_t* crocksdb_open_column_families(
+void crocksdb_continue_bg_work(DB* db) { db->ContinueBackgroundWork(); }
+
+DB* crocksdb_open_column_families(
     const DBOptions* db_options, Slice name, int num_column_families,
-    Slice* column_family_names,
-    const ColumnFamilyOptions** column_family_options,
-    crocksdb_column_family_handle_t** column_family_handles, Status* s) {
+    const Slice* column_family_names,
+    const ColumnFamilyOptions* const* column_family_options,
+    ColumnFamilyHandle** column_family_handles, Status* s) {
   std::vector<ColumnFamilyDescriptor> column_families;
   for (int i = 0; i < num_column_families; i++) {
     column_families.push_back(ColumnFamilyDescriptor(
@@ -896,22 +872,17 @@ crocksdb_t* crocksdb_open_column_families(
   }
 
   for (size_t i = 0; i < handles.size(); i++) {
-    crocksdb_column_family_handle_t* c_handle =
-        new crocksdb_column_family_handle_t;
-    c_handle->rep = handles[i];
-    column_family_handles[i] = c_handle;
+    column_family_handles[i] = handles[i];
   }
-  crocksdb_t* result = new crocksdb_t;
-  result->rep = db;
-  return result;
+  return db;
 }
 
-crocksdb_t* crocksdb_open_column_families_with_ttl(
+DB* crocksdb_open_column_families_with_ttl(
     const DBOptions* db_options, Slice name, int num_column_families,
-    Slice* column_family_names,
-    const ColumnFamilyOptions** column_family_options, const int32_t* ttl_array,
-    unsigned char read_only,
-    crocksdb_column_family_handle_t** column_family_handles, Status* s) {
+    const Slice* column_family_names,
+    const ColumnFamilyOptions* const* column_family_options,
+    const int32_t* ttl_array, bool read_only,
+    ColumnFamilyHandle** column_family_handles, Status* s) {
   std::vector<ColumnFamilyDescriptor> column_families;
   std::vector<int32_t> ttls;
   for (int i = 0; i < num_column_families; i++) {
@@ -929,22 +900,17 @@ crocksdb_t* crocksdb_open_column_families_with_ttl(
   }
 
   for (size_t i = 0; i < handles.size(); i++) {
-    crocksdb_column_family_handle_t* c_handle =
-        new crocksdb_column_family_handle_t;
-    c_handle->rep = handles[i];
-    column_family_handles[i] = c_handle;
+    column_family_handles[i] = handles[i];
   }
-  crocksdb_t* result = new crocksdb_t;
-  result->rep = db;
-  return result;
+  return db;
 }
 
-crocksdb_t* crocksdb_open_for_read_only_column_families(
+DB* crocksdb_open_for_read_only_column_families(
     const DBOptions* db_options, Slice name, int num_column_families,
-    Slice* column_family_names,
-    const ColumnFamilyOptions** column_family_options,
-    crocksdb_column_family_handle_t** column_family_handles,
-    unsigned char error_if_log_file_exist, Status* s) {
+    const Slice* column_family_names,
+    const ColumnFamilyOptions* const* column_family_options,
+    ColumnFamilyHandle** column_family_handles, bool error_if_log_file_exist,
+    Status* s) {
   std::vector<ColumnFamilyDescriptor> column_families;
   for (int i = 0; i < num_column_families; i++) {
     column_families.push_back(ColumnFamilyDescriptor(
@@ -960,14 +926,9 @@ crocksdb_t* crocksdb_open_for_read_only_column_families(
   }
 
   for (size_t i = 0; i < handles.size(); i++) {
-    crocksdb_column_family_handle_t* c_handle =
-        new crocksdb_column_family_handle_t;
-    c_handle->rep = handles[i];
-    column_family_handles[i] = c_handle;
+    column_family_handles[i] = handles[i];
   }
-  crocksdb_t* result = new crocksdb_t;
-  result->rep = db;
-  return result;
+  return db;
 }
 
 char** crocksdb_list_column_families(const DBOptions* options, Slice name,
@@ -994,105 +955,95 @@ void crocksdb_list_column_families_destroy(char** list, size_t len) {
   free(list);
 }
 
-crocksdb_column_family_handle_t* crocksdb_create_column_family(
-    crocksdb_t* db, const ColumnFamilyOptions* column_family_options,
+ColumnFamilyHandle* crocksdb_create_column_family(
+    DB* db, const ColumnFamilyOptions* column_family_options,
     const char* column_family_name, Status* s) {
   ColumnFamilyHandle* handle;
-  *s = db->rep->CreateColumnFamily(*column_family_options,
-                                   std::string(column_family_name), &handle);
+  *s = db->CreateColumnFamily(*column_family_options,
+                              std::string(column_family_name), &handle);
   if (!s->ok()) {
     return nullptr;
   }
-  auto result = new crocksdb_column_family_handle_t;
-  result->rep = handle;
-  return result;
+  return handle;
 }
 
-void crocksdb_drop_column_family(crocksdb_t* db,
-                                 crocksdb_column_family_handle_t* handle,
+void crocksdb_drop_column_family(DB* db, ColumnFamilyHandle* handle,
                                  Status* s) {
-  *s = db->rep->DropColumnFamily(handle->rep);
+  *s = db->DropColumnFamily(handle);
 }
 
-uint32_t crocksdb_column_family_handle_id(
-    crocksdb_column_family_handle_t* handle) {
-  return handle->rep->GetID();
+uint32_t crocksdb_column_family_handle_id(ColumnFamilyHandle* handle) {
+  return handle->GetID();
 }
 
-void crocksdb_column_family_handle_destroy(
-    crocksdb_column_family_handle_t* handle) {
-  delete handle->rep;
+void crocksdb_column_family_handle_destroy(ColumnFamilyHandle* handle) {
   delete handle;
 }
 
-void crocksdb_put(crocksdb_t* db, const WriteOptions* options, const char* key,
+void crocksdb_put(DB* db, const WriteOptions* options, const char* key,
                   size_t keylen, const char* val, size_t vallen, Status* s) {
-  *s = db->rep->Put(*options, Slice(key, keylen), Slice(val, vallen));
+  *s = db->Put(*options, Slice(key, keylen), Slice(val, vallen));
 }
 
-void crocksdb_put_cf(crocksdb_t* db, const WriteOptions* options,
-                     crocksdb_column_family_handle_t* column_family,
-                     const char* key, size_t keylen, const char* val,
-                     size_t vallen, Status* s) {
-  *s = db->rep->Put(*options, column_family->rep, Slice(key, keylen),
-                    Slice(val, vallen));
+void crocksdb_put_cf(DB* db, const WriteOptions* options,
+                     ColumnFamilyHandle* column_family, const char* key,
+                     size_t keylen, const char* val, size_t vallen, Status* s) {
+  *s = db->Put(*options, column_family, Slice(key, keylen), Slice(val, vallen));
 }
 
-void crocksdb_delete(crocksdb_t* db, const WriteOptions* options,
-                     const char* key, size_t keylen, Status* s) {
-  *s = db->rep->Delete(*options, Slice(key, keylen));
+void crocksdb_delete(DB* db, const WriteOptions* options, const char* key,
+                     size_t keylen, Status* s) {
+  *s = db->Delete(*options, Slice(key, keylen));
 }
 
-void crocksdb_delete_cf(crocksdb_t* db, const WriteOptions* options,
-                        crocksdb_column_family_handle_t* column_family,
-                        const char* key, size_t keylen, Status* s) {
-  *s = db->rep->Delete(*options, column_family->rep, Slice(key, keylen));
+void crocksdb_delete_cf(DB* db, const WriteOptions* options,
+                        ColumnFamilyHandle* column_family, const char* key,
+                        size_t keylen, Status* s) {
+  *s = db->Delete(*options, column_family, Slice(key, keylen));
 }
 
-void crocksdb_single_delete(crocksdb_t* db, const WriteOptions* options,
+void crocksdb_single_delete(DB* db, const WriteOptions* options,
                             const char* key, size_t keylen, Status* s) {
-  *s = db->rep->SingleDelete(*options, Slice(key, keylen));
+  *s = db->SingleDelete(*options, Slice(key, keylen));
 }
 
-void crocksdb_single_delete_cf(crocksdb_t* db, const WriteOptions* options,
-                               crocksdb_column_family_handle_t* column_family,
+void crocksdb_single_delete_cf(DB* db, const WriteOptions* options,
+                               ColumnFamilyHandle* column_family,
                                const char* key, size_t keylen, Status* s) {
-  *s = db->rep->SingleDelete(*options, column_family->rep, Slice(key, keylen));
+  *s = db->SingleDelete(*options, column_family, Slice(key, keylen));
 }
 
-void crocksdb_delete_range_cf(crocksdb_t* db, const WriteOptions* options,
-                              crocksdb_column_family_handle_t* column_family,
+void crocksdb_delete_range_cf(DB* db, const WriteOptions* options,
+                              ColumnFamilyHandle* column_family,
                               const char* begin_key, size_t begin_keylen,
                               const char* end_key, size_t end_keylen,
                               Status* s) {
-  *s = db->rep->DeleteRange(*options, column_family->rep,
-                            Slice(begin_key, begin_keylen),
-                            Slice(end_key, end_keylen));
+  *s = db->DeleteRange(*options, column_family, Slice(begin_key, begin_keylen),
+                       Slice(end_key, end_keylen));
 }
 
-void crocksdb_merge(crocksdb_t* db, const WriteOptions* options,
-                    const char* key, size_t keylen, const char* val,
-                    size_t vallen, Status* s) {
-  *s = db->rep->Merge(*options, Slice(key, keylen), Slice(val, vallen));
+void crocksdb_merge(DB* db, const WriteOptions* options, const char* key,
+                    size_t keylen, const char* val, size_t vallen, Status* s) {
+  *s = db->Merge(*options, Slice(key, keylen), Slice(val, vallen));
 }
 
-void crocksdb_merge_cf(crocksdb_t* db, const WriteOptions* options,
-                       crocksdb_column_family_handle_t* column_family,
-                       const char* key, size_t keylen, const char* val,
-                       size_t vallen, Status* s) {
-  *s = db->rep->Merge(*options, column_family->rep, Slice(key, keylen),
-                      Slice(val, vallen));
+void crocksdb_merge_cf(DB* db, const WriteOptions* options,
+                       ColumnFamilyHandle* column_family, const char* key,
+                       size_t keylen, const char* val, size_t vallen,
+                       Status* s) {
+  *s = db->Merge(*options, column_family, Slice(key, keylen),
+                 Slice(val, vallen));
 }
 
-void crocksdb_write(crocksdb_t* db, const WriteOptions* options,
+void crocksdb_write(DB* db, const WriteOptions* options,
                     crocksdb_writebatch_t* batch, Status* s) {
-  *s = db->rep->Write(*options, &batch->rep);
+  *s = db->Write(*options, &batch->rep);
 }
 
-char* crocksdb_get(crocksdb_t* db, const ReadOptions* options, const char* key,
+char* crocksdb_get(DB* db, const ReadOptions* options, const char* key,
                    size_t keylen, size_t* vallen, Status* s) {
   std::string tmp;
-  *s = db->rep->Get(*options, Slice(key, keylen), &tmp);
+  *s = db->Get(*options, Slice(key, keylen), &tmp);
   if (s->ok()) {
     *vallen = tmp.size();
     return CopyString(tmp);
@@ -1100,12 +1051,11 @@ char* crocksdb_get(crocksdb_t* db, const ReadOptions* options, const char* key,
   return nullptr;
 }
 
-char* crocksdb_get_cf(crocksdb_t* db, const ReadOptions* options,
-                      crocksdb_column_family_handle_t* column_family,
-                      const char* key, size_t keylen, size_t* vallen,
-                      Status* s) {
+char* crocksdb_get_cf(DB* db, const ReadOptions* options,
+                      ColumnFamilyHandle* column_family, const char* key,
+                      size_t keylen, size_t* vallen, Status* s) {
   std::string tmp;
-  *s = db->rep->Get(*options, column_family->rep, Slice(key, keylen), &tmp);
+  *s = db->Get(*options, column_family, Slice(key, keylen), &tmp);
   if (s->ok()) {
     *vallen = tmp.size();
     return CopyString(tmp);
@@ -1113,8 +1063,8 @@ char* crocksdb_get_cf(crocksdb_t* db, const ReadOptions* options,
   return nullptr;
 }
 
-void crocksdb_multi_get(crocksdb_t* db, const ReadOptions* options,
-                        size_t num_keys, const char* const* keys_list,
+void crocksdb_multi_get(DB* db, const ReadOptions* options, size_t num_keys,
+                        const char* const* keys_list,
                         const size_t* keys_list_sizes, char** values_list,
                         size_t* values_list_sizes, Status* status_list) {
   std::vector<Slice> keys(num_keys);
@@ -1122,7 +1072,7 @@ void crocksdb_multi_get(crocksdb_t* db, const ReadOptions* options,
     keys[i] = Slice(keys_list[i], keys_list_sizes[i]);
   }
   std::vector<std::string> values(num_keys);
-  std::vector<Status> statuses = db->rep->MultiGet(*options, keys, &values);
+  std::vector<Status> statuses = db->MultiGet(*options, keys, &values);
   for (size_t i = 0; i < num_keys; i++) {
     status_list[i] = statuses[i];
     if (status_list[i].ok()) {
@@ -1132,21 +1082,19 @@ void crocksdb_multi_get(crocksdb_t* db, const ReadOptions* options,
   }
 }
 
-void crocksdb_multi_get_cf(
-    crocksdb_t* db, const ReadOptions* options,
-    const crocksdb_column_family_handle_t* const* column_families,
-    size_t num_keys, const char* const* keys_list,
-    const size_t* keys_list_sizes, char** values_list,
-    size_t* values_list_sizes, Status* status_list) {
+void crocksdb_multi_get_cf(DB* db, const ReadOptions* options,
+                           ColumnFamilyHandle** column_families,
+                           size_t num_keys, const char* const* keys_list,
+                           const size_t* keys_list_sizes, char** values_list,
+                           size_t* values_list_sizes, Status* status_list) {
   std::vector<Slice> keys(num_keys);
   std::vector<ColumnFamilyHandle*> cfs(num_keys);
   for (size_t i = 0; i < num_keys; i++) {
     keys[i] = Slice(keys_list[i], keys_list_sizes[i]);
-    cfs[i] = column_families[i]->rep;
+    cfs[i] = column_families[i];
   }
   std::vector<std::string> values(num_keys);
-  std::vector<Status> statuses =
-      db->rep->MultiGet(*options, cfs, keys, &values);
+  std::vector<Status> statuses = db->MultiGet(*options, cfs, keys, &values);
   for (size_t i = 0; i < num_keys; i++) {
     status_list[i] = statuses[i];
     if (status_list[i].ok()) {
@@ -1156,32 +1104,31 @@ void crocksdb_multi_get_cf(
   }
 }
 
-crocksdb_iterator_t* crocksdb_create_iterator(crocksdb_t* db,
+crocksdb_iterator_t* crocksdb_create_iterator(DB* db,
                                               const ReadOptions* options) {
   crocksdb_iterator_t* result = new crocksdb_iterator_t;
-  result->rep = db->rep->NewIterator(*options);
+  result->rep = db->NewIterator(*options);
   return result;
 }
 
 crocksdb_iterator_t* crocksdb_create_iterator_cf(
-    crocksdb_t* db, const ReadOptions* options,
-    crocksdb_column_family_handle_t* column_family) {
+    DB* db, const ReadOptions* options, ColumnFamilyHandle* column_family) {
   crocksdb_iterator_t* result = new crocksdb_iterator_t;
-  result->rep = db->rep->NewIterator(*options, column_family->rep);
+  result->rep = db->NewIterator(*options, column_family);
   return result;
 }
 
-void crocksdb_create_iterators(
-    crocksdb_t* db, const ReadOptions* opts,
-    crocksdb_column_family_handle_t** column_families,
-    crocksdb_iterator_t** iterators, size_t size, Status* s) {
+void crocksdb_create_iterators(DB* db, const ReadOptions* opts,
+                               ColumnFamilyHandle** column_families,
+                               crocksdb_iterator_t** iterators, size_t size,
+                               Status* s) {
   std::vector<ColumnFamilyHandle*> column_families_vec(size);
   for (size_t i = 0; i < size; i++) {
-    column_families_vec.push_back(column_families[i]->rep);
+    column_families_vec.push_back(column_families[i]);
   }
 
   std::vector<Iterator*> res;
-  *s = db->rep->NewIterators(*opts, column_families_vec, &res);
+  *s = db->NewIterators(*opts, column_families_vec, &res);
   if (!s->ok()) {
     for (size_t i = 0; i < res.size(); i++) {
       delete res[i];
@@ -1196,15 +1143,14 @@ void crocksdb_create_iterators(
   }
 }
 
-const crocksdb_snapshot_t* crocksdb_create_snapshot(crocksdb_t* db) {
+const crocksdb_snapshot_t* crocksdb_create_snapshot(DB* db) {
   crocksdb_snapshot_t* result = new crocksdb_snapshot_t;
-  result->rep = db->rep->GetSnapshot();
+  result->rep = db->GetSnapshot();
   return result;
 }
 
-void crocksdb_release_snapshot(crocksdb_t* db,
-                               const crocksdb_snapshot_t* snapshot) {
-  db->rep->ReleaseSnapshot(snapshot->rep);
+void crocksdb_release_snapshot(DB* db, const crocksdb_snapshot_t* snapshot) {
+  db->ReleaseSnapshot(snapshot->rep);
   delete snapshot;
 }
 
@@ -1221,10 +1167,11 @@ void crocksdb_destroy_map_property(crocksdb_map_property_t* info) {
   delete info;
 }
 
-unsigned char crocksdb_get_map_property_cf(
-    crocksdb_t* db, crocksdb_column_family_handle_t* column_family,
-    const char* property, crocksdb_map_property_t* info) {
-  return db->rep->GetMapProperty(column_family->rep, property, &info->rep);
+unsigned char crocksdb_get_map_property_cf(DB* db,
+                                           ColumnFamilyHandle* column_family,
+                                           const char* property,
+                                           crocksdb_map_property_t* info) {
+  return db->GetMapProperty(column_family, property, &info->rep);
 }
 
 char* crocksdb_map_property_value(crocksdb_map_property_t* info,
@@ -1247,9 +1194,9 @@ uint64_t crocksdb_map_property_int_value(crocksdb_map_property_t* info,
   }
 }
 
-char* crocksdb_property_value(crocksdb_t* db, const char* propname) {
+char* crocksdb_property_value(DB* db, const char* propname) {
   std::string tmp;
-  if (db->rep->GetProperty(Slice(propname), &tmp)) {
+  if (db->GetProperty(Slice(propname), &tmp)) {
     // We use strdup() since we expect human readable output.
     return strdup(tmp.c_str());
   } else {
@@ -1257,11 +1204,10 @@ char* crocksdb_property_value(crocksdb_t* db, const char* propname) {
   }
 }
 
-char* crocksdb_property_value_cf(crocksdb_t* db,
-                                 crocksdb_column_family_handle_t* column_family,
+char* crocksdb_property_value_cf(DB* db, ColumnFamilyHandle* column_family,
                                  const char* propname) {
   std::string tmp;
-  if (db->rep->GetProperty(column_family->rep, Slice(propname), &tmp)) {
+  if (db->GetProperty(column_family, Slice(propname), &tmp)) {
     // We use strdup() since we expect human readable output.
     return strdup(tmp.c_str());
   } else {
@@ -1269,7 +1215,7 @@ char* crocksdb_property_value_cf(crocksdb_t* db,
   }
 }
 
-void crocksdb_approximate_sizes(crocksdb_t* db, int num_ranges,
+void crocksdb_approximate_sizes(DB* db, int num_ranges,
                                 const char* const* range_start_key,
                                 const size_t* range_start_key_len,
                                 const char* const* range_limit_key,
@@ -1280,26 +1226,27 @@ void crocksdb_approximate_sizes(crocksdb_t* db, int num_ranges,
     ranges[i].start = Slice(range_start_key[i], range_start_key_len[i]);
     ranges[i].limit = Slice(range_limit_key[i], range_limit_key_len[i]);
   }
-  db->rep->GetApproximateSizes(ranges, num_ranges, sizes);
+  db->GetApproximateSizes(ranges, num_ranges, sizes);
   delete[] ranges;
 }
 
-void crocksdb_approximate_sizes_cf(
-    crocksdb_t* db, crocksdb_column_family_handle_t* column_family,
-    int num_ranges, const char* const* range_start_key,
-    const size_t* range_start_key_len, const char* const* range_limit_key,
-    const size_t* range_limit_key_len, uint64_t* sizes) {
+void crocksdb_approximate_sizes_cf(DB* db, ColumnFamilyHandle* column_family,
+                                   int num_ranges,
+                                   const char* const* range_start_key,
+                                   const size_t* range_start_key_len,
+                                   const char* const* range_limit_key,
+                                   const size_t* range_limit_key_len,
+                                   uint64_t* sizes) {
   Range* ranges = new Range[num_ranges];
   for (int i = 0; i < num_ranges; i++) {
     ranges[i].start = Slice(range_start_key[i], range_start_key_len[i]);
     ranges[i].limit = Slice(range_limit_key[i], range_limit_key_len[i]);
   }
-  db->rep->GetApproximateSizes(column_family->rep, ranges, num_ranges, sizes);
+  db->GetApproximateSizes(column_family, ranges, num_ranges, sizes);
   delete[] ranges;
 }
 
-void crocksdb_approximate_memtable_stats(const crocksdb_t* db,
-                                         const char* range_start_key,
+void crocksdb_approximate_memtable_stats(DB* db, const char* range_start_key,
                                          size_t range_start_key_len,
                                          const char* range_limit_key,
                                          size_t range_limit_key_len,
@@ -1307,144 +1254,139 @@ void crocksdb_approximate_memtable_stats(const crocksdb_t* db,
   auto start = Slice(range_start_key, range_start_key_len);
   auto limit = Slice(range_limit_key, range_limit_key_len);
   Range range(start, limit);
-  db->rep->GetApproximateMemTableStats(range, count, size);
+  db->GetApproximateMemTableStats(range, count, size);
 }
 
-void crocksdb_approximate_memtable_stats_cf(
-    const crocksdb_t* db, const crocksdb_column_family_handle_t* cf,
-    const char* range_start_key, size_t range_start_key_len,
-    const char* range_limit_key, size_t range_limit_key_len, uint64_t* count,
-    uint64_t* size) {
+void crocksdb_approximate_memtable_stats_cf(DB* db, ColumnFamilyHandle* cf,
+                                            const char* range_start_key,
+                                            size_t range_start_key_len,
+                                            const char* range_limit_key,
+                                            size_t range_limit_key_len,
+                                            uint64_t* count, uint64_t* size) {
   auto start = Slice(range_start_key, range_start_key_len);
   auto limit = Slice(range_limit_key, range_limit_key_len);
   Range range(start, limit);
-  db->rep->GetApproximateMemTableStats(cf->rep, range, count, size);
+  db->GetApproximateMemTableStats(cf, range, count, size);
 }
 
-void crocksdb_delete_file(crocksdb_t* db, const char* name, Status* s) {
-  *s = db->rep->DeleteFile(name);
+void crocksdb_delete_file(DB* db, const char* name, Status* s) {
+  *s = db->DeleteFile(name);
 }
 
-const crocksdb_livefiles_t* crocksdb_livefiles(crocksdb_t* db) {
+const crocksdb_livefiles_t* crocksdb_livefiles(DB* db) {
   crocksdb_livefiles_t* result = new crocksdb_livefiles_t;
-  db->rep->GetLiveFilesMetaData(&result->rep);
+  db->GetLiveFilesMetaData(&result->rep);
   return result;
 }
 
-void crocksdb_compact_range(crocksdb_t* db, const char* start_key,
-                            size_t start_key_len, const char* limit_key,
-                            size_t limit_key_len) {
+void crocksdb_compact_range(DB* db, const char* start_key, size_t start_key_len,
+                            const char* limit_key, size_t limit_key_len) {
   Slice a, b;
-  db->rep->CompactRange(
+  db->CompactRange(
       CompactRangeOptions(),
       // Pass nullptr Slice if corresponding "const char*" is nullptr
       (start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr),
       (limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr));
 }
 
-void crocksdb_compact_range_cf(crocksdb_t* db,
-                               crocksdb_column_family_handle_t* column_family,
+void crocksdb_compact_range_cf(DB* db, ColumnFamilyHandle* column_family,
                                const char* start_key, size_t start_key_len,
                                const char* limit_key, size_t limit_key_len) {
   Slice a, b;
-  db->rep->CompactRange(
-      CompactRangeOptions(), column_family->rep,
+  db->CompactRange(
+      CompactRangeOptions(), column_family,
       // Pass nullptr Slice if corresponding "const char*" is nullptr
       (start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr),
       (limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr));
 }
 
-void crocksdb_compact_range_opt(crocksdb_t* db, const CompactRangeOptions* opt,
+void crocksdb_compact_range_opt(DB* db, const CompactRangeOptions* opt,
                                 const char* start_key, size_t start_key_len,
                                 const char* limit_key, size_t limit_key_len) {
   Slice a, b;
-  db->rep->CompactRange(
+  db->CompactRange(
       *opt,
       // Pass nullptr Slice if corresponding "const char*" is nullptr
       (start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr),
       (limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr));
 }
 
-void crocksdb_compact_range_cf_opt(
-    crocksdb_t* db, crocksdb_column_family_handle_t* column_family,
-    const CompactRangeOptions* opt, const char* start_key, size_t start_key_len,
-    const char* limit_key, size_t limit_key_len) {
+void crocksdb_compact_range_cf_opt(DB* db, ColumnFamilyHandle* column_family,
+                                   const CompactRangeOptions* opt,
+                                   const char* start_key, size_t start_key_len,
+                                   const char* limit_key,
+                                   size_t limit_key_len) {
   Slice a, b;
-  db->rep->CompactRange(
-      *opt, column_family->rep,
+  db->CompactRange(
+      *opt, column_family,
       // Pass nullptr Slice if corresponding "const char*" is nullptr
       (start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr),
       (limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr));
 }
 
-void crocksdb_flush(crocksdb_t* db, const FlushOptions* options, Status* s) {
-  *s = db->rep->Flush(*options);
+void crocksdb_flush(DB* db, const FlushOptions* options, Status* s) {
+  *s = db->Flush(*options);
 }
 
-void crocksdb_flush_cf(crocksdb_t* db,
-                       crocksdb_column_family_handle_t* column_family,
+void crocksdb_flush_cf(DB* db, ColumnFamilyHandle* column_family,
                        const FlushOptions* options, Status* s) {
-  *s = db->rep->Flush(*options, column_family->rep);
+  *s = db->Flush(*options, column_family);
 }
 
-void crocksdb_flush_cfs(crocksdb_t* db,
-                        const crocksdb_column_family_handle_t** column_familys,
+void crocksdb_flush_cfs(DB* db, ColumnFamilyHandle** column_familys,
                         int num_handles, const FlushOptions* options,
                         Status* s) {
   std::vector<rocksdb::ColumnFamilyHandle*> handles(num_handles);
   for (int i = 0; i < num_handles; i++) {
-    handles[i] = column_familys[i]->rep;
+    handles[i] = column_familys[i];
   }
-  *s = db->rep->Flush(*options, handles);
+  *s = db->Flush(*options, handles);
 }
 
-void crocksdb_flush_wal(crocksdb_t* db, unsigned char sync, Status* s) {
-  *s = db->rep->FlushWAL(sync);
+void crocksdb_flush_wal(DB* db, unsigned char sync, Status* s) {
+  *s = db->FlushWAL(sync);
 }
 
-void crocksdb_sync_wal(crocksdb_t* db, Status* s) { *s = db->rep->SyncWAL(); }
+void crocksdb_sync_wal(DB* db, Status* s) { *s = db->SyncWAL(); }
 
-uint64_t crocksdb_get_latest_sequence_number(crocksdb_t* db) {
-  return db->rep->GetLatestSequenceNumber();
+uint64_t crocksdb_get_latest_sequence_number(DB* db) {
+  return db->GetLatestSequenceNumber();
 }
 
-void crocksdb_disable_file_deletions(crocksdb_t* db, Status* s) {
-  *s = db->rep->DisableFileDeletions();
+void crocksdb_disable_file_deletions(DB* db, Status* s) {
+  *s = db->DisableFileDeletions();
 }
 
-void crocksdb_enable_file_deletions(crocksdb_t* db, unsigned char force,
-                                    Status* s) {
-  *s = db->rep->EnableFileDeletions(force);
+void crocksdb_enable_file_deletions(DB* db, unsigned char force, Status* s) {
+  *s = db->EnableFileDeletions(force);
 }
 
-DBOptions* crocksdb_get_db_options(crocksdb_t* db) {
-  return new DBOptions(db->rep->GetDBOptions());
+DBOptions* crocksdb_get_db_options(DB* db) {
+  return new DBOptions(db->GetDBOptions());
 }
 
-void crocksdb_set_db_options(crocksdb_t* db, const char** names,
+void crocksdb_set_db_options(DB* db, const char** names, const char** values,
+                             size_t num_options, Status* s) {
+  std::unordered_map<std::string, std::string> options;
+  for (size_t i = 0; i < num_options; i++) {
+    options.emplace(names[i], values[i]);
+  }
+  *s = db->SetDBOptions(options);
+}
+
+Options* crocksdb_get_options_cf(const DB* db,
+                                 ColumnFamilyHandle* column_family) {
+  return new Options(db->GetOptions(column_family));
+}
+
+void crocksdb_set_options_cf(DB* db, ColumnFamilyHandle* cf, const char** names,
                              const char** values, size_t num_options,
                              Status* s) {
   std::unordered_map<std::string, std::string> options;
   for (size_t i = 0; i < num_options; i++) {
     options.emplace(names[i], values[i]);
   }
-  *s = db->rep->SetDBOptions(options);
-}
-
-Options* crocksdb_get_options_cf(
-    const crocksdb_t* db, crocksdb_column_family_handle_t* column_family) {
-  return new Options(db->rep->GetOptions(column_family->rep));
-}
-
-void crocksdb_set_options_cf(crocksdb_t* db,
-                             crocksdb_column_family_handle_t* cf,
-                             const char** names, const char** values,
-                             size_t num_options, Status* s) {
-  std::unordered_map<std::string, std::string> options;
-  for (size_t i = 0; i < num_options; i++) {
-    options.emplace(names[i], values[i]);
-  }
-  *s = db->rep->SetOptions(cf->rep, options);
+  *s = db->SetOptions(cf, options);
 }
 
 void crocksdb_destroy_db(const Options* options, const char* name, Status* s) {
@@ -1537,10 +1479,10 @@ void crocksdb_writebatch_put(crocksdb_writebatch_t* b, const char* key,
 }
 
 void crocksdb_writebatch_put_cf(crocksdb_writebatch_t* b,
-                                crocksdb_column_family_handle_t* column_family,
+                                ColumnFamilyHandle* column_family,
                                 const char* key, size_t klen, const char* val,
                                 size_t vlen) {
-  b->rep.Put(column_family->rep, Slice(key, klen), Slice(val, vlen));
+  b->rep.Put(column_family, Slice(key, klen), Slice(val, vlen));
 }
 
 void crocksdb_writebatch_putv(crocksdb_writebatch_t* b, int num_keys,
@@ -1561,7 +1503,7 @@ void crocksdb_writebatch_putv(crocksdb_writebatch_t* b, int num_keys,
 }
 
 void crocksdb_writebatch_putv_cf(crocksdb_writebatch_t* b,
-                                 crocksdb_column_family_handle_t* column_family,
+                                 ColumnFamilyHandle* column_family,
                                  int num_keys, const char* const* keys_list,
                                  const size_t* keys_list_sizes, int num_values,
                                  const char* const* values_list,
@@ -1574,7 +1516,7 @@ void crocksdb_writebatch_putv_cf(crocksdb_writebatch_t* b,
   for (int i = 0; i < num_values; i++) {
     value_slices[i] = Slice(values_list[i], values_list_sizes[i]);
   }
-  b->rep.Put(column_family->rep, SliceParts(key_slices.data(), num_keys),
+  b->rep.Put(column_family, SliceParts(key_slices.data(), num_keys),
              SliceParts(value_slices.data(), num_values));
 }
 
@@ -1583,10 +1525,11 @@ void crocksdb_writebatch_merge(crocksdb_writebatch_t* b, const char* key,
   b->rep.Merge(Slice(key, klen), Slice(val, vlen));
 }
 
-void crocksdb_writebatch_merge_cf(
-    crocksdb_writebatch_t* b, crocksdb_column_family_handle_t* column_family,
-    const char* key, size_t klen, const char* val, size_t vlen) {
-  b->rep.Merge(column_family->rep, Slice(key, klen), Slice(val, vlen));
+void crocksdb_writebatch_merge_cf(crocksdb_writebatch_t* b,
+                                  ColumnFamilyHandle* column_family,
+                                  const char* key, size_t klen, const char* val,
+                                  size_t vlen) {
+  b->rep.Merge(column_family, Slice(key, klen), Slice(val, vlen));
 }
 
 void crocksdb_writebatch_mergev(crocksdb_writebatch_t* b, int num_keys,
@@ -1607,10 +1550,9 @@ void crocksdb_writebatch_mergev(crocksdb_writebatch_t* b, int num_keys,
 }
 
 void crocksdb_writebatch_mergev_cf(
-    crocksdb_writebatch_t* b, crocksdb_column_family_handle_t* column_family,
-    int num_keys, const char* const* keys_list, const size_t* keys_list_sizes,
-    int num_values, const char* const* values_list,
-    const size_t* values_list_sizes) {
+    crocksdb_writebatch_t* b, ColumnFamilyHandle* column_family, int num_keys,
+    const char* const* keys_list, const size_t* keys_list_sizes, int num_values,
+    const char* const* values_list, const size_t* values_list_sizes) {
   std::vector<Slice> key_slices(num_keys);
   for (int i = 0; i < num_keys; i++) {
     key_slices[i] = Slice(keys_list[i], keys_list_sizes[i]);
@@ -1619,7 +1561,7 @@ void crocksdb_writebatch_mergev_cf(
   for (int i = 0; i < num_values; i++) {
     value_slices[i] = Slice(values_list[i], values_list_sizes[i]);
   }
-  b->rep.Merge(column_family->rep, SliceParts(key_slices.data(), num_keys),
+  b->rep.Merge(column_family, SliceParts(key_slices.data(), num_keys),
                SliceParts(value_slices.data(), num_values));
 }
 
@@ -1628,10 +1570,10 @@ void crocksdb_writebatch_delete(crocksdb_writebatch_t* b, const char* key,
   b->rep.Delete(Slice(key, klen));
 }
 
-void crocksdb_writebatch_delete_cf(
-    crocksdb_writebatch_t* b, crocksdb_column_family_handle_t* column_family,
-    const char* key, size_t klen) {
-  b->rep.Delete(column_family->rep, Slice(key, klen));
+void crocksdb_writebatch_delete_cf(crocksdb_writebatch_t* b,
+                                   ColumnFamilyHandle* column_family,
+                                   const char* key, size_t klen) {
+  b->rep.Delete(column_family, Slice(key, klen));
 }
 
 void crocksdb_writebatch_single_delete(crocksdb_writebatch_t* b,
@@ -1639,10 +1581,10 @@ void crocksdb_writebatch_single_delete(crocksdb_writebatch_t* b,
   b->rep.SingleDelete(Slice(key, klen));
 }
 
-void crocksdb_writebatch_single_delete_cf(
-    crocksdb_writebatch_t* b, crocksdb_column_family_handle_t* column_family,
-    const char* key, size_t klen) {
-  b->rep.SingleDelete(column_family->rep, Slice(key, klen));
+void crocksdb_writebatch_single_delete_cf(crocksdb_writebatch_t* b,
+                                          ColumnFamilyHandle* column_family,
+                                          const char* key, size_t klen) {
+  b->rep.SingleDelete(column_family, Slice(key, klen));
 }
 
 void crocksdb_writebatch_deletev(crocksdb_writebatch_t* b, int num_keys,
@@ -1655,14 +1597,15 @@ void crocksdb_writebatch_deletev(crocksdb_writebatch_t* b, int num_keys,
   b->rep.Delete(SliceParts(key_slices.data(), num_keys));
 }
 
-void crocksdb_writebatch_deletev_cf(
-    crocksdb_writebatch_t* b, crocksdb_column_family_handle_t* column_family,
-    int num_keys, const char* const* keys_list, const size_t* keys_list_sizes) {
+void crocksdb_writebatch_deletev_cf(crocksdb_writebatch_t* b,
+                                    ColumnFamilyHandle* column_family,
+                                    int num_keys, const char* const* keys_list,
+                                    const size_t* keys_list_sizes) {
   std::vector<Slice> key_slices(num_keys);
   for (int i = 0; i < num_keys; i++) {
     key_slices[i] = Slice(keys_list[i], keys_list_sizes[i]);
   }
-  b->rep.Delete(column_family->rep, SliceParts(key_slices.data(), num_keys));
+  b->rep.Delete(column_family, SliceParts(key_slices.data(), num_keys));
 }
 
 void crocksdb_writebatch_delete_range(crocksdb_writebatch_t* b,
@@ -1673,11 +1616,13 @@ void crocksdb_writebatch_delete_range(crocksdb_writebatch_t* b,
                      Slice(end_key, end_key_len));
 }
 
-void crocksdb_writebatch_delete_range_cf(
-    crocksdb_writebatch_t* b, crocksdb_column_family_handle_t* column_family,
-    const char* start_key, size_t start_key_len, const char* end_key,
-    size_t end_key_len) {
-  b->rep.DeleteRange(column_family->rep, Slice(start_key, start_key_len),
+void crocksdb_writebatch_delete_range_cf(crocksdb_writebatch_t* b,
+                                         ColumnFamilyHandle* column_family,
+                                         const char* start_key,
+                                         size_t start_key_len,
+                                         const char* end_key,
+                                         size_t end_key_len) {
+  b->rep.DeleteRange(column_family, Slice(start_key, start_key_len),
                      Slice(end_key, end_key_len));
 }
 
@@ -1697,17 +1642,16 @@ void crocksdb_writebatch_delete_rangev(crocksdb_writebatch_t* b, int num_keys,
 }
 
 void crocksdb_writebatch_delete_rangev_cf(
-    crocksdb_writebatch_t* b, crocksdb_column_family_handle_t* column_family,
-    int num_keys, const char* const* start_keys_list,
-    const size_t* start_keys_list_sizes, const char* const* end_keys_list,
-    const size_t* end_keys_list_sizes) {
+    crocksdb_writebatch_t* b, ColumnFamilyHandle* column_family, int num_keys,
+    const char* const* start_keys_list, const size_t* start_keys_list_sizes,
+    const char* const* end_keys_list, const size_t* end_keys_list_sizes) {
   std::vector<Slice> start_key_slices(num_keys);
   std::vector<Slice> end_key_slices(num_keys);
   for (int i = 0; i < num_keys; i++) {
     start_key_slices[i] = Slice(start_keys_list[i], start_keys_list_sizes[i]);
     end_key_slices[i] = Slice(end_keys_list[i], end_keys_list_sizes[i]);
   }
-  b->rep.DeleteRange(column_family->rep,
+  b->rep.DeleteRange(column_family,
                      SliceParts(start_key_slices.data(), num_keys),
                      SliceParts(end_key_slices.data(), num_keys));
 }
@@ -2230,35 +2174,31 @@ WriteStallCondition crocksdb_writestallinfo_prev(const WriteStallInfo* info) {
 struct CRocksDBEventListener : public EventListener {
   void* state_;
   void (*destructor_)(void*);
-  void (*on_flush_begin)(void*, crocksdb_t*, const FlushJobInfo*);
-  void (*on_flush_completed)(void*, crocksdb_t*, const FlushJobInfo*);
-  void (*on_compaction_begin)(void*, crocksdb_t*, const CompactionJobInfo*);
-  void (*on_compaction_completed)(void*, crocksdb_t*, const CompactionJobInfo*);
+  void (*on_flush_begin)(void*, DB*, const FlushJobInfo*);
+  void (*on_flush_completed)(void*, DB*, const FlushJobInfo*);
+  void (*on_compaction_begin)(void*, DB*, const CompactionJobInfo*);
+  void (*on_compaction_completed)(void*, DB*, const CompactionJobInfo*);
   void (*on_subcompaction_begin)(void*, const SubcompactionJobInfo*);
   void (*on_subcompaction_completed)(void*, const SubcompactionJobInfo*);
-  void (*on_external_file_ingested)(void*, crocksdb_t*,
+  void (*on_external_file_ingested)(void*, DB*,
                                     const ExternalFileIngestionInfo*);
   void (*on_background_error)(void*, rocksdb::BackgroundErrorReason, Status*);
   void (*on_stall_conditions_changed)(void*, const WriteStallInfo*);
 
   virtual void OnFlushBegin(DB* db, const FlushJobInfo& info) {
-    crocksdb_t c_db = {db};
-    on_flush_begin(state_, &c_db, &info);
+    on_flush_begin(state_, db, &info);
   }
 
   virtual void OnFlushCompleted(DB* db, const FlushJobInfo& info) {
-    crocksdb_t c_db = {db};
-    on_flush_completed(state_, &c_db, &info);
+    on_flush_completed(state_, db, &info);
   }
 
   virtual void OnCompactionBegin(DB* db, const CompactionJobInfo& info) {
-    crocksdb_t c_db = {db};
-    on_compaction_begin(state_, &c_db, &info);
+    on_compaction_begin(state_, db, &info);
   }
 
   virtual void OnCompactionCompleted(DB* db, const CompactionJobInfo& info) {
-    crocksdb_t c_db = {db};
-    on_compaction_completed(state_, &c_db, &info);
+    on_compaction_completed(state_, db, &info);
   }
 
   virtual void OnSubcompactionBegin(const SubcompactionJobInfo& info) {
@@ -2271,8 +2211,7 @@ struct CRocksDBEventListener : public EventListener {
 
   virtual void OnExternalFileIngested(DB* db,
                                       const ExternalFileIngestionInfo& info) {
-    crocksdb_t c_db = {db};
-    on_external_file_ingested(state_, &c_db, &info);
+    on_external_file_ingested(state_, db, &info);
   }
 
   virtual void OnBackgroundError(BackgroundErrorReason reason, Status* status) {
@@ -3754,9 +3693,9 @@ crocksdb_sstfilewriter_t* crocksdb_sstfilewriter_create(
 
 crocksdb_sstfilewriter_t* crocksdb_sstfilewriter_create_cf(
     const crocksdb_envoptions_t* env, const Options* io_options,
-    crocksdb_column_family_handle_t* column_family) {
+    ColumnFamilyHandle* column_family) {
   crocksdb_sstfilewriter_t* writer = new crocksdb_sstfilewriter_t;
-  writer->rep = new SstFileWriter(env->rep, *io_options, column_family->rep);
+  writer->rep = new SstFileWriter(env->rep, *io_options, column_family);
   return writer;
 }
 
@@ -3852,7 +3791,7 @@ void crocksdb_ingestexternalfileoptions_init(IngestExternalFileOptions* opt) {
   *opt = IngestExternalFileOptions();
 }
 
-void crocksdb_ingest_external_file(crocksdb_t* db, const char* const* file_list,
+void crocksdb_ingest_external_file(DB* db, const char* const* file_list,
                                    const size_t list_len,
                                    const IngestExternalFileOptions* opt,
                                    Status* s) {
@@ -3860,11 +3799,10 @@ void crocksdb_ingest_external_file(crocksdb_t* db, const char* const* file_list,
   for (size_t i = 0; i < list_len; ++i) {
     files[i] = std::string(file_list[i]);
   }
-  *s = db->rep->IngestExternalFile(files, *opt);
+  *s = db->IngestExternalFile(files, *opt);
 }
 
-void crocksdb_ingest_external_file_cf(crocksdb_t* db,
-                                      crocksdb_column_family_handle_t* handle,
+void crocksdb_ingest_external_file_cf(DB* db, ColumnFamilyHandle* handle,
                                       const char* const* file_list,
                                       const size_t list_len,
                                       const IngestExternalFileOptions* opt,
@@ -3873,13 +3811,12 @@ void crocksdb_ingest_external_file_cf(crocksdb_t* db,
   for (size_t i = 0; i < list_len; ++i) {
     files[i] = std::string(file_list[i]);
   }
-  *s = db->rep->IngestExternalFile(handle->rep, files, *opt);
+  *s = db->IngestExternalFile(handle, files, *opt);
 }
 
 unsigned char crocksdb_ingest_external_file_optimized(
-    crocksdb_t* db, crocksdb_column_family_handle_t* handle,
-    const char* const* file_list, const size_t list_len,
-    const IngestExternalFileOptions* opt, Status* s) {
+    DB* db, ColumnFamilyHandle* handle, const char* const* file_list,
+    const size_t list_len, const IngestExternalFileOptions* opt, Status* s) {
   std::vector<std::string> files(list_len);
   for (size_t i = 0; i < list_len; ++i) {
     files[i] = std::string(file_list[i]);
@@ -3890,7 +3827,7 @@ unsigned char crocksdb_ingest_external_file_optimized(
   // write latency. So we set `allow_blocking_flush = false`.
   auto ingest_opts = *opt;
   ingest_opts.allow_blocking_flush = false;
-  *s = db->rep->IngestExternalFile(handle->rep, files, ingest_opts);
+  *s = db->IngestExternalFile(handle, files, ingest_opts);
   if (s->IsInvalidArgument() &&
       s->ToString().find("External file requires flush") != std::string::npos) {
     // When `allow_blocking_flush = false` and the file being ingested
@@ -3907,8 +3844,8 @@ unsigned char crocksdb_ingest_external_file_optimized(
     flush_opts.allow_write_stall = false;
     // We don't check the status of this flush because we will
     // fallback to a blocking ingestion anyway.
-    db->rep->Flush(flush_opts, handle->rep);
-    *s = db->rep->IngestExternalFile(handle->rep, files, *opt);
+    db->Flush(flush_opts, handle);
+    *s = db->IngestExternalFile(handle, files, *opt);
   }
   return has_flush;
 }
@@ -4052,35 +3989,37 @@ void crocksdb_get_options_from_string(const Options* base_options,
   *s = GetOptionsFromString(*base_options, std::string(opts_str), new_options);
 }
 
-void crocksdb_delete_files_in_range(crocksdb_t* db, const char* start_key,
+void crocksdb_delete_files_in_range(DB* db, const char* start_key,
                                     size_t start_key_len, const char* limit_key,
                                     size_t limit_key_len,
                                     unsigned char include_end, Status* s) {
   Slice a, b;
   *s = DeleteFilesInRange(
-      db->rep, db->rep->DefaultColumnFamily(),
+      db, db->DefaultColumnFamily(),
       (start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr),
       (limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr),
       include_end);
 }
 
 void crocksdb_delete_files_in_range_cf(
-    crocksdb_t* db, crocksdb_column_family_handle_t* column_family,
-    const char* start_key, size_t start_key_len, const char* limit_key,
-    size_t limit_key_len, unsigned char include_end, Status* s) {
+    DB* db, ColumnFamilyHandle* column_family, const char* start_key,
+    size_t start_key_len, const char* limit_key, size_t limit_key_len,
+    unsigned char include_end, Status* s) {
   Slice a, b;
   *s = DeleteFilesInRange(
-      db->rep, column_family->rep,
+      db, column_family,
       (start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr),
       (limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr),
       include_end);
 }
 
-void crocksdb_delete_files_in_ranges_cf(
-    crocksdb_t* db, crocksdb_column_family_handle_t* cf,
-    const char* const* start_keys, const size_t* start_keys_lens,
-    const char* const* limit_keys, const size_t* limit_keys_lens,
-    size_t num_ranges, unsigned char include_end, Status* s) {
+void crocksdb_delete_files_in_ranges_cf(DB* db, ColumnFamilyHandle* cf,
+                                        const char* const* start_keys,
+                                        const size_t* start_keys_lens,
+                                        const char* const* limit_keys,
+                                        const size_t* limit_keys_lens,
+                                        size_t num_ranges,
+                                        unsigned char include_end, Status* s) {
   std::vector<Slice> starts(num_ranges);
   std::vector<Slice> limits(num_ranges);
   std::vector<RangePtr> ranges(num_ranges);
@@ -4097,8 +4036,7 @@ void crocksdb_delete_files_in_ranges_cf(
     }
     ranges[i] = RangePtr(start, limit);
   }
-  *s = DeleteFilesInRanges(db->rep, cf->rep, &ranges[0], num_ranges,
-                           include_end);
+  *s = DeleteFilesInRanges(db, cf, &ranges[0], num_ranges, include_end);
 }
 
 void crocksdb_free(void* ptr) { free(ptr); }
@@ -4128,13 +4066,13 @@ crocksdb_logger_t* crocksdb_create_log_from_options(const char* path,
 
 void crocksdb_log_destroy(crocksdb_logger_t* logger) { delete logger; }
 
-crocksdb_pinnableslice_t* crocksdb_get_pinned(crocksdb_t* db,
+crocksdb_pinnableslice_t* crocksdb_get_pinned(DB* db,
                                               const ReadOptions* options,
                                               const char* key, size_t keylen,
                                               Status* s) {
   auto v = new crocksdb_pinnableslice_t;
-  *s = db->rep->Get(*options, db->rep->DefaultColumnFamily(),
-                    Slice(key, keylen), &v->rep);
+  *s =
+      db->Get(*options, db->DefaultColumnFamily(), Slice(key, keylen), &v->rep);
   if (s->ok()) {
     return v;
   } else {
@@ -4144,11 +4082,10 @@ crocksdb_pinnableslice_t* crocksdb_get_pinned(crocksdb_t* db,
 }
 
 crocksdb_pinnableslice_t* crocksdb_get_pinned_cf(
-    crocksdb_t* db, const ReadOptions* options,
-    crocksdb_column_family_handle_t* column_family, const char* key,
-    size_t keylen, Status* s) {
+    DB* db, const ReadOptions* options, ColumnFamilyHandle* column_family,
+    const char* key, size_t keylen, Status* s) {
   auto v = new crocksdb_pinnableslice_t;
-  *s = db->rep->Get(*options, column_family->rep, Slice(key, keylen), &v->rep);
+  *s = db->Get(*options, column_family, Slice(key, keylen), &v->rep);
   if (s->ok()) {
     return v;
   } else {
@@ -4523,10 +4460,10 @@ void crocksdb_options_set_compact_on_deletion(ColumnFamilyOptions* opt,
 
 /* Get Table Properties */
 
-TablePropertiesCollection* crocksdb_get_properties_of_all_tables(crocksdb_t* db,
+TablePropertiesCollection* crocksdb_get_properties_of_all_tables(DB* db,
                                                                  Status* s) {
   auto v = new TablePropertiesCollection;
-  *s = db->rep->GetPropertiesOfAllTables(v);
+  *s = db->GetPropertiesOfAllTables(v);
   if (s->ok()) {
     return v;
   } else {
@@ -4536,9 +4473,9 @@ TablePropertiesCollection* crocksdb_get_properties_of_all_tables(crocksdb_t* db,
 }
 
 TablePropertiesCollection* crocksdb_get_properties_of_all_tables_cf(
-    crocksdb_t* db, crocksdb_column_family_handle_t* cf, Status* s) {
+    DB* db, ColumnFamilyHandle* cf, Status* s) {
   auto v = new TablePropertiesCollection;
-  *s = db->rep->GetPropertiesOfAllTables(cf->rep, v);
+  *s = db->GetPropertiesOfAllTables(cf, v);
   if (s->ok()) {
     return v;
   } else {
@@ -4548,7 +4485,7 @@ TablePropertiesCollection* crocksdb_get_properties_of_all_tables_cf(
 }
 
 TablePropertiesCollection* crocksdb_get_properties_of_tables_in_range(
-    crocksdb_t* db, crocksdb_column_family_handle_t* cf, int num_ranges,
+    DB* db, ColumnFamilyHandle* cf, int num_ranges,
     const char* const* start_keys, const size_t* start_keys_lens,
     const char* const* limit_keys, const size_t* limit_keys_lens, Status* s) {
   std::vector<Range> ranges;
@@ -4557,8 +4494,7 @@ TablePropertiesCollection* crocksdb_get_properties_of_tables_in_range(
                               Slice(limit_keys[i], limit_keys_lens[i])));
   }
   auto v = new TablePropertiesCollection;
-  *s = db->rep->GetPropertiesOfTablesInRange(cf->rep, ranges.data(),
-                                             ranges.size(), v);
+  *s = db->GetPropertiesOfTablesInRange(cf, ranges.data(), ranges.size(), v);
   if (s->ok()) {
     return v;
   } else {
@@ -4575,11 +4511,11 @@ void crocksdb_options_set_bottommost_compression(ColumnFamilyOptions* opt,
 void crocksdb_keyversions_destroy(crocksdb_keyversions_t* kvs) { delete kvs; }
 
 crocksdb_keyversions_t* crocksdb_get_all_key_versions(
-    crocksdb_t* db, const char* begin_key, size_t begin_keylen,
-    const char* end_key, size_t end_keylen, Status* s) {
+    DB* db, const char* begin_key, size_t begin_keylen, const char* end_key,
+    size_t end_keylen, Status* s) {
   auto v = new crocksdb_keyversions_t;
   constexpr size_t kMaxNumKeys = std::numeric_limits<size_t>::max();
-  *s = GetAllKeyVersions(db->rep, Slice(begin_key, begin_keylen),
+  *s = GetAllKeyVersions(db, Slice(begin_key, begin_keylen),
                          Slice(end_key, end_keylen), kMaxNumKeys, &v->rep);
   if (s->ok()) {
     return v;
@@ -4710,11 +4646,11 @@ struct ExternalSstFileModifier {
 // !!! this function is dangerous because it uses rocksdb's non-public API !!!
 // find the offset of external sst file's `global seq no` and modify it.
 uint64_t crocksdb_set_external_sst_file_global_seq_no(
-    crocksdb_t* db, crocksdb_column_family_handle_t* column_family,
-    const char* file, uint64_t seq_no, Status* s) {
-  auto env = db->rep->GetEnv();
-  EnvOptions env_options(db->rep->GetDBOptions());
-  ExternalSstFileModifier modifier(env, env_options, column_family->rep);
+    DB* db, ColumnFamilyHandle* column_family, const char* file,
+    uint64_t seq_no, Status* s) {
+  auto env = db->GetEnv();
+  EnvOptions env_options(db->GetDBOptions());
+  ExternalSstFileModifier modifier(env, env_options, column_family);
   *s = modifier.Open(std::string(file));
   if (s->ok()) {
     uint64_t pre_seq_no;
@@ -4726,9 +4662,8 @@ uint64_t crocksdb_set_external_sst_file_global_seq_no(
 }
 
 void crocksdb_get_column_family_meta_data(
-    crocksdb_t* db, crocksdb_column_family_handle_t* cf,
-    crocksdb_column_family_meta_data_t* meta) {
-  db->rep->GetColumnFamilyMetaData(cf->rep, &meta->rep);
+    DB* db, ColumnFamilyHandle* cf, crocksdb_column_family_meta_data_t* meta) {
+  db->GetColumnFamilyMetaData(cf, &meta->rep);
 }
 
 crocksdb_column_family_meta_data_t* crocksdb_column_family_meta_data_create() {
@@ -4788,8 +4723,7 @@ void crocksdb_compaction_options_init(CompactionOptions* opt) {
   *opt = CompactionOptions();
 }
 
-void crocksdb_compact_files_cf(crocksdb_t* db,
-                               crocksdb_column_family_handle_t* cf,
+void crocksdb_compact_files_cf(DB* db, ColumnFamilyHandle* cf,
                                const CompactionOptions* opts,
                                const char** input_file_names,
                                size_t input_file_count, int output_level,
@@ -4798,7 +4732,7 @@ void crocksdb_compact_files_cf(crocksdb_t* db,
   for (size_t i = 0; i < input_file_count; i++) {
     input_files.push_back(input_file_names[i]);
   }
-  *s = db->rep->CompactFiles(*opts, cf->rep, input_files, output_level);
+  *s = db->CompactFiles(*opts, cf, input_files, output_level);
 }
 
 /* PerfContext */
@@ -5348,55 +5282,45 @@ void crocksdb_run_sst_dump_tool(int argc, char** argv, const Options* opts) {
 
 /* Titan */
 
-crocksdb_t* ctitandb_open_column_families(
-    const char* name, const TitanDBOptions* tdb_options,
-    int num_column_families, const char** column_family_names,
-    const TitanCFOptions** titan_column_family_options,
-    crocksdb_column_family_handle_t** column_family_handles, Status* s) {
+DB* ctitandb_open_column_families(
+    Slice name, const TitanDBOptions* tdb_options, int num_column_families,
+    const Slice* column_family_names,
+    const TitanCFOptions* const* titan_column_family_options,
+    ColumnFamilyHandle** column_family_handles, Status* s) {
   std::vector<TitanCFDescriptor> column_families;
   for (int i = 0; i < num_column_families; i++) {
     column_families.push_back(TitanCFDescriptor(
-        std::string(column_family_names[i]), *titan_column_family_options[i]));
+        column_family_names[i].ToString(), *titan_column_family_options[i]));
   }
 
   TitanDB* db;
   std::vector<ColumnFamilyHandle*> handles;
-  *s = TitanDB::Open(*tdb_options, std::string(name), column_families, &handles,
+  *s = TitanDB::Open(*tdb_options, name.ToString(), column_families, &handles,
                      &db);
   if (!s->ok()) {
     return nullptr;
   }
   for (size_t i = 0; i < handles.size(); i++) {
-    crocksdb_column_family_handle_t* c_handle =
-        new crocksdb_column_family_handle_t;
-    c_handle->rep = handles[i];
-    column_family_handles[i] = c_handle;
+    column_family_handles[i] = handles[i];
   }
-  auto result = new crocksdb_t;
-  result->rep = db;
-  return result;
+  return db;
 }
 
 // Caller should make sure `db` is created from ctitandb_open_column_families.
 //
 // TODO: ctitandb_open_column_family should return a ctitandb_t. Caller can
 // use ctitandb_t for titan specific functions.
-crocksdb_column_family_handle_t* ctitandb_create_column_family(
-    crocksdb_t* db, const TitanCFOptions* titan_column_family_options,
+ColumnFamilyHandle* ctitandb_create_column_family(
+    DB* db, const TitanCFOptions* titan_column_family_options,
     const char* column_family_name, Status* s) {
   // Blindly cast db into TitanDB.
-  TitanDB* titan_db = reinterpret_cast<TitanDB*>(db->rep);
-  auto handle = new crocksdb_column_family_handle_t;
+  TitanDB* titan_db = reinterpret_cast<TitanDB*>(db);
+  ColumnFamilyHandle* handle = nullptr;
   *s = titan_db->CreateColumnFamily(
       TitanCFDescriptor(std::string(column_family_name),
                         *titan_column_family_options),
-      &(handle->rep));
-  if (s->ok()) {
-    return handle;
-  } else {
-    delete handle;
-    return nullptr;
-  }
+      &handle);
+  return handle;
 }
 
 /* TitanDBOptions */
@@ -5421,15 +5345,15 @@ TitanCFOptions* ctitandb_cfoptions_create() { return new TitanCFOptions(); }
 
 void ctitandb_cfoptions_destroy(TitanCFOptions* opt) { delete opt; }
 
-TitanOptions* ctitandb_get_titan_options_cf(
-    const crocksdb_t* db, crocksdb_column_family_handle_t* column_family) {
-  TitanDB* titan_db = reinterpret_cast<TitanDB*>(db->rep);
-  auto opt = titan_db->GetTitanOptions(column_family->rep);
+TitanOptions* ctitandb_get_titan_options_cf(const DB* db,
+                                            ColumnFamilyHandle* column_family) {
+  const TitanDB* titan_db = reinterpret_cast<const TitanDB*>(db);
+  auto opt = titan_db->GetTitanOptions(column_family);
   return new TitanOptions(opt);
 }
 
-TitanDBOptions* ctitandb_get_titan_db_options(crocksdb_t* db) {
-  TitanDB* titan_db = reinterpret_cast<TitanDB*>(db->rep);
+TitanDBOptions* ctitandb_get_titan_db_options(const DB* db) {
+  const TitanDB* titan_db = reinterpret_cast<const TitanDB*>(db);
   auto opt = titan_db->GetTitanDBOptions();
   return new TitanDBOptions(opt);
 }
@@ -5596,33 +5520,33 @@ void ctitandb_readoptions_init(TitanReadOptions* opt) {
 }
 
 crocksdb_iterator_t* ctitandb_create_iterator(
-    crocksdb_t* db, const TitanReadOptions* titan_options) {
+    DB* db, const TitanReadOptions* titan_options) {
   crocksdb_iterator_t* result = new crocksdb_iterator_t;
-  result->rep = static_cast<TitanDB*>(db->rep)->NewIterator(*titan_options);
+  result->rep = static_cast<TitanDB*>(db)->NewIterator(*titan_options);
   return result;
 }
 
 crocksdb_iterator_t* ctitandb_create_iterator_cf(
-    crocksdb_t* db, const TitanReadOptions* titan_options,
-    crocksdb_column_family_handle_t* column_family) {
+    DB* db, const TitanReadOptions* titan_options,
+    ColumnFamilyHandle* column_family) {
   crocksdb_iterator_t* result = new crocksdb_iterator_t;
-  result->rep = static_cast<TitanDB*>(db->rep)->NewIterator(*titan_options,
-                                                            column_family->rep);
+  result->rep =
+      static_cast<TitanDB*>(db)->NewIterator(*titan_options, column_family);
   return result;
 }
 
-void ctitandb_create_iterators(
-    crocksdb_t* db, const TitanReadOptions* titan_options,
-    crocksdb_column_family_handle_t** column_families,
-    crocksdb_iterator_t** iterators, size_t size, Status* s) {
+void ctitandb_create_iterators(DB* db, const TitanReadOptions* titan_options,
+                               ColumnFamilyHandle** column_families,
+                               crocksdb_iterator_t** iterators, size_t size,
+                               Status* s) {
   std::vector<ColumnFamilyHandle*> column_families_vec(size);
   for (size_t i = 0; i < size; i++) {
-    column_families_vec.push_back(column_families[i]->rep);
+    column_families_vec.push_back(column_families[i]);
   }
 
   std::vector<Iterator*> res;
-  *s = static_cast<TitanDB*>(db->rep)->NewIterators(*titan_options,
-                                                    column_families_vec, &res);
+  *s = static_cast<TitanDB*>(db)->NewIterators(*titan_options,
+                                               column_families_vec, &res);
   if (!s->ok()) {
     for (size_t i = 0; i < res.size(); i++) {
       delete res[i];
@@ -5637,7 +5561,7 @@ void ctitandb_create_iterators(
   }
 }
 
-void ctitandb_delete_files_in_range(crocksdb_t* db, const char* start_key,
+void ctitandb_delete_files_in_range(DB* db, const char* start_key,
                                     size_t start_key_len, const char* limit_key,
                                     size_t limit_key_len,
                                     unsigned char include_end, Status* s) {
@@ -5646,28 +5570,30 @@ void ctitandb_delete_files_in_range(crocksdb_t* db, const char* start_key,
       start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr,
       limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr);
 
-  *s = static_cast<TitanDB*>(db->rep)->DeleteFilesInRanges(
-      db->rep->DefaultColumnFamily(), &range, 1, include_end);
+  *s = static_cast<TitanDB*>(db)->DeleteFilesInRanges(db->DefaultColumnFamily(),
+                                                      &range, 1, include_end);
 }
 
 void ctitandb_delete_files_in_range_cf(
-    crocksdb_t* db, crocksdb_column_family_handle_t* column_family,
-    const char* start_key, size_t start_key_len, const char* limit_key,
-    size_t limit_key_len, unsigned char include_end, Status* s) {
+    DB* db, ColumnFamilyHandle* column_family, const char* start_key,
+    size_t start_key_len, const char* limit_key, size_t limit_key_len,
+    unsigned char include_end, Status* s) {
   Slice a, b;
   RangePtr range(
       start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr,
       limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr);
 
-  *s = static_cast<TitanDB*>(db->rep)->DeleteFilesInRanges(
-      column_family->rep, &range, 1, include_end);
+  *s = static_cast<TitanDB*>(db)->DeleteFilesInRanges(column_family, &range, 1,
+                                                      include_end);
 }
 
-void ctitandb_delete_files_in_ranges_cf(
-    crocksdb_t* db, crocksdb_column_family_handle_t* cf,
-    const char* const* start_keys, const size_t* start_keys_lens,
-    const char* const* limit_keys, const size_t* limit_keys_lens,
-    size_t num_ranges, unsigned char include_end, Status* s) {
+void ctitandb_delete_files_in_ranges_cf(DB* db, ColumnFamilyHandle* cf,
+                                        const char* const* start_keys,
+                                        const size_t* start_keys_lens,
+                                        const char* const* limit_keys,
+                                        const size_t* limit_keys_lens,
+                                        size_t num_ranges,
+                                        unsigned char include_end, Status* s) {
   std::vector<Slice> starts(num_ranges);
   std::vector<Slice> limits(num_ranges);
   std::vector<RangePtr> ranges(num_ranges);
@@ -5684,11 +5610,11 @@ void ctitandb_delete_files_in_ranges_cf(
     }
     ranges[i] = RangePtr(start, limit);
   }
-  *s = static_cast<TitanDB*>(db->rep)->DeleteFilesInRanges(
-      cf->rep, &ranges[0], num_ranges, include_end);
+  *s = static_cast<TitanDB*>(db)->DeleteFilesInRanges(cf, &ranges[0],
+                                                      num_ranges, include_end);
 }
 
-void ctitandb_delete_blob_files_in_range(crocksdb_t* db, const char* start_key,
+void ctitandb_delete_blob_files_in_range(DB* db, const char* start_key,
                                          size_t start_key_len,
                                          const char* limit_key,
                                          size_t limit_key_len,
@@ -5698,28 +5624,28 @@ void ctitandb_delete_blob_files_in_range(crocksdb_t* db, const char* start_key,
       start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr,
       limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr);
 
-  *s = static_cast<TitanDB*>(db->rep)->DeleteBlobFilesInRanges(
-      db->rep->DefaultColumnFamily(), &range, 1, include_end);
+  *s = static_cast<TitanDB*>(db)->DeleteBlobFilesInRanges(
+      db->DefaultColumnFamily(), &range, 1, include_end);
 }
 
 void ctitandb_delete_blob_files_in_range_cf(
-    crocksdb_t* db, crocksdb_column_family_handle_t* column_family,
-    const char* start_key, size_t start_key_len, const char* limit_key,
-    size_t limit_key_len, unsigned char include_end, Status* s) {
+    DB* db, ColumnFamilyHandle* column_family, const char* start_key,
+    size_t start_key_len, const char* limit_key, size_t limit_key_len,
+    unsigned char include_end, Status* s) {
   Slice a, b;
   RangePtr range(
       start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr,
       limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr);
 
-  *s = static_cast<TitanDB*>(db->rep)->DeleteBlobFilesInRanges(
-      column_family->rep, &range, 1, include_end);
+  *s = static_cast<TitanDB*>(db)->DeleteBlobFilesInRanges(column_family, &range,
+                                                          1, include_end);
 }
 
 void ctitandb_delete_blob_files_in_ranges_cf(
-    crocksdb_t* db, crocksdb_column_family_handle_t* cf,
-    const char* const* start_keys, const size_t* start_keys_lens,
-    const char* const* limit_keys, const size_t* limit_keys_lens,
-    size_t num_ranges, unsigned char include_end, Status* s) {
+    DB* db, ColumnFamilyHandle* cf, const char* const* start_keys,
+    const size_t* start_keys_lens, const char* const* limit_keys,
+    const size_t* limit_keys_lens, size_t num_ranges, unsigned char include_end,
+    Status* s) {
   std::vector<Slice> starts(num_ranges);
   std::vector<Slice> limits(num_ranges);
   std::vector<RangePtr> ranges(num_ranges);
@@ -5736,8 +5662,8 @@ void ctitandb_delete_blob_files_in_ranges_cf(
     }
     ranges[i] = RangePtr(start, limit);
   }
-  *s = static_cast<TitanDB*>(db->rep)->DeleteBlobFilesInRanges(
-      cf->rep, &ranges[0], num_ranges, include_end);
+  *s = static_cast<TitanDB*>(db)->DeleteBlobFilesInRanges(
+      cf, &ranges[0], num_ranges, include_end);
 }
 
 void crocksdb_free_cplus_array(const char* arr) { delete[] arr; }

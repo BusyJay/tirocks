@@ -70,6 +70,7 @@ fn bindgen_rocksdb(file_path: &Path) {
         .opaque_type(&filter_exp)
         // Block all system headers
         .blocklist_file(r"^/.*")
+        .blocklist_item(r"\brocksdb::DB_Properties.*")
         .blocklist_type(r"\brocksdb::Env_FileAttributes")
         // `TableProperties` has different size on different platform.
         .blocklist_type(&filter_exp)

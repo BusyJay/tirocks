@@ -179,7 +179,9 @@ mod tests {
             crocksdb_options_set_create_if_missing(db_opt, true);
             let s = crocksdb_open(opt, r(path.as_bytes()), &mut status);
             assert!(status.ok(), "{:?}", status.message());
-            crocksdb_close(s);
+            crocksdb_close(s, &mut status);
+            assert!(status.ok(), "{:?}", status.message());
+            crocksdb_destroy(s);
             crocksdb_options_destroy(opt);
         }
     }

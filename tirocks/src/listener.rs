@@ -2,7 +2,7 @@
 
 use libc::c_void;
 use tirocks_sys::{
-    crocksdb_eventlistener_t, crocksdb_t, rocksdb_BackgroundErrorReason, rocksdb_CompactionJobInfo,
+    crocksdb_eventlistener_t, rocksdb_BackgroundErrorReason, rocksdb_CompactionJobInfo, rocksdb_DB,
     rocksdb_ExternalFileIngestionInfo, rocksdb_FlushJobInfo, rocksdb_Status,
     rocksdb_SubcompactionJobInfo, rocksdb_WriteStallInfo,
 };
@@ -121,7 +121,7 @@ extern "C" fn destructor<E: EventListener>(ctx: *mut c_void) {
 // TODO: refactor DB implement so that we can convert DBInstance to DB.
 extern "C" fn on_flush_begin<E: EventListener>(
     ctx: *mut c_void,
-    _: *mut crocksdb_t,
+    _: *mut rocksdb_DB,
     info: *const rocksdb_FlushJobInfo,
 ) {
     unsafe {
@@ -132,7 +132,7 @@ extern "C" fn on_flush_begin<E: EventListener>(
 
 extern "C" fn on_flush_completed<E: EventListener>(
     ctx: *mut c_void,
-    _: *mut crocksdb_t,
+    _: *mut rocksdb_DB,
     info: *const rocksdb_FlushJobInfo,
 ) {
     unsafe {
@@ -143,7 +143,7 @@ extern "C" fn on_flush_completed<E: EventListener>(
 
 extern "C" fn on_compaction_begin<E: EventListener>(
     ctx: *mut c_void,
-    _: *mut crocksdb_t,
+    _: *mut rocksdb_DB,
     info: *const rocksdb_CompactionJobInfo,
 ) {
     unsafe {
@@ -154,7 +154,7 @@ extern "C" fn on_compaction_begin<E: EventListener>(
 
 extern "C" fn on_compaction_completed<E: EventListener>(
     ctx: *mut c_void,
-    _: *mut crocksdb_t,
+    _: *mut rocksdb_DB,
     info: *const rocksdb_CompactionJobInfo,
 ) {
     unsafe {
@@ -185,7 +185,7 @@ extern "C" fn on_subcompaction_completed<E: EventListener>(
 
 extern "C" fn on_external_file_ingested<E: EventListener>(
     ctx: *mut c_void,
-    _: *mut crocksdb_t,
+    _: *mut rocksdb_DB,
     info: *const rocksdb_ExternalFileIngestionInfo,
 ) {
     unsafe {

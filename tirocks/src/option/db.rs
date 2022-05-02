@@ -608,6 +608,16 @@ impl DbOptions {
         self.env = Some(env);
         self
     }
+
+    #[inline]
+    pub fn env(&self) -> Option<&Arc<Env>> {
+        self.env.as_ref()
+    }
+
+    #[inline]
+    pub(crate) fn get(&self) -> *mut rocksdb_DBOptions {
+        self.ptr as _
+    }
 }
 
 #[repr(transparent)]
@@ -723,6 +733,16 @@ impl TitanDbOptions {
         }
         self.env = Some(env);
         self
+    }
+
+    #[inline]
+    pub fn env(&self) -> Option<&Arc<Env>> {
+        self.env.as_ref()
+    }
+
+    #[inline]
+    pub(crate) fn get(&self) -> *mut rocksdb_titandb_TitanDBOptions {
+        self.ptr as _
     }
 }
 

@@ -5,6 +5,7 @@
 pub mod cache;
 pub mod compaction_filter;
 pub mod comparator;
+pub mod db;
 pub mod env;
 mod error;
 mod listener;
@@ -18,5 +19,6 @@ pub mod table;
 pub mod table_properties;
 mod util;
 
+pub use db::{RawDb, Db, OpenOptions};
 pub use error::{Code, Result, Severity, Status, SubCode};
 pub use statistics::Statistics;

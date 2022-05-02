@@ -211,6 +211,21 @@ impl Options {
         self.comparator = Some(c);
         self
     }
+
+    #[inline]
+    pub fn env(&self) -> Option<&Arc<Env>> {
+        self.env.as_ref()
+    }
+
+    #[inline]
+    pub fn comparator(&self) -> Option<&Arc<SysComparator>> {
+        self.comparator.as_ref()
+    }
+
+    #[inline]
+    pub(crate) fn get(&self) -> *mut rocksdb_Options {
+        self.ptr as _
+    }
 }
 
 impl Drop for Options {

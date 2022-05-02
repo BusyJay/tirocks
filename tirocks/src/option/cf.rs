@@ -790,6 +790,16 @@ impl CfOptions {
         self.comparator = Some(c);
         self
     }
+
+    #[inline]
+    pub fn comparator(&self) -> Option<&Arc<SysComparator>> {
+        self.comparator.as_ref()
+    }
+
+    #[inline]
+    pub(crate) fn as_ptr(&self) -> *const rocksdb_ColumnFamilyOptions {
+        self.ptr as _
+    }
 }
 
 #[repr(transparent)]
@@ -969,6 +979,16 @@ impl TitanCfOptions {
         }
         self.comparator = Some(c);
         self
+    }
+
+    #[inline]
+    pub fn comparator(&self) -> Option<&Arc<SysComparator>> {
+        self.comparator.as_ref()
+    }
+
+    #[inline]
+    pub(crate) fn as_ptr(&self) -> *const rocksdb_titandb_TitanCFOptions {
+        self.ptr as _
     }
 }
 
