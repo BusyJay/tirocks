@@ -1049,11 +1049,6 @@ pub struct crocksdb_ratelimiter_t {
 }
 #[repr(C)]
 #[derive(Debug)]
-pub struct crocksdb_pinnableslice_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
 pub struct crocksdb_user_collected_properties_iterator_t {
     _unused: [u8; 0],
 }
@@ -1491,10 +1486,8 @@ extern "C" {
     pub fn crocksdb_put(
         db: *mut rocksdb_DB,
         options: *const rocksdb_WriteOptions,
-        key: *const libc::c_char,
-        keylen: usize,
-        val: *const libc::c_char,
-        vallen: usize,
+        key: rocksdb_Slice,
+        val: rocksdb_Slice,
         s: *mut rocksdb_Status,
     );
 }
@@ -1503,10 +1496,8 @@ extern "C" {
         db: *mut rocksdb_DB,
         options: *const rocksdb_WriteOptions,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-        key: *const libc::c_char,
-        keylen: usize,
-        val: *const libc::c_char,
-        vallen: usize,
+        key: rocksdb_Slice,
+        value: rocksdb_Slice,
         s: *mut rocksdb_Status,
     );
 }
@@ -1514,8 +1505,7 @@ extern "C" {
     pub fn crocksdb_delete(
         db: *mut rocksdb_DB,
         options: *const rocksdb_WriteOptions,
-        key: *const libc::c_char,
-        keylen: usize,
+        key: rocksdb_Slice,
         s: *mut rocksdb_Status,
     );
 }
@@ -1524,8 +1514,7 @@ extern "C" {
         db: *mut rocksdb_DB,
         options: *const rocksdb_WriteOptions,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-        key: *const libc::c_char,
-        keylen: usize,
+        key: rocksdb_Slice,
         s: *mut rocksdb_Status,
     );
 }
@@ -1533,8 +1522,7 @@ extern "C" {
     pub fn crocksdb_single_delete(
         db: *mut rocksdb_DB,
         options: *const rocksdb_WriteOptions,
-        key: *const libc::c_char,
-        keylen: usize,
+        key: rocksdb_Slice,
         s: *mut rocksdb_Status,
     );
 }
@@ -1543,8 +1531,7 @@ extern "C" {
         db: *mut rocksdb_DB,
         options: *const rocksdb_WriteOptions,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-        key: *const libc::c_char,
-        keylen: usize,
+        key: rocksdb_Slice,
         s: *mut rocksdb_Status,
     );
 }
@@ -1553,10 +1540,8 @@ extern "C" {
         db: *mut rocksdb_DB,
         options: *const rocksdb_WriteOptions,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-        begin_key: *const libc::c_char,
-        begin_keylen: usize,
-        end_key: *const libc::c_char,
-        end_keylen: usize,
+        begin_key: rocksdb_Slice,
+        end_key: rocksdb_Slice,
         s: *mut rocksdb_Status,
     );
 }
@@ -1595,8 +1580,7 @@ extern "C" {
     pub fn crocksdb_get(
         db: *mut rocksdb_DB,
         options: *const rocksdb_ReadOptions,
-        key: *const libc::c_char,
-        keylen: usize,
+        key: rocksdb_Slice,
         vallen: *mut usize,
         s: *mut rocksdb_Status,
     ) -> *mut libc::c_char;
@@ -1606,8 +1590,7 @@ extern "C" {
         db: *mut rocksdb_DB,
         options: *const rocksdb_ReadOptions,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-        key: *const libc::c_char,
-        keylen: usize,
+        key: rocksdb_Slice,
         vallen: *mut usize,
         s: *mut rocksdb_Status,
     ) -> *mut libc::c_char;
@@ -4341,32 +4324,35 @@ extern "C" {
     pub fn crocksdb_log_destroy(arg1: *mut crocksdb_logger_t);
 }
 extern "C" {
+    pub fn crocksdb_pinnableslice_create() -> *mut rocksdb_PinnableSlice;
+}
+extern "C" {
     pub fn crocksdb_get_pinned(
         db: *mut rocksdb_DB,
         options: *const rocksdb_ReadOptions,
-        key: *const libc::c_char,
-        keylen: usize,
+        key: rocksdb_Slice,
+        val: *mut rocksdb_PinnableSlice,
         s: *mut rocksdb_Status,
-    ) -> *mut crocksdb_pinnableslice_t;
+    );
 }
 extern "C" {
     pub fn crocksdb_get_pinned_cf(
         db: *mut rocksdb_DB,
         options: *const rocksdb_ReadOptions,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-        key: *const libc::c_char,
-        keylen: usize,
+        key: rocksdb_Slice,
+        val: *mut rocksdb_PinnableSlice,
         s: *mut rocksdb_Status,
-    ) -> *mut crocksdb_pinnableslice_t;
+    );
 }
 extern "C" {
-    pub fn crocksdb_pinnableslice_destroy(v: *mut crocksdb_pinnableslice_t);
+    pub fn crocksdb_pinnableslice_destroy(v: *mut rocksdb_PinnableSlice);
 }
 extern "C" {
-    pub fn crocksdb_pinnableslice_value(
-        t: *const crocksdb_pinnableslice_t,
-        vlen: *mut usize,
-    ) -> *const libc::c_char;
+    pub fn crocksdb_pinnableslice_reset(v: *mut rocksdb_PinnableSlice);
+}
+extern "C" {
+    pub fn crocksdb_pinnableslice_value(s: *const rocksdb_PinnableSlice, val: *mut rocksdb_Slice);
 }
 extern "C" {
     pub fn crocksdb_get_supported_compression_number() -> usize;

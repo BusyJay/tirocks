@@ -118,4 +118,9 @@ impl WriteOptions {
         self.raw.timestamp = ts.set_data(timestamp.into());
         self
     }
+
+    #[inline]
+    pub(crate) fn get(&self) -> *const rocksdb_WriteOptions {
+        &self.raw
+    }
 }

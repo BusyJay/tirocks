@@ -20,14 +20,14 @@ pub struct RawColumnFamilyHandle(rocksdb_ColumnFamilyHandle);
 impl RawColumnFamilyHandle {
     #[inline]
     pub fn id(&self) -> u32 {
-        unsafe { tirocks_sys::crocksdb_column_family_handle_id(self as *const _ as _) }
+        unsafe { tirocks_sys::crocksdb_column_family_handle_id(self.as_mut_ptr()) }
     }
 
     #[inline]
     pub fn name(&self) -> std::result::Result<&str, Utf8Error> {
         unsafe {
             let mut name = r(&[]);
-            tirocks_sys::crocksdb_column_family_handle_name(self as *const _ as _, &mut name);
+            tirocks_sys::crocksdb_column_family_handle_name(self.as_mut_ptr(), &mut name);
             std::str::from_utf8(s(name))
         }
     }
@@ -37,7 +37,7 @@ impl RawColumnFamilyHandle {
         let mut s = Status::default();
         tirocks_sys::crocksdb_column_family_handle_destroy(
             db.get(),
-            self as *mut _ as _,
+            self.as_mut_ptr(),
             s.as_mut_ptr(),
         );
         check_status!(s)
@@ -50,9 +50,13 @@ impl RawColumnFamilyHandle {
     pub(crate) unsafe fn destroy(&mut self, db: *mut rocksdb_DB) -> Result<()> {
         let mut s = Status::default();
         unsafe {
-            tirocks_sys::crocksdb_drop_column_family(db, self as *mut _ as _, s.as_mut_ptr());
+            tirocks_sys::crocksdb_drop_column_family(db, self.as_mut_ptr(), s.as_mut_ptr());
         }
         check_status!(s)
+    }
+
+    pub(crate) unsafe fn as_mut_ptr(&self) -> *mut rocksdb_ColumnFamilyHandle {
+        self as *const _ as *mut rocksdb_ColumnFamilyHandle
     }
 }
 

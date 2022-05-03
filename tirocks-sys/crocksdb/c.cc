@@ -313,9 +313,6 @@ struct crocksdb_ratelimiter_t {
 struct crocksdb_histogramdata_t {
   HistogramData rep;
 };
-struct crocksdb_pinnableslice_t {
-  PinnableSlice rep;
-};
 
 struct crocksdb_keyversions_t {
   std::vector<KeyVersion> rep;
@@ -986,46 +983,43 @@ void crocksdb_column_family_handle_destroy(DB* db, ColumnFamilyHandle* handle,
   *s = db->DestroyColumnFamilyHandle(handle);
 }
 
-void crocksdb_put(DB* db, const WriteOptions* options, const char* key,
-                  size_t keylen, const char* val, size_t vallen, Status* s) {
-  *s = db->Put(*options, Slice(key, keylen), Slice(val, vallen));
+void crocksdb_put(DB* db, const WriteOptions* options, Slice key, Slice val,
+                  Status* s) {
+  *s = db->Put(*options, key, val);
 }
 
 void crocksdb_put_cf(DB* db, const WriteOptions* options,
-                     ColumnFamilyHandle* column_family, const char* key,
-                     size_t keylen, const char* val, size_t vallen, Status* s) {
-  *s = db->Put(*options, column_family, Slice(key, keylen), Slice(val, vallen));
+                     ColumnFamilyHandle* column_family, Slice key, Slice val,
+                     Status* s) {
+  *s = db->Put(*options, column_family, key, val);
 }
 
-void crocksdb_delete(DB* db, const WriteOptions* options, const char* key,
-                     size_t keylen, Status* s) {
-  *s = db->Delete(*options, Slice(key, keylen));
+void crocksdb_delete(DB* db, const WriteOptions* options, Slice key,
+                     Status* s) {
+  *s = db->Delete(*options, key);
 }
 
 void crocksdb_delete_cf(DB* db, const WriteOptions* options,
-                        ColumnFamilyHandle* column_family, const char* key,
-                        size_t keylen, Status* s) {
-  *s = db->Delete(*options, column_family, Slice(key, keylen));
+                        ColumnFamilyHandle* column_family, Slice key,
+                        Status* s) {
+  *s = db->Delete(*options, column_family, key);
 }
 
-void crocksdb_single_delete(DB* db, const WriteOptions* options,
-                            const char* key, size_t keylen, Status* s) {
-  *s = db->SingleDelete(*options, Slice(key, keylen));
+void crocksdb_single_delete(DB* db, const WriteOptions* options, Slice key,
+                            Status* s) {
+  *s = db->SingleDelete(*options, key);
 }
 
 void crocksdb_single_delete_cf(DB* db, const WriteOptions* options,
-                               ColumnFamilyHandle* column_family,
-                               const char* key, size_t keylen, Status* s) {
-  *s = db->SingleDelete(*options, column_family, Slice(key, keylen));
+                               ColumnFamilyHandle* column_family, Slice key,
+                               Status* s) {
+  *s = db->SingleDelete(*options, column_family, key);
 }
 
 void crocksdb_delete_range_cf(DB* db, const WriteOptions* options,
                               ColumnFamilyHandle* column_family,
-                              const char* begin_key, size_t begin_keylen,
-                              const char* end_key, size_t end_keylen,
-                              Status* s) {
-  *s = db->DeleteRange(*options, column_family, Slice(begin_key, begin_keylen),
-                       Slice(end_key, end_keylen));
+                              Slice begin_key, Slice end_key, Status* s) {
+  *s = db->DeleteRange(*options, column_family, begin_key, end_key);
 }
 
 void crocksdb_merge(DB* db, const WriteOptions* options, const char* key,
@@ -1046,10 +1040,10 @@ void crocksdb_write(DB* db, const WriteOptions* options,
   *s = db->Write(*options, &batch->rep);
 }
 
-char* crocksdb_get(DB* db, const ReadOptions* options, const char* key,
-                   size_t keylen, size_t* vallen, Status* s) {
+char* crocksdb_get(DB* db, const ReadOptions* options, Slice key,
+                   size_t* vallen, Status* s) {
   std::string tmp;
-  *s = db->Get(*options, Slice(key, keylen), &tmp);
+  *s = db->Get(*options, key, &tmp);
   if (s->ok()) {
     *vallen = tmp.size();
     return CopyString(tmp);
@@ -1058,10 +1052,10 @@ char* crocksdb_get(DB* db, const ReadOptions* options, const char* key,
 }
 
 char* crocksdb_get_cf(DB* db, const ReadOptions* options,
-                      ColumnFamilyHandle* column_family, const char* key,
-                      size_t keylen, size_t* vallen, Status* s) {
+                      ColumnFamilyHandle* column_family, Slice key,
+                      size_t* vallen, Status* s) {
   std::string tmp;
-  *s = db->Get(*options, column_family, Slice(key, keylen), &tmp);
+  *s = db->Get(*options, column_family, key, &tmp);
   if (s->ok()) {
     *vallen = tmp.size();
     return CopyString(tmp);
@@ -4072,41 +4066,26 @@ crocksdb_logger_t* crocksdb_create_log_from_options(const char* path,
 
 void crocksdb_log_destroy(crocksdb_logger_t* logger) { delete logger; }
 
-crocksdb_pinnableslice_t* crocksdb_get_pinned(DB* db,
-                                              const ReadOptions* options,
-                                              const char* key, size_t keylen,
-                                              Status* s) {
-  auto v = new crocksdb_pinnableslice_t;
-  *s =
-      db->Get(*options, db->DefaultColumnFamily(), Slice(key, keylen), &v->rep);
-  if (s->ok()) {
-    return v;
-  } else {
-    delete v;
-    return nullptr;
-  }
+PinnableSlice* crocksdb_pinnableslice_create() { return new PinnableSlice; }
+
+void crocksdb_get_pinned(DB* db, const ReadOptions* options, Slice key,
+                         PinnableSlice* val, Status* s) {
+  *s = db->Get(*options, db->DefaultColumnFamily(), key, val);
 }
 
-crocksdb_pinnableslice_t* crocksdb_get_pinned_cf(
-    DB* db, const ReadOptions* options, ColumnFamilyHandle* column_family,
-    const char* key, size_t keylen, Status* s) {
-  auto v = new crocksdb_pinnableslice_t;
-  *s = db->Get(*options, column_family, Slice(key, keylen), &v->rep);
-  if (s->ok()) {
-    return v;
-  } else {
-    delete v;
-    return nullptr;
-  }
+void crocksdb_get_pinned_cf(DB* db, const ReadOptions* options,
+                            ColumnFamilyHandle* column_family, Slice key,
+                            PinnableSlice* val, Status* s) {
+  *s = db->Get(*options, column_family, key, val);
 }
 
-void crocksdb_pinnableslice_destroy(crocksdb_pinnableslice_t* v) { delete v; }
+void crocksdb_pinnableslice_destroy(PinnableSlice* v) { delete v; }
 
-const char* crocksdb_pinnableslice_value(const crocksdb_pinnableslice_t* v,
-                                         size_t* vlen) {
+void crocksdb_pinnableslice_reset(PinnableSlice* v) { v->Reset(); }
+
+void crocksdb_pinnableslice_value(const PinnableSlice* v, Slice* val) {
   // v can't be null.
-  *vlen = v->rep.size();
-  return v->rep.data();
+  *val = *v;
 }
 
 size_t crocksdb_get_supported_compression_number() {

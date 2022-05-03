@@ -118,7 +118,6 @@ typedef struct crocksdb_sstfilereader_t crocksdb_sstfilereader_t;
 typedef struct crocksdb_sstfilewriter_t crocksdb_sstfilewriter_t;
 typedef struct crocksdb_externalsstfileinfo_t crocksdb_externalsstfileinfo_t;
 typedef struct crocksdb_ratelimiter_t crocksdb_ratelimiter_t;
-typedef struct crocksdb_pinnableslice_t crocksdb_pinnableslice_t;
 typedef struct crocksdb_user_collected_properties_iterator_t
     crocksdb_user_collected_properties_iterator_t;
 typedef struct crocksdb_table_properties_collection_iterator_t
@@ -313,35 +312,30 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_continue_bg_work(DB* db);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_put(DB* db,
                                                const WriteOptions* options,
-                                               const char* key, size_t keylen,
-                                               const char* val, size_t vallen,
-                                               Status* s);
+                                               Slice key, Slice val, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_put_cf(
     DB* db, const WriteOptions* options, ColumnFamilyHandle* column_family,
-    const char* key, size_t keylen, const char* val, size_t vallen, Status* s);
+    Slice key, Slice value, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_delete(DB* db,
                                                   const WriteOptions* options,
-                                                  const char* key,
-                                                  size_t keylen, Status* s);
+                                                  Slice key, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_delete_cf(
     DB* db, const WriteOptions* options, ColumnFamilyHandle* column_family,
-    const char* key, size_t keylen, Status* s);
+    Slice key, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_single_delete(
-    DB* db, const WriteOptions* options, const char* key, size_t keylen,
-    Status* s);
+    DB* db, const WriteOptions* options, Slice key, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_single_delete_cf(
     DB* db, const WriteOptions* options, ColumnFamilyHandle* column_family,
-    const char* key, size_t keylen, Status* s);
+    Slice key, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_delete_range_cf(
     DB* db, const WriteOptions* options, ColumnFamilyHandle* column_family,
-    const char* begin_key, size_t begin_keylen, const char* end_key,
-    size_t end_keylen, Status* s);
+    Slice begin_key, Slice end_key, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_merge(DB* db,
                                                  const WriteOptions* options,
@@ -362,12 +356,12 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_write(DB* db,
    Stores the length of the array in *vallen. */
 extern C_ROCKSDB_LIBRARY_API char* crocksdb_get(DB* db,
                                                 const ReadOptions* options,
-                                                const char* key, size_t keylen,
-                                                size_t* vallen, Status* s);
+                                                Slice key, size_t* vallen,
+                                                Status* s);
 
 extern C_ROCKSDB_LIBRARY_API char* crocksdb_get_cf(
     DB* db, const ReadOptions* options, ColumnFamilyHandle* column_family,
-    const char* key, size_t keylen, size_t* vallen, Status* s);
+    Slice key, size_t* vallen, Status* s);
 
 // if values_list[i] == NULL and errs[i] == NULL,
 // then we got status.IsNotFound(), which we will not return.
@@ -1666,16 +1660,19 @@ crocksdb_create_log_from_options(const char* path, const DBOptions* opts,
                                  Status* s);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_log_destroy(crocksdb_logger_t*);
 
-extern C_ROCKSDB_LIBRARY_API crocksdb_pinnableslice_t* crocksdb_get_pinned(
-    DB* db, const ReadOptions* options, const char* key, size_t keylen,
+extern C_ROCKSDB_LIBRARY_API PinnableSlice* crocksdb_pinnableslice_create();
+extern C_ROCKSDB_LIBRARY_API void crocksdb_get_pinned(
+    DB* db, const ReadOptions* options, Slice key, PinnableSlice* val,
     Status* s);
-extern C_ROCKSDB_LIBRARY_API crocksdb_pinnableslice_t* crocksdb_get_pinned_cf(
+extern C_ROCKSDB_LIBRARY_API void crocksdb_get_pinned_cf(
     DB* db, const ReadOptions* options, ColumnFamilyHandle* column_family,
-    const char* key, size_t keylen, Status* s);
+    Slice key, PinnableSlice* val, Status* s);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_pinnableslice_destroy(
-    crocksdb_pinnableslice_t* v);
-extern C_ROCKSDB_LIBRARY_API const char* crocksdb_pinnableslice_value(
-    const crocksdb_pinnableslice_t* t, size_t* vlen);
+    PinnableSlice* v);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_pinnableslice_reset(
+    PinnableSlice* v);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_pinnableslice_value(
+    const PinnableSlice* s, Slice* val);
 
 extern C_ROCKSDB_LIBRARY_API size_t crocksdb_get_supported_compression_number();
 extern C_ROCKSDB_LIBRARY_API void crocksdb_get_supported_compression(
