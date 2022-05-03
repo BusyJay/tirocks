@@ -2,8 +2,9 @@
 
 mod cf;
 mod db;
+mod iter;
 mod open_options;
-mod pin_slice;
+pub mod pin_slice;
 
 pub use self::db::{Db, RawDb};
 pub use self::open_options::{

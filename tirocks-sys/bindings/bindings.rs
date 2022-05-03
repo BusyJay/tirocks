@@ -1,4 +1,19 @@
 #[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_Cleanable {
+    pub cleanup_: rocksdb_Cleanable_Cleanup,
+}
+pub type rocksdb_Cleanable_CleanupFunction =
+    ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: *mut libc::c_void)>;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_Cleanable_Cleanup {
+    pub function: rocksdb_Cleanable_CleanupFunction,
+    pub arg1: *mut libc::c_void,
+    pub arg2: *mut libc::c_void,
+    pub next: *mut rocksdb_Cleanable_Cleanup,
+}
+#[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct rocksdb_Slice {
     pub data_: *const libc::c_char,
@@ -759,6 +774,14 @@ pub enum rocksdb_RateLimiter_Mode {
     kWritesOnly = 1,
     kAllIo = 2,
 }
+#[repr(C)]
+pub struct rocksdb_Iterator__bindgen_vtable(libc::c_void);
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_Iterator {
+    pub vtable_: *const rocksdb_Iterator__bindgen_vtable,
+    pub _base: rocksdb_Cleanable,
+}
 #[repr(i8)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_BlockBasedTableOptions_IndexType {
@@ -950,11 +973,6 @@ pub struct crocksdb_tablefactory_t {
 #[repr(C)]
 #[derive(Debug)]
 pub struct crocksdb_memtablerepfactory_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_iterator_t {
     _unused: [u8; 0],
 }
 #[repr(C)]
@@ -1624,21 +1642,21 @@ extern "C" {
     pub fn crocksdb_create_iterator(
         db: *mut rocksdb_DB,
         options: *const rocksdb_ReadOptions,
-    ) -> *mut crocksdb_iterator_t;
+    ) -> *mut rocksdb_Iterator;
 }
 extern "C" {
     pub fn crocksdb_create_iterator_cf(
         db: *mut rocksdb_DB,
         options: *const rocksdb_ReadOptions,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-    ) -> *mut crocksdb_iterator_t;
+    ) -> *mut rocksdb_Iterator;
 }
 extern "C" {
     pub fn crocksdb_create_iterators(
         db: *mut rocksdb_DB,
         opts: *const rocksdb_ReadOptions,
         column_families: *mut *mut rocksdb_ColumnFamilyHandle,
-        iterators: *mut *mut crocksdb_iterator_t,
+        iterators: *mut *mut rocksdb_Iterator,
         size: usize,
         s: *mut rocksdb_Status,
     );
@@ -1873,47 +1891,46 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_iter_destroy(arg1: *mut crocksdb_iterator_t);
+    pub fn crocksdb_iter_destroy(arg1: *mut rocksdb_Iterator);
 }
 extern "C" {
-    pub fn crocksdb_iter_valid(arg1: *const crocksdb_iterator_t) -> libc::c_uchar;
+    pub fn crocksdb_iter_valid(arg1: *const rocksdb_Iterator) -> bool;
 }
 extern "C" {
-    pub fn crocksdb_iter_seek_to_first(arg1: *mut crocksdb_iterator_t);
+    pub fn crocksdb_iter_seek_to_first(arg1: *mut rocksdb_Iterator);
 }
 extern "C" {
-    pub fn crocksdb_iter_seek_to_last(arg1: *mut crocksdb_iterator_t);
+    pub fn crocksdb_iter_seek_to_last(arg1: *mut rocksdb_Iterator);
 }
 extern "C" {
-    pub fn crocksdb_iter_seek(arg1: *mut crocksdb_iterator_t, k: *const libc::c_char, klen: usize);
+    pub fn crocksdb_iter_seek(arg1: *mut rocksdb_Iterator, key: rocksdb_Slice);
 }
 extern "C" {
-    pub fn crocksdb_iter_seek_for_prev(
-        arg1: *mut crocksdb_iterator_t,
-        k: *const libc::c_char,
-        klen: usize,
-    );
+    pub fn crocksdb_iter_seek_for_prev(arg1: *mut rocksdb_Iterator, key: rocksdb_Slice);
 }
 extern "C" {
-    pub fn crocksdb_iter_next(arg1: *mut crocksdb_iterator_t);
+    pub fn crocksdb_iter_next(arg1: *mut rocksdb_Iterator);
 }
 extern "C" {
-    pub fn crocksdb_iter_prev(arg1: *mut crocksdb_iterator_t);
+    pub fn crocksdb_iter_prev(arg1: *mut rocksdb_Iterator);
 }
 extern "C" {
-    pub fn crocksdb_iter_key(
-        arg1: *const crocksdb_iterator_t,
-        klen: *mut usize,
-    ) -> *const libc::c_char;
+    pub fn crocksdb_iter_key(arg1: *const rocksdb_Iterator, arg2: *mut rocksdb_Slice);
 }
 extern "C" {
-    pub fn crocksdb_iter_value(
-        arg1: *const crocksdb_iterator_t,
-        vlen: *mut usize,
-    ) -> *const libc::c_char;
+    pub fn crocksdb_iter_value(arg1: *const rocksdb_Iterator, arg2: *mut rocksdb_Slice);
 }
 extern "C" {
-    pub fn crocksdb_iter_get_error(arg1: *const crocksdb_iterator_t, s: *mut rocksdb_Status);
+    pub fn crocksdb_iter_seqno(
+        arg1: *const rocksdb_Iterator,
+        arg2: *mut rocksdb_SequenceNumber,
+    ) -> bool;
+}
+extern "C" {
+    pub fn crocksdb_iter_get_error(arg1: *const rocksdb_Iterator, s: *mut rocksdb_Status);
+}
+extern "C" {
+    pub fn crocksdb_iter_refresh(arg1: *mut rocksdb_Iterator, arg2: *mut rocksdb_Status);
 }
 extern "C" {
     pub fn crocksdb_writebatch_create() -> *mut crocksdb_writebatch_t;
@@ -4024,7 +4041,7 @@ extern "C" {
     pub fn crocksdb_sstfilereader_new_iterator(
         reader: *mut crocksdb_sstfilereader_t,
         options: *const rocksdb_ReadOptions,
-    ) -> *mut crocksdb_iterator_t;
+    ) -> *mut rocksdb_Iterator;
 }
 extern "C" {
     pub fn crocksdb_sstfilereader_get_table_properties(
@@ -5417,21 +5434,21 @@ extern "C" {
     pub fn ctitandb_create_iterator(
         db: *mut rocksdb_DB,
         titan_options: *const rocksdb_titandb_TitanReadOptions,
-    ) -> *mut crocksdb_iterator_t;
+    ) -> *mut rocksdb_Iterator;
 }
 extern "C" {
     pub fn ctitandb_create_iterator_cf(
         db: *mut rocksdb_DB,
         titan_options: *const rocksdb_titandb_TitanReadOptions,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-    ) -> *mut crocksdb_iterator_t;
+    ) -> *mut rocksdb_Iterator;
 }
 extern "C" {
     pub fn ctitandb_create_iterators(
         db: *mut rocksdb_DB,
         titan_options: *const rocksdb_titandb_TitanReadOptions,
         column_families: *mut *mut rocksdb_ColumnFamilyHandle,
-        iterators: *mut *mut crocksdb_iterator_t,
+        iterators: *mut *mut rocksdb_Iterator,
         size: usize,
         s: *mut rocksdb_Status,
     );

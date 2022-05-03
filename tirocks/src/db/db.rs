@@ -17,7 +17,19 @@ use crate::{Code, Result, Status};
 use crate::db::cf::RawColumnFamilyHandle;
 
 use super::cf::DEFAULT_CF_NAME;
+use super::iter::RawIterator;
 use super::pin_slice::PinSlice;
+
+pub trait RawDbRef {
+    fn visit<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T;
+}
+
+impl<'a> RawDbRef for &'a RawDb {
+    #[inline]
+    fn visit<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T {
+        f(self)
+    }
+}
 
 pub trait DbRef {
     fn visit<T>(&self, f: impl FnOnce(&Db) -> T) -> T;
@@ -47,12 +59,27 @@ impl DbRef for Arc<Mutex<Db>> {
     }
 }
 
+impl<R> RawDbRef for R
+where
+    R: DbRef,
+{
+    #[inline]
+    fn visit<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T {
+        DbRef::visit(self, |db| unsafe { f(RawDb::from_ptr(db.as_ptr())) })
+    }
+}
+
 #[repr(transparent)]
 pub struct RawDb(rocksdb_DB);
 
 impl RawDb {
-    fn as_ptr(&self) -> *mut rocksdb_DB {
+    #[inline]
+    pub(crate) fn as_ptr(&self) -> *mut rocksdb_DB {
         self as *const RawDb as *mut rocksdb_DB
+    }
+
+    pub(crate) unsafe fn from_ptr<'a>(ptr: *const rocksdb_DB) -> &'a RawDb {
+        &*(ptr as *const RawDb)
     }
 
     pub fn put(&self, opt: &WriteOptions, key: &[u8], val: &[u8]) -> Result<()> {
@@ -253,6 +280,28 @@ impl RawDb {
         };
         Self::check_get_to(s)
     }
+
+    pub fn iter<'a>(&'a self, read: &'a ReadOptions) -> RawIterator<'a> {
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_create_iterator(self.as_ptr(), read.get() as _);
+            RawIterator::from_ptr(ptr)
+        }
+    }
+
+    pub fn iter_cf<'a>(
+        &'a self,
+        read: &'a ReadOptions,
+        cf: &RawColumnFamilyHandle,
+    ) -> RawIterator<'a> {
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_create_iterator_cf(
+                self.as_ptr(),
+                read.get() as _,
+                cf.as_mut_ptr(),
+            );
+            RawIterator::from_ptr(ptr)
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -410,11 +459,12 @@ impl Db {
         }
     }
 
-    pub fn get_cf(&self, name: &str) -> Option<&RawColumnFamilyHandle> {
-        unsafe { self.get_cf_raw(name).map(|c| c.as_ref()) }
+    pub fn cf(&self, name: &str) -> Option<&RawColumnFamilyHandle> {
+        unsafe { self.cf_raw(name).map(|c| c.as_ref()) }
     }
 
-    pub(crate) unsafe fn get_cf_raw(&self, name: &str) -> Option<NonNull<RawColumnFamilyHandle>> {
+    // TODO: what if it's dropped?
+    pub(crate) unsafe fn cf_raw(&self, name: &str) -> Option<NonNull<RawColumnFamilyHandle>> {
         for h in &self.handles {
             if h.as_ref().name().map_or(false, |n| n == name) {
                 return Some(*h);

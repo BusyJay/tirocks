@@ -98,7 +98,6 @@ typedef struct crocksdb_filelock_t crocksdb_filelock_t;
 typedef struct crocksdb_filterpolicy_t crocksdb_filterpolicy_t;
 typedef struct crocksdb_tablefactory_t crocksdb_tablefactory_t;
 typedef struct crocksdb_memtablerepfactory_t crocksdb_memtablerepfactory_t;
-typedef struct crocksdb_iterator_t crocksdb_iterator_t;
 typedef struct crocksdb_logger_t crocksdb_logger_t;
 typedef struct crocksdb_logger_impl_t crocksdb_logger_impl_t;
 typedef struct crocksdb_mergeoperator_t crocksdb_mergeoperator_t;
@@ -385,15 +384,15 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_multi_get_cf(
     const size_t* keys_list_sizes, char** values_list,
     size_t* values_list_sizes, Status* statuses);
 
-extern C_ROCKSDB_LIBRARY_API crocksdb_iterator_t* crocksdb_create_iterator(
+extern C_ROCKSDB_LIBRARY_API Iterator* crocksdb_create_iterator(
     DB* db, const ReadOptions* options);
 
-extern C_ROCKSDB_LIBRARY_API crocksdb_iterator_t* crocksdb_create_iterator_cf(
+extern C_ROCKSDB_LIBRARY_API Iterator* crocksdb_create_iterator_cf(
     DB* db, const ReadOptions* options, ColumnFamilyHandle* column_family);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_create_iterators(
     DB* db, const ReadOptions* opts, ColumnFamilyHandle** column_families,
-    crocksdb_iterator_t** iterators, size_t size, Status* s);
+    Iterator** iterators, size_t size, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API const crocksdb_snapshot_t*
 crocksdb_create_snapshot(DB* db);
@@ -526,26 +525,22 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_repair_db(const Options* options,
 
 /* Iterator */
 
-extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_destroy(crocksdb_iterator_t*);
-extern C_ROCKSDB_LIBRARY_API unsigned char crocksdb_iter_valid(
-    const crocksdb_iterator_t*);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_seek_to_first(
-    crocksdb_iterator_t*);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_seek_to_last(
-    crocksdb_iterator_t*);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_seek(crocksdb_iterator_t*,
-                                                     const char* k,
-                                                     size_t klen);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_seek_for_prev(
-    crocksdb_iterator_t*, const char* k, size_t klen);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_next(crocksdb_iterator_t*);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_prev(crocksdb_iterator_t*);
-extern C_ROCKSDB_LIBRARY_API const char* crocksdb_iter_key(
-    const crocksdb_iterator_t*, size_t* klen);
-extern C_ROCKSDB_LIBRARY_API const char* crocksdb_iter_value(
-    const crocksdb_iterator_t*, size_t* vlen);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_get_error(
-    const crocksdb_iterator_t*, Status* s);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_destroy(Iterator*);
+extern C_ROCKSDB_LIBRARY_API bool crocksdb_iter_valid(const Iterator*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_seek_to_first(Iterator*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_seek_to_last(Iterator*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_seek(Iterator*, Slice key);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_seek_for_prev(Iterator*,
+                                                              Slice key);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_next(Iterator*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_prev(Iterator*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_key(const Iterator*, Slice*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_value(const Iterator*, Slice*);
+extern C_ROCKSDB_LIBRARY_API bool crocksdb_iter_seqno(const Iterator*,
+                                                      SequenceNumber*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_get_error(const Iterator*,
+                                                          Status* s);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_refresh(Iterator*, Status*);
 
 /* Write batch */
 
@@ -1510,9 +1505,8 @@ crocksdb_sstfilereader_create(const Options* io_options);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_sstfilereader_open(
     crocksdb_sstfilereader_t* reader, const char* name, Status* s);
 
-extern C_ROCKSDB_LIBRARY_API crocksdb_iterator_t*
-crocksdb_sstfilereader_new_iterator(crocksdb_sstfilereader_t* reader,
-                                    const ReadOptions* options);
+extern C_ROCKSDB_LIBRARY_API Iterator* crocksdb_sstfilereader_new_iterator(
+    crocksdb_sstfilereader_t* reader, const ReadOptions* options);
 
 extern C_ROCKSDB_LIBRARY_API const TableProperties*
 crocksdb_sstfilereader_get_table_properties(
@@ -2272,17 +2266,17 @@ extern C_ROCKSDB_LIBRARY_API void ctitandb_readoptions_init(TitanReadOptions*);
 
 /* Titan Iterator */
 
-extern C_ROCKSDB_LIBRARY_API crocksdb_iterator_t* ctitandb_create_iterator(
+extern C_ROCKSDB_LIBRARY_API Iterator* ctitandb_create_iterator(
     DB* db, const TitanReadOptions* titan_options);
 
-extern C_ROCKSDB_LIBRARY_API crocksdb_iterator_t* ctitandb_create_iterator_cf(
+extern C_ROCKSDB_LIBRARY_API Iterator* ctitandb_create_iterator_cf(
     DB* db, const TitanReadOptions* titan_options,
     ColumnFamilyHandle* column_family);
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_create_iterators(
     DB* db, const TitanReadOptions* titan_options,
-    ColumnFamilyHandle** column_families, crocksdb_iterator_t** iterators,
-    size_t size, Status* s);
+    ColumnFamilyHandle** column_families, Iterator** iterators, size_t size,
+    Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_delete_files_in_range(
     DB* db, const char* start_key, size_t start_key_len, const char* limit_key,

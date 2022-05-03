@@ -211,9 +211,6 @@ struct crocksdb_backup_engine_info_t {
 struct crocksdb_restore_options_t {
   RestoreOptions rep;
 };
-struct crocksdb_iterator_t {
-  Iterator* rep;
-};
 struct crocksdb_writebatch_t {
   WriteBatch rep;
 };
@@ -1104,24 +1101,18 @@ void crocksdb_multi_get_cf(DB* db, const ReadOptions* options,
   }
 }
 
-crocksdb_iterator_t* crocksdb_create_iterator(DB* db,
-                                              const ReadOptions* options) {
-  crocksdb_iterator_t* result = new crocksdb_iterator_t;
-  result->rep = db->NewIterator(*options);
-  return result;
+Iterator* crocksdb_create_iterator(DB* db, const ReadOptions* options) {
+  return db->NewIterator(*options);
 }
 
-crocksdb_iterator_t* crocksdb_create_iterator_cf(
-    DB* db, const ReadOptions* options, ColumnFamilyHandle* column_family) {
-  crocksdb_iterator_t* result = new crocksdb_iterator_t;
-  result->rep = db->NewIterator(*options, column_family);
-  return result;
+Iterator* crocksdb_create_iterator_cf(DB* db, const ReadOptions* options,
+                                      ColumnFamilyHandle* column_family) {
+  return db->NewIterator(*options, column_family);
 }
 
 void crocksdb_create_iterators(DB* db, const ReadOptions* opts,
                                ColumnFamilyHandle** column_families,
-                               crocksdb_iterator_t** iterators, size_t size,
-                               Status* s) {
+                               Iterator** iterators, size_t size, Status* s) {
   std::vector<ColumnFamilyHandle*> column_families_vec(size);
   for (size_t i = 0; i < size; i++) {
     column_families_vec.push_back(column_families[i]);
@@ -1138,8 +1129,7 @@ void crocksdb_create_iterators(DB* db, const ReadOptions* opts,
   assert(res.size() == size);
 
   for (size_t i = 0; i < size; i++) {
-    iterators[i] = new crocksdb_iterator_t;
-    iterators[i]->rep = res[i];
+    iterators[i] = res[i];
   }
 }
 
@@ -1397,55 +1387,39 @@ void crocksdb_repair_db(const Options* options, const char* name, Status* s) {
   *s = RepairDB(name, *options);
 }
 
-void crocksdb_iter_destroy(crocksdb_iterator_t* iter) {
-  delete iter->rep;
-  delete iter;
+void crocksdb_iter_destroy(Iterator* iter) { delete iter; }
+
+bool crocksdb_iter_valid(const Iterator* iter) { return iter->Valid(); }
+
+void crocksdb_iter_seek_to_first(Iterator* iter) { iter->SeekToFirst(); }
+
+void crocksdb_iter_seek_to_last(Iterator* iter) { iter->SeekToLast(); }
+
+void crocksdb_iter_seek(Iterator* iter, Slice key) { iter->Seek(key); }
+
+void crocksdb_iter_seek_for_prev(Iterator* iter, Slice key) {
+  iter->SeekForPrev(key);
 }
 
-unsigned char crocksdb_iter_valid(const crocksdb_iterator_t* iter) {
-  return iter->rep->Valid();
+void crocksdb_iter_next(Iterator* iter) { iter->Next(); }
+
+void crocksdb_iter_prev(Iterator* iter) { iter->Prev(); }
+
+void crocksdb_iter_key(const Iterator* iter, Slice* key) { *key = iter->key(); }
+
+void crocksdb_iter_value(const Iterator* iter, Slice* val) {
+  *val = iter->value();
 }
 
-void crocksdb_iter_seek_to_first(crocksdb_iterator_t* iter) {
-  iter->rep->SeekToFirst();
+bool crocksdb_iter_seqno(const Iterator* iter, SequenceNumber* no) {
+  return iter->seqno(no);
 }
 
-void crocksdb_iter_seek_to_last(crocksdb_iterator_t* iter) {
-  iter->rep->SeekToLast();
+void crocksdb_iter_get_error(const Iterator* iter, Status* s) {
+  *s = iter->status();
 }
 
-void crocksdb_iter_seek(crocksdb_iterator_t* iter, const char* k, size_t klen) {
-  iter->rep->Seek(Slice(k, klen));
-}
-
-void crocksdb_iter_seek_for_prev(crocksdb_iterator_t* iter, const char* k,
-                                 size_t klen) {
-  iter->rep->SeekForPrev(Slice(k, klen));
-}
-
-void crocksdb_iter_next(crocksdb_iterator_t* iter) { iter->rep->Next(); }
-
-void crocksdb_iter_prev(crocksdb_iterator_t* iter) { iter->rep->Prev(); }
-
-const char* crocksdb_iter_key(const crocksdb_iterator_t* iter, size_t* klen) {
-  Slice s = iter->rep->key();
-  *klen = s.size();
-  return s.data();
-}
-
-const char* crocksdb_iter_value(const crocksdb_iterator_t* iter, size_t* vlen) {
-  Slice s = iter->rep->value();
-  *vlen = s.size();
-  return s.data();
-}
-
-bool crocksdb_iter_seqno(const crocksdb_iterator_t* iter, SequenceNumber* no) {
-  return iter->rep->seqno(no);
-}
-
-void crocksdb_iter_get_error(const crocksdb_iterator_t* iter, Status* s) {
-  *s = iter->rep->status();
-}
+void crocksdb_iter_refresh(Iterator* iter, Status* s) { *s = iter->Refresh(); }
 
 crocksdb_writebatch_t* crocksdb_writebatch_create() {
   return new crocksdb_writebatch_t;
@@ -3662,11 +3636,9 @@ void crocksdb_sstfilereader_open(crocksdb_sstfilereader_t* reader,
   *s = reader->rep->Open(std::string(name));
 }
 
-crocksdb_iterator_t* crocksdb_sstfilereader_new_iterator(
-    crocksdb_sstfilereader_t* reader, const ReadOptions* options) {
-  auto it = new crocksdb_iterator_t;
-  it->rep = reader->rep->NewIterator(*options);
-  return it;
+Iterator* crocksdb_sstfilereader_new_iterator(crocksdb_sstfilereader_t* reader,
+                                              const ReadOptions* options) {
+  return reader->rep->NewIterator(*options);
 }
 
 const TableProperties* crocksdb_sstfilereader_get_table_properties(
@@ -5512,26 +5484,20 @@ void ctitandb_readoptions_init(TitanReadOptions* opt) {
   *opt = TitanReadOptions();
 }
 
-crocksdb_iterator_t* ctitandb_create_iterator(
-    DB* db, const TitanReadOptions* titan_options) {
-  crocksdb_iterator_t* result = new crocksdb_iterator_t;
-  result->rep = static_cast<TitanDB*>(db)->NewIterator(*titan_options);
-  return result;
+Iterator* ctitandb_create_iterator(DB* db,
+                                   const TitanReadOptions* titan_options) {
+  return static_cast<TitanDB*>(db)->NewIterator(*titan_options);
 }
 
-crocksdb_iterator_t* ctitandb_create_iterator_cf(
-    DB* db, const TitanReadOptions* titan_options,
-    ColumnFamilyHandle* column_family) {
-  crocksdb_iterator_t* result = new crocksdb_iterator_t;
-  result->rep =
-      static_cast<TitanDB*>(db)->NewIterator(*titan_options, column_family);
-  return result;
+Iterator* ctitandb_create_iterator_cf(DB* db,
+                                      const TitanReadOptions* titan_options,
+                                      ColumnFamilyHandle* column_family) {
+  return static_cast<TitanDB*>(db)->NewIterator(*titan_options, column_family);
 }
 
 void ctitandb_create_iterators(DB* db, const TitanReadOptions* titan_options,
                                ColumnFamilyHandle** column_families,
-                               crocksdb_iterator_t** iterators, size_t size,
-                               Status* s) {
+                               Iterator** iterators, size_t size, Status* s) {
   std::vector<ColumnFamilyHandle*> column_families_vec(size);
   for (size_t i = 0; i < size; i++) {
     column_families_vec.push_back(column_families[i]);
@@ -5549,8 +5515,7 @@ void ctitandb_create_iterators(DB* db, const TitanReadOptions* titan_options,
   assert(res.size() == size);
 
   for (size_t i = 0; i < size; i++) {
-    iterators[i] = new crocksdb_iterator_t;
-    iterators[i]->rep = res[i];
+    iterators[i] = res[i];
   }
 }
 
