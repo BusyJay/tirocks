@@ -1,9 +1,13 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::{str::Utf8Error, ops::Deref, ptr::NonNull, mem};
+use std::{mem, ops::Deref, ptr::NonNull, str::Utf8Error};
 
-use crate::{Result, Status, util::{utf8_name, check_status}, db::Db};
-use tirocks_sys::{r, rocksdb_ColumnFamilyHandle, s};
+use crate::{
+    db::Db,
+    util::{check_status, utf8_name},
+    Result, Status,
+};
+use tirocks_sys::{r, rocksdb_ColumnFamilyHandle, rocksdb_DB, s};
 
 use super::db::DbRef;
 
@@ -43,10 +47,10 @@ impl RawColumnFamilyHandle {
         self.name().map_or(false, |n| n == DEFAULT_CF_NAME)
     }
 
-    pub(crate) unsafe fn destroy(&mut self, db: &Db) -> Result<()> {
+    pub(crate) unsafe fn destroy(&mut self, db: *mut rocksdb_DB) -> Result<()> {
         let mut s = Status::default();
         unsafe {
-            tirocks_sys::crocksdb_drop_column_family(db.get(), self as *mut _  as _, s.as_mut_ptr());
+            tirocks_sys::crocksdb_drop_column_family(db, self as *mut _ as _, s.as_mut_ptr());
         }
         check_status!(s)
     }
@@ -59,11 +63,11 @@ pub struct ColumnFamilyHandle<D: DbRef> {
 }
 
 impl<D: DbRef> ColumnFamilyHandle<D> {
-    pub fn from_db(db: D, name: &str) -> Option<Self> {
+    pub fn new(db: D, name: &str) -> Option<Self> {
         unsafe {
             let ptr = db.visit(|d| d.get_cf_raw(name));
             Some(Self {
-                ptr: mem::transmute(*ptr?),
+                ptr: mem::transmute(ptr?),
                 _db: db,
             })
         }

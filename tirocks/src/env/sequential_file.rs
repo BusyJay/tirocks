@@ -6,6 +6,7 @@ use crate::{error::ffi_call, Result};
 use tirocks_sys::crocksdb_sequential_file_t;
 
 /// A file abstraction for reading sequentially through a file.
+#[derive(Debug)]
 pub struct SequentialFile {
     ptr: *mut crocksdb_sequential_file_t,
 }

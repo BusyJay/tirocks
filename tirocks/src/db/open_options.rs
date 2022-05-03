@@ -1,6 +1,6 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::path::Path;
+use std::{path::Path, ptr::NonNull};
 use tirocks_sys::r;
 
 use crate::{
@@ -250,7 +250,7 @@ impl OpenOptions {
         if s.ok() {
             let handles = handles
                 .into_iter()
-                .map(RawColumnFamilyHandle::from_ptr)
+                .map(|p| NonNull::new(p as *mut RawColumnFamilyHandle).unwrap())
                 .collect();
             Ok(Db::new(ptr, env, comparator, handles, is_titan))
         } else {

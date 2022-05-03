@@ -1,11 +1,11 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
 use libc::c_void;
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 use std::path::Path;
 use std::ptr::NonNull;
 use std::sync::{Arc, Mutex};
-use tirocks_sys::{r, rocksdb_DB, rocksdb_ColumnFamilyHandle};
+use tirocks_sys::{r, rocksdb_DB};
 
 use crate::option::{CfOptions, DbOptions, PathToSlice, TitanCfOptions};
 use crate::util::check_status;
@@ -60,12 +60,12 @@ impl Drop for Db {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            for h in self.handles {
+            for h in &mut self.handles {
                 if h.as_ref().is_default_cf() {
                     continue;
                 }
                 // TODO: may should log.
-                let _ = h.as_mut().destroy(self);
+                let _ = h.as_mut().destroy(self.ptr);
             }
             tirocks_sys::crocksdb_destroy(self.ptr as _);
         }
@@ -151,7 +151,8 @@ impl Db {
         };
         check_status!(s)?;
         opt.comparator().map(|c| self.comparator.push(c.clone()));
-        self.handles.push(NonNull::new(ptr as *mut RawColumnFamilyHandle).unwrap());
+        self.handles
+            .push(NonNull::new(ptr as *mut RawColumnFamilyHandle).unwrap());
         Ok(())
     }
 
@@ -174,39 +175,41 @@ impl Db {
         };
         check_status!(s)?;
         opt.comparator().map(|c| self.comparator.push(c.clone()));
-        self.handles.push(NonNull::new(ptr as *mut RawColumnFamilyHandle).unwrap());
+        self.handles
+            .push(NonNull::new(ptr as *mut RawColumnFamilyHandle).unwrap());
         Ok(())
     }
 
     pub fn drop_column_family(&mut self, name: &str) -> Result<()> {
         if name == DEFAULT_CF_NAME {
-            return Err(Status:with_invalid_argument("default cf can't be dropped."));
+            return Err(Status::with_invalid_argument(
+                "default cf can't be dropped.",
+            ));
         }
-        let pos = self.handles.iter().position(|h| {
-            unsafe { h.as_ref().name().map_or(false, |n| n == name) }
-        });
+        let pos = self
+            .handles
+            .iter()
+            .position(|h| unsafe { h.as_ref().name().map_or(false, |n| n == name) });
         let pos = match pos {
             Some(p) => p,
             None => return Err(Status::with_code(Code::kNotFound)),
         };
-        let h = self.handles.swap_remove(pos);
+        let mut h = self.handles.swap_remove(pos);
         unsafe {
-            let destroy_res = h.as_mut().destroy(self);
+            let destroy_res = h.as_mut().destroy(self.ptr);
             let drop_res = h.as_mut().drop(self);
             destroy_res.and(drop_res)
         }
     }
 
     pub fn get_cf(&self, name: &str) -> Option<&RawColumnFamilyHandle> {
-        unsafe {
-            self.get_cf_raw(name).map(|c| c.as_ref())
-        }
+        unsafe { self.get_cf_raw(name).map(|c| c.as_ref()) }
     }
 
-    pub(crate) unsafe fn get_cf_raw(&self, name: &str) -> Option<&NonNull<RawColumnFamilyHandle>> {
+    pub(crate) unsafe fn get_cf_raw(&self, name: &str) -> Option<NonNull<RawColumnFamilyHandle>> {
         for h in &self.handles {
             if h.as_ref().name().map_or(false, |n| n == name) {
-                return Some(h);
+                return Some(*h);
             }
         }
         None

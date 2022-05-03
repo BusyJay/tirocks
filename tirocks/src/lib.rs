@@ -6,6 +6,8 @@ pub mod cache;
 pub mod compaction_filter;
 pub mod comparator;
 pub mod db;
+#[cfg(feature = "encryption")]
+pub mod encryption;
 pub mod env;
 mod error;
 mod listener;
