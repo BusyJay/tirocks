@@ -1,7 +1,7 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
 use std::{
-    mem::{self},
+    mem::{self, ManuallyDrop},
     ops::{Deref, DerefMut},
     sync::Arc,
 };
@@ -23,13 +23,35 @@ pub type FifoCompactionOptions = tirocks_sys::rocksdb_CompactionOptionsFIFO;
 pub type UniversalCompactionOptions = tirocks_sys::rocksdb_CompactionOptionsUniversal;
 pub type TitanBlobRunMode = tirocks_sys::rocksdb_titandb_TitanBlobRunMode;
 
-#[repr(transparent)]
-pub struct RawCfOptions(rocksdb_ColumnFamilyOptions);
-
 #[derive(Debug)]
+#[repr(transparent)]
+pub struct RawCfOptions {
+    ptr: *mut rocksdb_ColumnFamilyOptions,
+}
+
+impl Drop for RawCfOptions {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            tirocks_sys::crocksdb_cfoptions_destroy(self.ptr);
+        }
+    }
+}
+
+impl Default for RawCfOptions {
+    #[inline]
+    fn default() -> RawCfOptions {
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_cfoptions_create();
+            RawCfOptions { ptr }
+        }
+    }
+}
+
+#[derive(Debug, Default)]
 #[repr(C)]
 pub struct CfOptions {
-    ptr: *mut RawCfOptions,
+    opt: ManuallyDrop<RawCfOptions>,
     comparator: Option<Arc<SysComparator>>,
 }
 
@@ -38,27 +60,14 @@ impl Deref for CfOptions {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        unsafe { &*self.ptr }
+        &self.opt
     }
 }
 
 impl DerefMut for CfOptions {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut *self.ptr }
-    }
-}
-
-impl Default for CfOptions {
-    #[inline]
-    fn default() -> CfOptions {
-        unsafe {
-            let ptr = tirocks_sys::crocksdb_cfoptions_create();
-            CfOptions {
-                ptr: ptr as _,
-                comparator: None,
-            }
-        }
+        &mut self.opt
     }
 }
 
@@ -66,7 +75,7 @@ impl Drop for CfOptions {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            tirocks_sys::crocksdb_cfoptions_destroy(self.ptr as _);
+            ManuallyDrop::drop(&mut self.opt);
         }
     }
 }
@@ -798,12 +807,15 @@ impl CfOptions {
 
     #[inline]
     pub(crate) fn as_ptr(&self) -> *const rocksdb_ColumnFamilyOptions {
-        self.ptr as _
+        self.opt.ptr
     }
 }
 
+#[derive(Debug)]
 #[repr(transparent)]
-pub struct RawTitanCfOptions(rocksdb_titandb_TitanCFOptions);
+pub struct RawTitanCfOptions {
+    ptr: *mut rocksdb_titandb_TitanCFOptions,
+}
 
 impl Deref for RawTitanCfOptions {
     type Target = RawCfOptions;
@@ -827,10 +839,26 @@ impl DerefMut for RawTitanCfOptions {
     }
 }
 
-#[derive(Debug)]
-#[repr(C)]
+impl Default for RawTitanCfOptions {
+    #[inline]
+    fn default() -> Self {
+        unsafe {
+            let ptr = tirocks_sys::ctitandb_cfoptions_create();
+            Self { ptr }
+        }
+    }
+}
+
+impl Drop for RawTitanCfOptions {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe { tirocks_sys::ctitandb_cfoptions_destroy(self.ptr) }
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct TitanCfOptions {
-    ptr: *mut RawTitanCfOptions,
+    opt: ManuallyDrop<RawTitanCfOptions>,
     comparator: Option<Arc<SysComparator>>,
 }
 
@@ -839,14 +867,21 @@ impl Deref for TitanCfOptions {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        unsafe { &*self.ptr }
+        &self.opt
     }
 }
 
 impl DerefMut for TitanCfOptions {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut *self.ptr }
+        &mut self.opt
+    }
+}
+
+impl Drop for TitanCfOptions {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe { ManuallyDrop::drop(&mut self.opt) }
     }
 }
 
@@ -988,26 +1023,28 @@ impl TitanCfOptions {
 
     #[inline]
     pub(crate) fn as_ptr(&self) -> *const rocksdb_titandb_TitanCFOptions {
-        self.ptr as _
+        self.opt.ptr
     }
 }
 
-impl Default for TitanCfOptions {
+impl From<CfOptions> for TitanCfOptions {
     #[inline]
-    fn default() -> Self {
-        unsafe {
-            let ptr = tirocks_sys::ctitandb_cfoptions_create();
-            Self {
-                ptr: ptr as _,
-                comparator: None,
-            }
+    fn from(mut opt: CfOptions) -> Self {
+        let ptr = unsafe { tirocks_sys::ctitandb_cfoptions_from_rocksdb(opt.as_mut_ptr()) };
+        TitanCfOptions {
+            opt: ManuallyDrop::new(RawTitanCfOptions { ptr }),
+            comparator: opt.comparator.clone(),
         }
     }
 }
 
-impl Drop for TitanCfOptions {
+impl From<TitanCfOptions> for CfOptions {
     #[inline]
-    fn drop(&mut self) {
-        unsafe { tirocks_sys::ctitandb_cfoptions_destroy(self.ptr as _) }
+    fn from(mut opt: TitanCfOptions) -> Self {
+        let ptr = unsafe { tirocks_sys::ctitandb_cfoptions_to_rocksdb(opt.as_mut_ptr()) };
+        CfOptions {
+            opt: ManuallyDrop::new(RawCfOptions { ptr }),
+            comparator: opt.comparator.clone(),
+        }
     }
 }

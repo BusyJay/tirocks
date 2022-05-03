@@ -1448,7 +1448,7 @@ extern "C" {
     pub fn crocksdb_create_column_family(
         db: *mut rocksdb_DB,
         column_family_options: *const rocksdb_ColumnFamilyOptions,
-        column_family_name: *const libc::c_char,
+        column_family_name: rocksdb_Slice,
         s: *mut rocksdb_Status,
     ) -> *mut rocksdb_ColumnFamilyHandle;
 }
@@ -1463,7 +1463,17 @@ extern "C" {
     pub fn crocksdb_column_family_handle_id(arg1: *mut rocksdb_ColumnFamilyHandle) -> u32;
 }
 extern "C" {
-    pub fn crocksdb_column_family_handle_destroy(arg1: *mut rocksdb_ColumnFamilyHandle);
+    pub fn crocksdb_column_family_handle_name(
+        arg1: *mut rocksdb_ColumnFamilyHandle,
+        arg2: *mut rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_column_family_handle_destroy(
+        arg1: *mut rocksdb_DB,
+        arg2: *mut rocksdb_ColumnFamilyHandle,
+        arg3: *mut rocksdb_Status,
+    );
 }
 extern "C" {
     pub fn crocksdb_close(db: *mut rocksdb_DB, s: *mut rocksdb_Status);
@@ -5199,7 +5209,7 @@ extern "C" {
     pub fn ctitandb_create_column_family(
         db: *mut rocksdb_DB,
         titan_column_family_options: *const rocksdb_titandb_TitanCFOptions,
-        column_family_name: *const libc::c_char,
+        column_family_name: rocksdb_Slice,
         s: *mut rocksdb_Status,
     ) -> *mut rocksdb_ColumnFamilyHandle;
 }
@@ -5227,6 +5237,16 @@ extern "C" {
 }
 extern "C" {
     pub fn ctitandb_cfoptions_create() -> *mut rocksdb_titandb_TitanCFOptions;
+}
+extern "C" {
+    pub fn ctitandb_cfoptions_from_rocksdb(
+        arg1: *mut rocksdb_ColumnFamilyOptions,
+    ) -> *mut rocksdb_titandb_TitanCFOptions;
+}
+extern "C" {
+    pub fn ctitandb_cfoptions_to_rocksdb(
+        arg1: *mut rocksdb_titandb_TitanCFOptions,
+    ) -> *mut rocksdb_ColumnFamilyOptions;
 }
 extern "C" {
     pub fn ctitandb_cfoptions_destroy(arg1: *mut rocksdb_titandb_TitanCFOptions);

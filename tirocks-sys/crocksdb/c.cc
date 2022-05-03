@@ -957,10 +957,10 @@ void crocksdb_list_column_families_destroy(char** list, size_t len) {
 
 ColumnFamilyHandle* crocksdb_create_column_family(
     DB* db, const ColumnFamilyOptions* column_family_options,
-    const char* column_family_name, Status* s) {
+    Slice column_family_name, Status* s) {
   ColumnFamilyHandle* handle;
   *s = db->CreateColumnFamily(*column_family_options,
-                              std::string(column_family_name), &handle);
+                              column_family_name.ToString(), &handle);
   if (!s->ok()) {
     return nullptr;
   }
@@ -976,8 +976,14 @@ uint32_t crocksdb_column_family_handle_id(ColumnFamilyHandle* handle) {
   return handle->GetID();
 }
 
-void crocksdb_column_family_handle_destroy(ColumnFamilyHandle* handle) {
-  delete handle;
+void crocksdb_column_family_handle_name(ColumnFamilyHandle* handle,
+                                        Slice* name) {
+  *name = handle->GetName();
+}
+
+void crocksdb_column_family_handle_destroy(DB* db, ColumnFamilyHandle* handle,
+                                           Status* s) {
+  *s = db->DestroyColumnFamilyHandle(handle);
 }
 
 void crocksdb_put(DB* db, const WriteOptions* options, const char* key,
@@ -5312,12 +5318,12 @@ DB* ctitandb_open_column_families(
 // use ctitandb_t for titan specific functions.
 ColumnFamilyHandle* ctitandb_create_column_family(
     DB* db, const TitanCFOptions* titan_column_family_options,
-    const char* column_family_name, Status* s) {
+    Slice column_family_name, Status* s) {
   // Blindly cast db into TitanDB.
   TitanDB* titan_db = reinterpret_cast<TitanDB*>(db);
   ColumnFamilyHandle* handle = nullptr;
   *s = titan_db->CreateColumnFamily(
-      TitanCFDescriptor(std::string(column_family_name),
+      TitanCFDescriptor(column_family_name.ToString(),
                         *titan_column_family_options),
       &handle);
   return handle;
@@ -5342,6 +5348,14 @@ TitanDBOptions* ctitandb_dboptions_create() { return new TitanDBOptions(); }
 void ctitandb_dboptions_destroy(TitanDBOptions* opt) { delete opt; }
 
 TitanCFOptions* ctitandb_cfoptions_create() { return new TitanCFOptions(); }
+
+TitanCFOptions* ctitandb_cfoptions_from_rocksdb(ColumnFamilyOptions* rocks) {
+  return new TitanCFOptions(*rocks);
+}
+
+ColumnFamilyOptions* ctitandb_cfoptions_to_rocksdb(TitanCFOptions* titan) {
+  return new ColumnFamilyOptions(*titan);
+}
 
 void ctitandb_cfoptions_destroy(TitanCFOptions* opt) { delete opt; }
 

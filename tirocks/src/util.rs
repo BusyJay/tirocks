@@ -1,8 +1,5 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-// For now the macro is only used by encryption.
-#![cfg_attr(not(feature = "encryption"), allow(unused))]
-
 macro_rules! utf8_name {
     ($slice:expr, $ctx:expr, $status:expr) => {
         match std::str::from_utf8(tirocks_sys::s($slice)) {
@@ -60,3 +57,15 @@ macro_rules! simple_access {
 }
 
 pub(crate) use simple_access;
+
+macro_rules! check_status {
+    ($status:ident) => {
+        if $status.ok() {
+            Ok(())
+        } else {
+            Err($status)
+        }
+    };
+}
+
+pub(crate) use check_status;

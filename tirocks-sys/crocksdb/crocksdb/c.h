@@ -289,16 +289,18 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_list_column_families_destroy(
 
 extern C_ROCKSDB_LIBRARY_API ColumnFamilyHandle* crocksdb_create_column_family(
     DB* db, const ColumnFamilyOptions* column_family_options,
-    const char* column_family_name, Status* s);
+    Slice column_family_name, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_drop_column_family(
     DB* db, ColumnFamilyHandle* handle, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API uint32_t
 crocksdb_column_family_handle_id(ColumnFamilyHandle*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_column_family_handle_name(
+    ColumnFamilyHandle*, Slice*);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_column_family_handle_destroy(
-    ColumnFamilyHandle*);
+    DB*, ColumnFamilyHandle*, Status*);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_close(DB* db, Status* s);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_destroy(DB* db);
@@ -2154,7 +2156,7 @@ extern C_ROCKSDB_LIBRARY_API DB* ctitandb_open_column_families(
 
 extern C_ROCKSDB_LIBRARY_API ColumnFamilyHandle* ctitandb_create_column_family(
     DB* db, const TitanCFOptions* titan_column_family_options,
-    const char* column_family_name, Status* s);
+    Slice column_family_name, Status* s);
 
 /* TitanDBOptions */
 
@@ -2167,6 +2169,10 @@ extern C_ROCKSDB_LIBRARY_API void ctitandb_options_destroy(TitanOptions*);
 extern C_ROCKSDB_LIBRARY_API TitanDBOptions* ctitandb_dboptions_create();
 extern C_ROCKSDB_LIBRARY_API void ctitandb_dboptions_destroy(TitanDBOptions*);
 extern C_ROCKSDB_LIBRARY_API TitanCFOptions* ctitandb_cfoptions_create();
+extern C_ROCKSDB_LIBRARY_API TitanCFOptions* ctitandb_cfoptions_from_rocksdb(
+    ColumnFamilyOptions*);
+extern C_ROCKSDB_LIBRARY_API ColumnFamilyOptions* ctitandb_cfoptions_to_rocksdb(
+    TitanCFOptions*);
 extern C_ROCKSDB_LIBRARY_API void ctitandb_cfoptions_destroy(TitanCFOptions*);
 
 extern C_ROCKSDB_LIBRARY_API TitanOptions* ctitandb_get_titan_options_cf(

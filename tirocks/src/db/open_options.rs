@@ -8,7 +8,7 @@ use crate::{
     Result, Status,
 };
 
-use super::{cf::ColumnFamilyHandle, db::Db};
+use super::{cf::RawColumnFamilyHandle, db::Db};
 
 #[derive(Default, Debug)]
 pub struct DefaultCfOnlyBuilder {
@@ -52,15 +52,21 @@ impl MultiCfBuilder {
         }
     }
 
-    pub fn add_cf(&mut self, name: String, cf: CfOptions) -> &mut Self {
+    pub fn add_cf(&mut self, name: impl Into<String>, cf: CfOptions) -> &mut Self {
         self.add_cf_internal(name, cf, None)
     }
 
-    pub fn add_cf_ttl(&mut self, name: String, cf: CfOptions, ttl: i32) -> &mut Self {
+    pub fn add_cf_ttl(&mut self, name: impl Into<String>, cf: CfOptions, ttl: i32) -> &mut Self {
         self.add_cf_internal(name, cf, Some(ttl))
     }
 
-    fn add_cf_internal(&mut self, name: String, cf: CfOptions, ttl: Option<i32>) -> &mut Self {
+    fn add_cf_internal(
+        &mut self,
+        name: impl Into<String>,
+        cf: CfOptions,
+        ttl: Option<i32>,
+    ) -> &mut Self {
+        let name = name.into();
         if let Some(ttl) = ttl {
             if self.cfs.len() != self.ttl.len() {
                 panic!("ttl should be specified for all cf.");
@@ -92,8 +98,8 @@ impl MultiCfTitanBuilder {
         MultiCfTitanBuilder { db, cfs: vec![] }
     }
 
-    pub fn add_cf(&mut self, name: String, cf: TitanCfOptions) -> &mut Self {
-        self.cfs.push((name, cf));
+    pub fn add_cf(&mut self, name: impl Into<String>, cf: TitanCfOptions) -> &mut Self {
+        self.cfs.push((name.into(), cf));
         self
     }
 }
@@ -244,9 +250,9 @@ impl OpenOptions {
         if s.ok() {
             let handles = handles
                 .into_iter()
-                .map(ColumnFamilyHandle::from_ptr)
+                .map(RawColumnFamilyHandle::from_ptr)
                 .collect();
-            Ok(Db::new(ptr as _, env, comparator, handles, is_titan))
+            Ok(Db::new(ptr, env, comparator, handles, is_titan))
         } else {
             Err(s)
         }

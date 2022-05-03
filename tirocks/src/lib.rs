@@ -19,6 +19,6 @@ pub mod table;
 pub mod table_properties;
 mod util;
 
-pub use db::{RawDb, Db, OpenOptions};
+pub use db::{Db, OpenOptions, RawDb};
 pub use error::{Code, Result, Severity, Status, SubCode};
 pub use statistics::Statistics;
