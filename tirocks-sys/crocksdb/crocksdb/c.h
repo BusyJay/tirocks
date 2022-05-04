@@ -107,7 +107,6 @@ typedef struct crocksdb_cuckoo_table_options_t crocksdb_cuckoo_table_options_t;
 typedef struct crocksdb_randomfile_t crocksdb_randomfile_t;
 typedef struct crocksdb_seqfile_t crocksdb_seqfile_t;
 typedef struct crocksdb_slicetransform_t crocksdb_slicetransform_t;
-typedef struct crocksdb_snapshot_t crocksdb_snapshot_t;
 typedef struct crocksdb_writablefile_t crocksdb_writablefile_t;
 typedef struct crocksdb_writebatch_t crocksdb_writebatch_t;
 typedef struct crocksdb_livefiles_t crocksdb_livefiles_t;
@@ -394,13 +393,12 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_create_iterators(
     DB* db, const ReadOptions* opts, ColumnFamilyHandle** column_families,
     Iterator** iterators, size_t size, Status* s);
 
-extern C_ROCKSDB_LIBRARY_API const crocksdb_snapshot_t*
-crocksdb_create_snapshot(DB* db);
+extern C_ROCKSDB_LIBRARY_API const Snapshot* crocksdb_create_snapshot(DB* db);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_release_snapshot(
-    DB* db, const crocksdb_snapshot_t* snapshot);
-extern C_ROCKSDB_LIBRARY_API uint64_t
-crocksdb_get_snapshot_sequence_number(const crocksdb_snapshot_t* snapshot);
+    DB* db, const Snapshot* snapshot);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_get_snapshot_sequence_number(
+    const Snapshot* snapshot, SequenceNumber*);
 
 /* Returns NULL if property name is unknown.
    Else returns a pointer to a malloc()-ed null-terminated value. */

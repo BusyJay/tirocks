@@ -5,7 +5,7 @@ use std::{
     mem::MaybeUninit,
 };
 
-use tirocks_sys::rocksdb_titandb_TitanReadOptions;
+use tirocks_sys::{rocksdb_Snapshot, rocksdb_titandb_TitanReadOptions};
 
 use super::OwnedSlice;
 
@@ -51,6 +51,23 @@ impl ReadOptions {
         if self.slice_store.is_none() {
             self.slice_store = Some(Box::new(Default::default()));
         }
+    }
+
+    /// If "snapshot" is set, read as of the supplied snapshot
+    /// (which must belong to the DB that is being read and which must
+    /// not have been released).  If "snapshot" is nullptr, use an implicit
+    /// snapshot of the state at the beginning of this read operation.
+    ///
+    /// If set, caller should guarantee the snapshot outlives the read operation.
+    #[inline]
+    pub(crate) unsafe fn set_snapshot(&mut self, snapshot: *const rocksdb_Snapshot) -> &mut Self {
+        self.raw._base.snapshot = snapshot;
+        self
+    }
+
+    #[inline]
+    pub(crate) fn snapshot(&self) -> *const rocksdb_Snapshot {
+        self.raw._base.snapshot
     }
 
     /// Sets the smallest key at which the backward iterator can return an

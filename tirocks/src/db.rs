@@ -5,8 +5,10 @@ mod db;
 mod iter;
 mod open_options;
 pub mod pin_slice;
+mod snap;
 
 pub use self::db::{Db, RawDb};
 pub use self::open_options::{
     DefaultCfOnlyBuilder, MultiCfBuilder, MultiCfTitanBuilder, OpenOptions,
 };
+pub use self::snap::{RawSnapshot, Snapshot};

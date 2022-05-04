@@ -2,11 +2,7 @@
 
 use std::{mem, ops::Deref, ptr::NonNull, str::Utf8Error};
 
-use crate::{
-    db::Db,
-    util::{check_status, utf8_name},
-    Result, Status,
-};
+use crate::{db::Db, util::check_status, Result, Status};
 use tirocks_sys::{r, rocksdb_ColumnFamilyHandle, rocksdb_DB, s};
 
 use super::db::DbRef;
@@ -49,9 +45,7 @@ impl RawColumnFamilyHandle {
 
     pub(crate) unsafe fn destroy(&mut self, db: *mut rocksdb_DB) -> Result<()> {
         let mut s = Status::default();
-        unsafe {
-            tirocks_sys::crocksdb_drop_column_family(db, self.as_mut_ptr(), s.as_mut_ptr());
-        }
+        tirocks_sys::crocksdb_drop_column_family(db, self.as_mut_ptr(), s.as_mut_ptr());
         check_status!(s)
     }
 
@@ -69,7 +63,7 @@ pub struct ColumnFamilyHandle<D: DbRef> {
 impl<D: DbRef> ColumnFamilyHandle<D> {
     pub fn new(db: D, name: &str) -> Option<Self> {
         unsafe {
-            let ptr = db.visit(|d| d.get_cf_raw(name));
+            let ptr = db.visit(|d| d.cf_raw(name));
             Some(Self {
                 ptr: mem::transmute(ptr?),
                 _db: db,

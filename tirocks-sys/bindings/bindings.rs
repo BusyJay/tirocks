@@ -1017,11 +1017,6 @@ pub struct crocksdb_slicetransform_t {
 }
 #[repr(C)]
 #[derive(Debug)]
-pub struct crocksdb_snapshot_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
 pub struct crocksdb_writablefile_t {
     _unused: [u8; 0],
 }
@@ -1662,13 +1657,16 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_create_snapshot(db: *mut rocksdb_DB) -> *const crocksdb_snapshot_t;
+    pub fn crocksdb_create_snapshot(db: *mut rocksdb_DB) -> *const rocksdb_Snapshot;
 }
 extern "C" {
-    pub fn crocksdb_release_snapshot(db: *mut rocksdb_DB, snapshot: *const crocksdb_snapshot_t);
+    pub fn crocksdb_release_snapshot(db: *mut rocksdb_DB, snapshot: *const rocksdb_Snapshot);
 }
 extern "C" {
-    pub fn crocksdb_get_snapshot_sequence_number(snapshot: *const crocksdb_snapshot_t) -> u64;
+    pub fn crocksdb_get_snapshot_sequence_number(
+        snapshot: *const rocksdb_Snapshot,
+        arg1: *mut rocksdb_SequenceNumber,
+    );
 }
 extern "C" {
     pub fn crocksdb_create_map_property() -> *mut crocksdb_map_property_t;

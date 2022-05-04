@@ -214,9 +214,6 @@ struct crocksdb_restore_options_t {
 struct crocksdb_writebatch_t {
   WriteBatch rep;
 };
-struct crocksdb_snapshot_t {
-  const Snapshot* rep;
-};
 struct crocksdb_fifo_compaction_options_t {
   CompactionOptionsFIFO rep;
 };
@@ -1133,20 +1130,15 @@ void crocksdb_create_iterators(DB* db, const ReadOptions* opts,
   }
 }
 
-const crocksdb_snapshot_t* crocksdb_create_snapshot(DB* db) {
-  crocksdb_snapshot_t* result = new crocksdb_snapshot_t;
-  result->rep = db->GetSnapshot();
-  return result;
+const Snapshot* crocksdb_create_snapshot(DB* db) { return db->GetSnapshot(); }
+
+void crocksdb_release_snapshot(DB* db, const Snapshot* snapshot) {
+  db->ReleaseSnapshot(snapshot);
 }
 
-void crocksdb_release_snapshot(DB* db, const crocksdb_snapshot_t* snapshot) {
-  db->ReleaseSnapshot(snapshot->rep);
-  delete snapshot;
-}
-
-uint64_t crocksdb_get_snapshot_sequence_number(
-    const crocksdb_snapshot_t* snapshot) {
-  return snapshot->rep->GetSequenceNumber();
+void crocksdb_get_snapshot_sequence_number(const Snapshot* snapshot,
+                                           SequenceNumber* n) {
+  *n = snapshot->GetSequenceNumber();
 }
 
 crocksdb_map_property_t* crocksdb_create_map_property() {

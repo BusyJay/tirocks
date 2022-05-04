@@ -7,7 +7,7 @@ use std::path::Path;
 use std::ptr::NonNull;
 use std::slice;
 use std::sync::{Arc, Mutex};
-use tirocks_sys::{r, rocksdb_DB};
+use tirocks_sys::{r, rocksdb_DB, rocksdb_Iterator};
 
 use crate::option::{CfOptions, DbOptions, PathToSlice, ReadOptions, TitanCfOptions, WriteOptions};
 use crate::util::check_status;
@@ -17,8 +17,9 @@ use crate::{Code, Result, Status};
 use crate::db::cf::RawColumnFamilyHandle;
 
 use super::cf::DEFAULT_CF_NAME;
-use super::iter::RawIterator;
+use super::iter::{Iterable, RawIterator};
 use super::pin_slice::PinSlice;
+use super::snap::RawSnapshot;
 
 pub trait RawDbRef {
     fn visit<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T;
@@ -281,25 +282,42 @@ impl RawDb {
         Self::check_get_to(s)
     }
 
-    pub fn iter<'a>(&'a self, read: &'a ReadOptions) -> RawIterator<'a> {
-        unsafe {
-            let ptr = tirocks_sys::crocksdb_create_iterator(self.as_ptr(), read.get() as _);
-            RawIterator::from_ptr(ptr)
-        }
+    pub fn iter<'a>(&'a self, read: &'a mut ReadOptions) -> RawIterator<'a> {
+        RawIterator::new(self, read)
     }
 
     pub fn iter_cf<'a>(
         &'a self,
-        read: &'a ReadOptions,
+        read: &'a mut ReadOptions,
         cf: &RawColumnFamilyHandle,
     ) -> RawIterator<'a> {
+        RawIterator::with_cf(self, read, cf)
+    }
+
+    pub fn snapshot(&self) -> RawSnapshot {
         unsafe {
-            let ptr = tirocks_sys::crocksdb_create_iterator_cf(
-                self.as_ptr(),
-                read.get() as _,
-                cf.as_mut_ptr(),
-            );
-            RawIterator::from_ptr(ptr)
+            let ptr = tirocks_sys::crocksdb_create_snapshot(self.as_ptr());
+            RawSnapshot::from_ptr(ptr)
+        }
+    }
+
+    pub fn release_snapshot(&self, snap: RawSnapshot) {
+        unsafe { tirocks_sys::crocksdb_release_snapshot(self.as_ptr(), snap.get()) }
+    }
+}
+
+unsafe impl Iterable for RawDb {
+    fn raw_iter(&self, opt: &mut ReadOptions) -> *mut rocksdb_Iterator {
+        unsafe { tirocks_sys::crocksdb_create_iterator(self.as_ptr(), opt.get() as _) }
+    }
+
+    fn raw_iter_cf(
+        &self,
+        opt: &mut ReadOptions,
+        cf: &RawColumnFamilyHandle,
+    ) -> *mut rocksdb_Iterator {
+        unsafe {
+            tirocks_sys::crocksdb_create_iterator_cf(self.as_ptr(), opt.get() as _, cf.as_mut_ptr())
         }
     }
 }
