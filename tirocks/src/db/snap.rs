@@ -8,7 +8,7 @@ use std::{
 
 use tirocks_sys::{rocksdb_Iterator, rocksdb_Snapshot};
 
-use crate::{option::ReadOptions, table_properties::user::SequenceNumber, Result};
+use crate::{option::ReadOptions, table_properties::user::SequenceNumber, RawDb, Result};
 
 use super::{
     cf::RawColumnFamilyHandle,
@@ -179,5 +179,18 @@ impl<'a, D: RawDbRef + 'a> Drop for Snapshot<'a, D> {
     fn drop(&mut self) {
         let snap = unsafe { ManuallyDrop::take(&mut self.snap) };
         self.db.visit(|d| d.release_snapshot(snap))
+    }
+}
+
+impl RawDb {
+    pub fn snapshot(&self) -> RawSnapshot {
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_create_snapshot(self.as_ptr());
+            RawSnapshot::from_ptr(ptr)
+        }
+    }
+
+    pub fn release_snapshot(&self, snap: RawSnapshot) {
+        unsafe { tirocks_sys::crocksdb_release_snapshot(self.as_ptr(), snap.get()) }
     }
 }

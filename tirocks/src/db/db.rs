@@ -19,6 +19,7 @@ use crate::db::cf::RawColumnFamilyHandle;
 use super::cf::DEFAULT_CF_NAME;
 use super::iter::{Iterable, RawIterator};
 use super::pin_slice::PinSlice;
+use super::properties::{IntProperty, MapProperty, Property, PropertyMap};
 use super::snap::RawSnapshot;
 
 pub trait RawDbRef {
@@ -280,45 +281,6 @@ impl RawDb {
             )
         };
         Self::check_get_to(s)
-    }
-
-    pub fn iter<'a>(&'a self, read: &'a mut ReadOptions) -> RawIterator<'a> {
-        RawIterator::new(self, read)
-    }
-
-    pub fn iter_cf<'a>(
-        &'a self,
-        read: &'a mut ReadOptions,
-        cf: &RawColumnFamilyHandle,
-    ) -> RawIterator<'a> {
-        RawIterator::with_cf(self, read, cf)
-    }
-
-    pub fn snapshot(&self) -> RawSnapshot {
-        unsafe {
-            let ptr = tirocks_sys::crocksdb_create_snapshot(self.as_ptr());
-            RawSnapshot::from_ptr(ptr)
-        }
-    }
-
-    pub fn release_snapshot(&self, snap: RawSnapshot) {
-        unsafe { tirocks_sys::crocksdb_release_snapshot(self.as_ptr(), snap.get()) }
-    }
-}
-
-unsafe impl Iterable for RawDb {
-    fn raw_iter(&self, opt: &mut ReadOptions) -> *mut rocksdb_Iterator {
-        unsafe { tirocks_sys::crocksdb_create_iterator(self.as_ptr(), opt.get() as _) }
-    }
-
-    fn raw_iter_cf(
-        &self,
-        opt: &mut ReadOptions,
-        cf: &RawColumnFamilyHandle,
-    ) -> *mut rocksdb_Iterator {
-        unsafe {
-            tirocks_sys::crocksdb_create_iterator_cf(self.as_ptr(), opt.get() as _, cf.as_mut_ptr())
-        }
     }
 }
 

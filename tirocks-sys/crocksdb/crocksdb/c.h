@@ -408,21 +408,24 @@ crocksdb_create_map_property();
 extern C_ROCKSDB_LIBRARY_API void crocksdb_destroy_map_property(
     crocksdb_map_property_t* info);
 
-extern C_ROCKSDB_LIBRARY_API unsigned char crocksdb_get_map_property_cf(
-    DB* db, ColumnFamilyHandle* column_family, const char* property,
+extern C_ROCKSDB_LIBRARY_API bool crocksdb_get_map_property_cf(
+    DB* db, ColumnFamilyHandle* column_family, Slice property,
     crocksdb_map_property_t* data);
 
-extern C_ROCKSDB_LIBRARY_API char* crocksdb_map_property_value(
-    crocksdb_map_property_t* info, const char* propname);
+extern C_ROCKSDB_LIBRARY_API bool crocksdb_map_property_value(
+    crocksdb_map_property_t* info, Slice propname, Slice*);
 
-extern C_ROCKSDB_LIBRARY_API uint64_t crocksdb_map_property_int_value(
-    crocksdb_map_property_t* info, const char* propname);
+extern C_ROCKSDB_LIBRARY_API bool crocksdb_map_property_int_value(
+    crocksdb_map_property_t* info, Slice propname, uint64_t*);
 
-extern C_ROCKSDB_LIBRARY_API char* crocksdb_property_value(
-    DB* db, const char* propname);
-
+extern C_ROCKSDB_LIBRARY_API char* crocksdb_property_value(DB* db,
+                                                           Slice propname);
 extern C_ROCKSDB_LIBRARY_API char* crocksdb_property_value_cf(
-    DB* db, ColumnFamilyHandle* column_family, const char* propname);
+    DB* db, ColumnFamilyHandle* column_family, Slice propname);
+extern C_ROCKSDB_LIBRARY_API bool crocksdb_property_int_value_cf(
+    DB* db, ColumnFamilyHandle* column_family, Slice propname, uint64_t*);
+extern C_ROCKSDB_LIBRARY_API bool crocksdb_property_aggregated_int_value(
+    DB* db, Slice propname, uint64_t*);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_approximate_sizes(
     DB* db, int num_ranges, const char* const* range_start_key,

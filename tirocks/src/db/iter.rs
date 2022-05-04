@@ -8,7 +8,7 @@ use std::{
 
 use tirocks_sys::{r, rocksdb_Iterator, s};
 
-use crate::{option::ReadOptions, table_properties::user::SequenceNumber, Status};
+use crate::{option::ReadOptions, table_properties::user::SequenceNumber, RawDb, Status};
 
 use super::cf::RawColumnFamilyHandle;
 
@@ -181,7 +181,7 @@ impl<'a> RawIterator<'a> {
 
 pub struct Iterator<'a, I: Iterable + 'a> {
     iter: ManuallyDrop<RawIterator<'a>>,
-    i: I,
+    _i: I,
     _read: ReadOptions,
 }
 
@@ -192,7 +192,7 @@ impl<'a, I: Iterable + 'a> Iterator<'a, I> {
             let ptr = i.raw_iter(&mut read);
             Iterator {
                 iter: ManuallyDrop::new(RawIterator::from_ptr(ptr)),
-                i,
+                _i: i,
                 _read: read,
             }
         }
@@ -204,7 +204,7 @@ impl<'a, I: Iterable + 'a> Iterator<'a, I> {
             let ptr = i.raw_iter_cf(&mut read, cf);
             Iterator {
                 iter: ManuallyDrop::new(RawIterator::from_ptr(ptr)),
-                i,
+                _i: i,
                 _read: read,
             }
         }
@@ -233,5 +233,35 @@ impl<'a, I: Iterable + 'a> Drop for Iterator<'a, I> {
         unsafe {
             ManuallyDrop::drop(&mut self.iter);
         }
+    }
+}
+
+unsafe impl Iterable for RawDb {
+    fn raw_iter(&self, opt: &mut ReadOptions) -> *mut rocksdb_Iterator {
+        unsafe { tirocks_sys::crocksdb_create_iterator(self.as_ptr(), opt.get() as _) }
+    }
+
+    fn raw_iter_cf(
+        &self,
+        opt: &mut ReadOptions,
+        cf: &RawColumnFamilyHandle,
+    ) -> *mut rocksdb_Iterator {
+        unsafe {
+            tirocks_sys::crocksdb_create_iterator_cf(self.as_ptr(), opt.get() as _, cf.as_mut_ptr())
+        }
+    }
+}
+
+impl RawDb {
+    pub fn iter<'a>(&'a self, read: &'a mut ReadOptions) -> RawIterator<'a> {
+        RawIterator::new(self, read)
+    }
+
+    pub fn iter_cf<'a>(
+        &'a self,
+        read: &'a mut ReadOptions,
+        cf: &RawColumnFamilyHandle,
+    ) -> RawIterator<'a> {
+        RawIterator::with_cf(self, read, cf)
     }
 }

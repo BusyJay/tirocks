@@ -1678,34 +1678,51 @@ extern "C" {
     pub fn crocksdb_get_map_property_cf(
         db: *mut rocksdb_DB,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-        property: *const libc::c_char,
+        property: rocksdb_Slice,
         data: *mut crocksdb_map_property_t,
-    ) -> libc::c_uchar;
+    ) -> bool;
 }
 extern "C" {
     pub fn crocksdb_map_property_value(
         info: *mut crocksdb_map_property_t,
-        propname: *const libc::c_char,
-    ) -> *mut libc::c_char;
+        propname: rocksdb_Slice,
+        arg1: *mut rocksdb_Slice,
+    ) -> bool;
 }
 extern "C" {
     pub fn crocksdb_map_property_int_value(
         info: *mut crocksdb_map_property_t,
-        propname: *const libc::c_char,
-    ) -> u64;
+        propname: rocksdb_Slice,
+        arg1: *mut u64,
+    ) -> bool;
 }
 extern "C" {
     pub fn crocksdb_property_value(
         db: *mut rocksdb_DB,
-        propname: *const libc::c_char,
+        propname: rocksdb_Slice,
     ) -> *mut libc::c_char;
 }
 extern "C" {
     pub fn crocksdb_property_value_cf(
         db: *mut rocksdb_DB,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-        propname: *const libc::c_char,
+        propname: rocksdb_Slice,
     ) -> *mut libc::c_char;
+}
+extern "C" {
+    pub fn crocksdb_property_int_value_cf(
+        db: *mut rocksdb_DB,
+        column_family: *mut rocksdb_ColumnFamilyHandle,
+        propname: rocksdb_Slice,
+        arg1: *mut u64,
+    ) -> bool;
+}
+extern "C" {
+    pub fn crocksdb_property_aggregated_int_value(
+        db: *mut rocksdb_DB,
+        propname: rocksdb_Slice,
+        arg1: *mut u64,
+    ) -> bool;
 }
 extern "C" {
     pub fn crocksdb_approximate_sizes(

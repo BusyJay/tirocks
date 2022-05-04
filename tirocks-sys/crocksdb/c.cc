@@ -1149,36 +1149,38 @@ void crocksdb_destroy_map_property(crocksdb_map_property_t* info) {
   delete info;
 }
 
-unsigned char crocksdb_get_map_property_cf(DB* db,
-                                           ColumnFamilyHandle* column_family,
-                                           const char* property,
-                                           crocksdb_map_property_t* info) {
+bool crocksdb_get_map_property_cf(DB* db, ColumnFamilyHandle* column_family,
+                                  Slice property,
+                                  crocksdb_map_property_t* info) {
+  info->rep.clear();
   return db->GetMapProperty(column_family, property, &info->rep);
 }
 
-char* crocksdb_map_property_value(crocksdb_map_property_t* info,
-                                  const char* propname) {
-  auto iter = info->rep.find(std::string(propname));
+bool crocksdb_map_property_value(crocksdb_map_property_t* info, Slice propname,
+                                 Slice* value) {
+  auto iter = info->rep.find(propname.ToString());
   if (iter != info->rep.end()) {
-    return strdup(iter->second.c_str());
+    *value = iter->second;
+    return true;
   } else {
-    return nullptr;
+    return false;
   }
 }
 
-uint64_t crocksdb_map_property_int_value(crocksdb_map_property_t* info,
-                                         const char* propname) {
-  auto iter = info->rep.find(std::string(propname));
+bool crocksdb_map_property_int_value(crocksdb_map_property_t* info,
+                                     Slice propname, uint64_t* val) {
+  auto iter = info->rep.find(propname.ToString());
   if (iter != info->rep.end()) {
-    return (uint64_t)stoll(iter->second, nullptr);
+    *val = (uint64_t)stoll(iter->second, nullptr);
+    return true;
   } else {
-    return 0;
+    return false;
   }
 }
 
-char* crocksdb_property_value(DB* db, const char* propname) {
+char* crocksdb_property_value(DB* db, Slice propname) {
   std::string tmp;
-  if (db->GetProperty(Slice(propname), &tmp)) {
+  if (db->GetProperty(propname, &tmp)) {
     // We use strdup() since we expect human readable output.
     return strdup(tmp.c_str());
   } else {
@@ -1187,7 +1189,7 @@ char* crocksdb_property_value(DB* db, const char* propname) {
 }
 
 char* crocksdb_property_value_cf(DB* db, ColumnFamilyHandle* column_family,
-                                 const char* propname) {
+                                 Slice propname) {
   std::string tmp;
   if (db->GetProperty(column_family, Slice(propname), &tmp)) {
     // We use strdup() since we expect human readable output.
@@ -1195,6 +1197,16 @@ char* crocksdb_property_value_cf(DB* db, ColumnFamilyHandle* column_family,
   } else {
     return nullptr;
   }
+}
+
+bool crocksdb_property_int_value_cf(DB* db, ColumnFamilyHandle* column_family,
+                                    Slice propname, uint64_t* val) {
+  return db->GetIntProperty(column_family, propname, val);
+}
+
+bool crocksdb_property_aggregated_int_value(DB* db, Slice propname,
+                                            uint64_t* val) {
+  return db->GetAggregatedIntProperty(propname, val);
 }
 
 void crocksdb_approximate_sizes(DB* db, int num_ranges,
