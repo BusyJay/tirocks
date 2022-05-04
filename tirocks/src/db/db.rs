@@ -7,7 +7,7 @@ use std::path::Path;
 use std::ptr::NonNull;
 use std::slice;
 use std::sync::{Arc, Mutex};
-use tirocks_sys::{r, rocksdb_DB, rocksdb_Iterator};
+use tirocks_sys::{r, rocksdb_DB};
 
 use crate::option::{CfOptions, DbOptions, PathToSlice, ReadOptions, TitanCfOptions, WriteOptions};
 use crate::util::check_status;
@@ -17,10 +17,7 @@ use crate::{Code, Result, Status};
 use crate::db::cf::RawColumnFamilyHandle;
 
 use super::cf::DEFAULT_CF_NAME;
-use super::iter::{Iterable, RawIterator};
 use super::pin_slice::PinSlice;
-use super::properties::{IntProperty, MapProperty, Property, PropertyMap};
-use super::snap::RawSnapshot;
 
 pub trait RawDbRef {
     fn visit<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T;
@@ -84,15 +81,7 @@ impl RawDb {
         &*(ptr as *const RawDb)
     }
 
-    pub fn put(&self, opt: &WriteOptions, key: &[u8], val: &[u8]) -> Result<()> {
-        let mut s = Status::default();
-        unsafe {
-            tirocks_sys::crocksdb_put(self.as_ptr(), opt.get(), r(key), r(val), s.as_mut_ptr());
-        }
-        check_status!(s)
-    }
-
-    pub fn put_cf(
+    pub fn put(
         &self,
         opt: &WriteOptions,
         cf: &RawColumnFamilyHandle,
@@ -113,20 +102,7 @@ impl RawDb {
         check_status!(s)
     }
 
-    pub fn delete(&self, opt: &WriteOptions, key: &[u8]) -> Result<()> {
-        let mut s = Status::default();
-        unsafe {
-            tirocks_sys::crocksdb_delete(self.as_ptr(), opt.get(), r(key), s.as_mut_ptr());
-        }
-        check_status!(s)
-    }
-
-    pub fn delete_cf(
-        &self,
-        opt: &WriteOptions,
-        cf: &RawColumnFamilyHandle,
-        key: &[u8],
-    ) -> Result<()> {
+    pub fn delete(&self, opt: &WriteOptions, cf: &RawColumnFamilyHandle, key: &[u8]) -> Result<()> {
         let mut s = Status::default();
         unsafe {
             tirocks_sys::crocksdb_delete_cf(
@@ -140,15 +116,7 @@ impl RawDb {
         check_status!(s)
     }
 
-    pub fn single_delete(&self, opt: &WriteOptions, key: &[u8]) -> Result<()> {
-        let mut s = Status::default();
-        unsafe {
-            tirocks_sys::crocksdb_single_delete(self.as_ptr(), opt.get(), r(key), s.as_mut_ptr());
-        }
-        check_status!(s)
-    }
-
-    pub fn single_delete_cf(
+    pub fn single_delete(
         &self,
         opt: &WriteOptions,
         cf: &RawColumnFamilyHandle,
@@ -188,36 +156,7 @@ impl RawDb {
         check_status!(s)
     }
 
-    fn check_get(val_ptr: *mut u8, len: usize, s: Status) -> Result<Option<Vec<u8>>> {
-        if s.ok() {
-            unsafe {
-                let res = slice::from_raw_parts(val_ptr, len).to_vec();
-                libc::free(val_ptr as *mut c_void);
-                Ok(Some(res))
-            }
-        } else if s.code() == Code::kNotFound {
-            Ok(None)
-        } else {
-            Err(s)
-        }
-    }
-
-    pub fn get(&self, opt: &ReadOptions, key: &[u8]) -> Result<Option<Vec<u8>>> {
-        let mut s = Status::default();
-        let mut len = 0;
-        let val_ptr = unsafe {
-            tirocks_sys::crocksdb_get(
-                self.as_ptr(),
-                opt.get() as _,
-                r(key),
-                &mut len,
-                s.as_mut_ptr(),
-            )
-        };
-        Self::check_get(val_ptr as _, len, s)
-    }
-
-    pub fn get_cf(
+    pub fn get(
         &self,
         opt: &ReadOptions,
         cf: &RawColumnFamilyHandle,
@@ -235,34 +174,20 @@ impl RawDb {
                 s.as_mut_ptr(),
             )
         };
-        Self::check_get(val_ptr as _, len, s)
-    }
-
-    fn check_get_to(s: Status) -> Result<bool> {
         if s.ok() {
-            Ok(true)
+            unsafe {
+                let res = slice::from_raw_parts(val_ptr as *const u8, len).to_vec();
+                libc::free(val_ptr as *mut c_void);
+                Ok(Some(res))
+            }
         } else if s.code() == Code::kNotFound {
-            Ok(false)
+            Ok(None)
         } else {
             Err(s)
         }
     }
 
-    pub fn get_to(&self, opt: &ReadOptions, key: &[u8], value: &mut PinSlice) -> Result<bool> {
-        let mut s = Status::default();
-        unsafe {
-            tirocks_sys::crocksdb_get_pinned(
-                self.as_ptr(),
-                opt.get() as _,
-                r(key),
-                value.get(),
-                s.as_mut_ptr(),
-            )
-        };
-        Self::check_get_to(s)
-    }
-
-    pub fn get_cf_to(
+    pub fn get_to(
         &self,
         opt: &ReadOptions,
         cf: &RawColumnFamilyHandle,
@@ -280,7 +205,13 @@ impl RawDb {
                 s.as_mut_ptr(),
             )
         };
-        Self::check_get_to(s)
+        if s.ok() {
+            Ok(true)
+        } else if s.code() == Code::kNotFound {
+            Ok(false)
+        } else {
+            Err(s)
+        }
     }
 }
 

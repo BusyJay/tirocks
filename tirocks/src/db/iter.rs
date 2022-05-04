@@ -13,12 +13,7 @@ use crate::{option::ReadOptions, table_properties::user::SequenceNumber, RawDb, 
 use super::cf::RawColumnFamilyHandle;
 
 pub unsafe trait Iterable {
-    fn raw_iter(&self, opt: &mut ReadOptions) -> *mut rocksdb_Iterator;
-    fn raw_iter_cf(
-        &self,
-        opt: &mut ReadOptions,
-        cf: &RawColumnFamilyHandle,
-    ) -> *mut rocksdb_Iterator;
+    fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawColumnFamilyHandle) -> *mut rocksdb_Iterator;
 }
 
 #[repr(transparent)]
@@ -43,16 +38,13 @@ impl<'a> RawIterator<'a> {
             _life: PhantomData,
         }
     }
-    pub fn new<I: Iterable>(i: &'a I, opt: &'a mut ReadOptions) -> Self {
-        unsafe { Self::from_ptr(i.raw_iter(opt)) }
-    }
 
-    pub fn with_cf<I: Iterable>(
+    pub fn new<I: Iterable>(
         i: &'a I,
         opt: &'a mut ReadOptions,
         cf: &RawColumnFamilyHandle,
     ) -> Self {
-        unsafe { Self::from_ptr(i.raw_iter_cf(opt, cf)) }
+        unsafe { Self::from_ptr(i.raw_iter(opt, cf)) }
     }
 
     /// An iterator is either positioned at a key/value pair, or
@@ -187,21 +179,9 @@ pub struct Iterator<'a, I: Iterable + 'a> {
 
 impl<'a, I: Iterable + 'a> Iterator<'a, I> {
     #[inline]
-    pub fn new(i: I, mut read: ReadOptions) -> Self {
+    pub fn new(i: I, mut read: ReadOptions, cf: &RawColumnFamilyHandle) -> Self {
         unsafe {
-            let ptr = i.raw_iter(&mut read);
-            Iterator {
-                iter: ManuallyDrop::new(RawIterator::from_ptr(ptr)),
-                _i: i,
-                _read: read,
-            }
-        }
-    }
-
-    #[inline]
-    pub fn with_cf(i: I, mut read: ReadOptions, cf: &RawColumnFamilyHandle) -> Self {
-        unsafe {
-            let ptr = i.raw_iter_cf(&mut read, cf);
+            let ptr = i.raw_iter(&mut read, cf);
             Iterator {
                 iter: ManuallyDrop::new(RawIterator::from_ptr(ptr)),
                 _i: i,
@@ -237,15 +217,7 @@ impl<'a, I: Iterable + 'a> Drop for Iterator<'a, I> {
 }
 
 unsafe impl Iterable for RawDb {
-    fn raw_iter(&self, opt: &mut ReadOptions) -> *mut rocksdb_Iterator {
-        unsafe { tirocks_sys::crocksdb_create_iterator(self.as_ptr(), opt.get() as _) }
-    }
-
-    fn raw_iter_cf(
-        &self,
-        opt: &mut ReadOptions,
-        cf: &RawColumnFamilyHandle,
-    ) -> *mut rocksdb_Iterator {
+    fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawColumnFamilyHandle) -> *mut rocksdb_Iterator {
         unsafe {
             tirocks_sys::crocksdb_create_iterator_cf(self.as_ptr(), opt.get() as _, cf.as_mut_ptr())
         }
@@ -253,15 +225,11 @@ unsafe impl Iterable for RawDb {
 }
 
 impl RawDb {
-    pub fn iter<'a>(&'a self, read: &'a mut ReadOptions) -> RawIterator<'a> {
-        RawIterator::new(self, read)
-    }
-
-    pub fn iter_cf<'a>(
+    pub fn iter<'a>(
         &'a self,
         read: &'a mut ReadOptions,
         cf: &RawColumnFamilyHandle,
     ) -> RawIterator<'a> {
-        RawIterator::with_cf(self, read, cf)
+        RawIterator::new(self, read, cf)
     }
 }

@@ -290,6 +290,8 @@ extern C_ROCKSDB_LIBRARY_API ColumnFamilyHandle* crocksdb_create_column_family(
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_drop_column_family(
     DB* db, ColumnFamilyHandle* handle, Status* s);
+extern C_ROCKSDB_LIBRARY_API ColumnFamilyHandle*
+crocksdb_get_default_column_family(DB* db);
 
 extern C_ROCKSDB_LIBRARY_API uint32_t
 crocksdb_column_family_handle_id(ColumnFamilyHandle*);

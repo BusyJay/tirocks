@@ -963,6 +963,10 @@ void crocksdb_drop_column_family(DB* db, ColumnFamilyHandle* handle,
   *s = db->DropColumnFamily(handle);
 }
 
+ColumnFamilyHandle* crocksdb_get_default_column_family(DB* db) {
+  return db->DefaultColumnFamily();
+}
+
 uint32_t crocksdb_column_family_handle_id(ColumnFamilyHandle* handle) {
   return handle->GetID();
 }

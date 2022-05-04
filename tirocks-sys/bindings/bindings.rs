@@ -1480,6 +1480,11 @@ extern "C" {
     );
 }
 extern "C" {
+    pub fn crocksdb_get_default_column_family(
+        db: *mut rocksdb_DB,
+    ) -> *mut rocksdb_ColumnFamilyHandle;
+}
+extern "C" {
     pub fn crocksdb_column_family_handle_id(arg1: *mut rocksdb_ColumnFamilyHandle) -> u32;
 }
 extern "C" {

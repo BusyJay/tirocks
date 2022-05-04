@@ -98,27 +98,17 @@ impl<'a, D: RawDbRef + 'a> Snapshot<'a, D> {
         }
     }
 
-    pub fn get(&self, opt: &mut ReadOptions, key: &[u8]) -> Result<Option<Vec<u8>>> {
-        let opt = WithSnapOpt::new(opt, &self.snap);
-        self.db.visit(|d| d.get(&opt, key))
-    }
-
-    pub fn get_cf(
+    pub fn get(
         &self,
         opt: &mut ReadOptions,
         cf: &RawColumnFamilyHandle,
         key: &[u8],
     ) -> Result<Option<Vec<u8>>> {
         let opt = WithSnapOpt::new(opt, &self.snap);
-        self.db.visit(|d| d.get_cf(&opt, cf, key))
+        self.db.visit(|d| d.get(&opt, cf, key))
     }
 
-    pub fn get_to(&self, opt: &mut ReadOptions, key: &[u8], value: &mut PinSlice) -> Result<bool> {
-        let opt = WithSnapOpt::new(opt, &self.snap);
-        self.db.visit(|d| d.get_to(&opt, key, value))
-    }
-
-    pub fn get_cf_to(
+    pub fn get_to(
         &self,
         opt: &mut ReadOptions,
         cf: &RawColumnFamilyHandle,
@@ -126,35 +116,22 @@ impl<'a, D: RawDbRef + 'a> Snapshot<'a, D> {
         value: &mut PinSlice,
     ) -> Result<bool> {
         let opt = WithSnapOpt::new(opt, &self.snap);
-        self.db.visit(|d| d.get_cf_to(&opt, cf, key, value))
+        self.db.visit(|d| d.get_to(&opt, cf, key, value))
     }
 
-    pub fn iter<'b>(&'b self, opt: &'b mut ReadOptions) -> RawIterator<'b> {
-        RawIterator::new(self, opt)
-    }
-
-    pub fn iter_cf<'b>(
+    pub fn iter<'b>(
         &'b self,
         opt: &'b mut ReadOptions,
         cf: &RawColumnFamilyHandle,
     ) -> RawIterator<'b> {
-        RawIterator::with_cf(self, opt, cf)
+        RawIterator::new(self, opt, cf)
     }
 }
 
 unsafe impl<'a, D: RawDbRef + 'a> Iterable for Snapshot<'a, D> {
-    fn raw_iter(&self, opt: &mut ReadOptions) -> *mut rocksdb_Iterator {
+    fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawColumnFamilyHandle) -> *mut rocksdb_Iterator {
         let mut opt = WithSnapOpt::new(opt, &self.snap);
-        self.db.visit(|d| d.raw_iter(&mut opt))
-    }
-
-    fn raw_iter_cf(
-        &self,
-        opt: &mut ReadOptions,
-        cf: &RawColumnFamilyHandle,
-    ) -> *mut rocksdb_Iterator {
-        let mut opt = WithSnapOpt::new(opt, &self.snap);
-        self.db.visit(|d| d.raw_iter_cf(&mut opt, cf))
+        self.db.visit(|d| d.raw_iter(&mut opt, cf))
     }
 }
 

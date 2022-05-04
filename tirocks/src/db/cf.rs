@@ -2,7 +2,7 @@
 
 use std::{mem, ops::Deref, ptr::NonNull, str::Utf8Error};
 
-use crate::{db::Db, util::check_status, Result, Status};
+use crate::{db::Db, util::check_status, RawDb, Result, Status};
 use tirocks_sys::{r, rocksdb_ColumnFamilyHandle, rocksdb_DB, s};
 
 use super::db::DbRef;
@@ -70,6 +70,16 @@ impl<D: DbRef> ColumnFamilyHandle<D> {
             })
         }
     }
+
+    pub fn default(db: D) -> Self {
+        unsafe {
+            let ptr = db.visit(|d| d.default_cf_raw());
+            Self {
+                ptr: mem::transmute(ptr),
+                _db: db,
+            }
+        }
+    }
 }
 
 impl<D: DbRef> Deref for ColumnFamilyHandle<D> {
@@ -78,5 +88,15 @@ impl<D: DbRef> Deref for ColumnFamilyHandle<D> {
     #[inline]
     fn deref(&self) -> &Self::Target {
         unsafe { &*(self.ptr.as_ptr() as *mut RawColumnFamilyHandle) }
+    }
+}
+
+impl RawDb {
+    pub fn default_cf(&self) -> &RawColumnFamilyHandle {
+        unsafe { &*(self.default_cf_raw() as *mut RawColumnFamilyHandle) }
+    }
+
+    pub fn default_cf_raw(&self) -> *mut rocksdb_ColumnFamilyHandle {
+        unsafe { tirocks_sys::crocksdb_get_default_column_family(self.as_ptr()) }
     }
 }
