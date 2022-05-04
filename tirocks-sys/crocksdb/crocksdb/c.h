@@ -427,26 +427,12 @@ extern C_ROCKSDB_LIBRARY_API bool crocksdb_property_int_value_cf(
 extern C_ROCKSDB_LIBRARY_API bool crocksdb_property_aggregated_int_value(
     DB* db, Slice propname, uint64_t*);
 
-extern C_ROCKSDB_LIBRARY_API void crocksdb_approximate_sizes(
-    DB* db, int num_ranges, const char* const* range_start_key,
-    const size_t* range_start_key_len, const char* const* range_limit_key,
-    const size_t* range_limit_key_len, uint64_t* sizes);
-
 extern C_ROCKSDB_LIBRARY_API void crocksdb_approximate_sizes_cf(
-    DB* db, ColumnFamilyHandle* column_family, int num_ranges,
-    const char* const* range_start_key, const size_t* range_start_key_len,
-    const char* const* range_limit_key, const size_t* range_limit_key_len,
-    uint64_t* sizes);
-
-extern C_ROCKSDB_LIBRARY_API void crocksdb_approximate_memtable_stats(
-    DB* db, const char* range_start_key, size_t range_start_key_len,
-    const char* range_limit_key, size_t range_limit_key_len, uint64_t* count,
-    uint64_t* size);
-
+    DB* db, const SizeApproximationOptions* opt,
+    ColumnFamilyHandle* column_family, const Range* ranges, int num_ranges,
+    uint64_t*, Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_approximate_memtable_stats_cf(
-    DB* db, ColumnFamilyHandle* cf, const char* range_start_key,
-    size_t range_start_key_len, const char* range_limit_key,
-    size_t range_limit_key_len, uint64_t* count, uint64_t* size);
+    DB* db, ColumnFamilyHandle*, const Range*, uint64_t* count, uint64_t* size);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compact_range(DB* db,
                                                          const char* start_key,

@@ -1209,58 +1209,17 @@ bool crocksdb_property_aggregated_int_value(DB* db, Slice propname,
   return db->GetAggregatedIntProperty(propname, val);
 }
 
-void crocksdb_approximate_sizes(DB* db, int num_ranges,
-                                const char* const* range_start_key,
-                                const size_t* range_start_key_len,
-                                const char* const* range_limit_key,
-                                const size_t* range_limit_key_len,
-                                uint64_t* sizes) {
-  Range* ranges = new Range[num_ranges];
-  for (int i = 0; i < num_ranges; i++) {
-    ranges[i].start = Slice(range_start_key[i], range_start_key_len[i]);
-    ranges[i].limit = Slice(range_limit_key[i], range_limit_key_len[i]);
-  }
-  db->GetApproximateSizes(ranges, num_ranges, sizes);
-  delete[] ranges;
-}
-
-void crocksdb_approximate_sizes_cf(DB* db, ColumnFamilyHandle* column_family,
-                                   int num_ranges,
-                                   const char* const* range_start_key,
-                                   const size_t* range_start_key_len,
-                                   const char* const* range_limit_key,
-                                   const size_t* range_limit_key_len,
-                                   uint64_t* sizes) {
-  Range* ranges = new Range[num_ranges];
-  for (int i = 0; i < num_ranges; i++) {
-    ranges[i].start = Slice(range_start_key[i], range_start_key_len[i]);
-    ranges[i].limit = Slice(range_limit_key[i], range_limit_key_len[i]);
-  }
-  db->GetApproximateSizes(column_family, ranges, num_ranges, sizes);
-  delete[] ranges;
-}
-
-void crocksdb_approximate_memtable_stats(DB* db, const char* range_start_key,
-                                         size_t range_start_key_len,
-                                         const char* range_limit_key,
-                                         size_t range_limit_key_len,
-                                         uint64_t* count, uint64_t* size) {
-  auto start = Slice(range_start_key, range_start_key_len);
-  auto limit = Slice(range_limit_key, range_limit_key_len);
-  Range range(start, limit);
-  db->GetApproximateMemTableStats(range, count, size);
+void crocksdb_approximate_sizes_cf(DB* db, const SizeApproximationOptions* opt,
+                                   ColumnFamilyHandle* column_family,
+                                   const Range* ranges, int num_ranges,
+                                   uint64_t* sizes, Status* s) {
+  *s = db->GetApproximateSizes(*opt, column_family, ranges, num_ranges, sizes);
 }
 
 void crocksdb_approximate_memtable_stats_cf(DB* db, ColumnFamilyHandle* cf,
-                                            const char* range_start_key,
-                                            size_t range_start_key_len,
-                                            const char* range_limit_key,
-                                            size_t range_limit_key_len,
-                                            uint64_t* count, uint64_t* size) {
-  auto start = Slice(range_start_key, range_start_key_len);
-  auto limit = Slice(range_limit_key, range_limit_key_len);
-  Range range(start, limit);
-  db->GetApproximateMemTableStats(cf, range, count, size);
+                                            const Range* range, uint64_t* count,
+                                            uint64_t* size) {
+  db->GetApproximateMemTableStats(cf, *range, count, size);
 }
 
 void crocksdb_delete_file(DB* db, const char* name, Status* s) {

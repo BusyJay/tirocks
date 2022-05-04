@@ -750,6 +750,12 @@ pub struct rocksdb_IngestExternalFileOptions {
     pub write_global_seqno: bool,
     pub verify_checksums_before_ingest: bool,
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_SizeApproximationOptions {
+    pub include_memtabtles: bool,
+    pub include_files: bool,
+}
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_PerfLevel {
@@ -834,6 +840,12 @@ pub struct rocksdb_ColumnFamilyHandle__bindgen_vtable(libc::c_void);
 #[derive(Debug)]
 pub struct rocksdb_ColumnFamilyHandle {
     pub vtable_: *const rocksdb_ColumnFamilyHandle__bindgen_vtable,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_Range {
+    pub start: rocksdb_Slice,
+    pub limit: rocksdb_Slice,
 }
 #[repr(C)]
 pub struct rocksdb_DB__bindgen_vtable(libc::c_void);
@@ -1725,47 +1737,21 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
-    pub fn crocksdb_approximate_sizes(
-        db: *mut rocksdb_DB,
-        num_ranges: libc::c_int,
-        range_start_key: *const *const libc::c_char,
-        range_start_key_len: *const usize,
-        range_limit_key: *const *const libc::c_char,
-        range_limit_key_len: *const usize,
-        sizes: *mut u64,
-    );
-}
-extern "C" {
     pub fn crocksdb_approximate_sizes_cf(
         db: *mut rocksdb_DB,
+        opt: *const rocksdb_SizeApproximationOptions,
         column_family: *mut rocksdb_ColumnFamilyHandle,
+        ranges: *const rocksdb_Range,
         num_ranges: libc::c_int,
-        range_start_key: *const *const libc::c_char,
-        range_start_key_len: *const usize,
-        range_limit_key: *const *const libc::c_char,
-        range_limit_key_len: *const usize,
-        sizes: *mut u64,
-    );
-}
-extern "C" {
-    pub fn crocksdb_approximate_memtable_stats(
-        db: *mut rocksdb_DB,
-        range_start_key: *const libc::c_char,
-        range_start_key_len: usize,
-        range_limit_key: *const libc::c_char,
-        range_limit_key_len: usize,
-        count: *mut u64,
-        size: *mut u64,
+        arg1: *mut u64,
+        arg2: *mut rocksdb_Status,
     );
 }
 extern "C" {
     pub fn crocksdb_approximate_memtable_stats_cf(
         db: *mut rocksdb_DB,
-        cf: *mut rocksdb_ColumnFamilyHandle,
-        range_start_key: *const libc::c_char,
-        range_start_key_len: usize,
-        range_limit_key: *const libc::c_char,
-        range_limit_key_len: usize,
+        arg1: *mut rocksdb_ColumnFamilyHandle,
+        arg2: *const rocksdb_Range,
         count: *mut u64,
         size: *mut u64,
     );
