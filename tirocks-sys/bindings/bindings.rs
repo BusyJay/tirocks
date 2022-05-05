@@ -1507,10 +1507,10 @@ extern "C" {
     pub fn crocksdb_destroy(db: *mut rocksdb_DB);
 }
 extern "C" {
-    pub fn crocksdb_pause_bg_work(db: *mut rocksdb_DB);
+    pub fn crocksdb_pause_bg_work(db: *mut rocksdb_DB, arg1: *mut rocksdb_Status);
 }
 extern "C" {
-    pub fn crocksdb_continue_bg_work(db: *mut rocksdb_DB);
+    pub fn crocksdb_continue_bg_work(db: *mut rocksdb_DB, arg1: *mut rocksdb_Status);
 }
 extern "C" {
     pub fn crocksdb_put(
@@ -1764,41 +1764,37 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_compact_range(
         db: *mut rocksdb_DB,
-        start_key: *const libc::c_char,
-        start_key_len: usize,
-        limit_key: *const libc::c_char,
-        limit_key_len: usize,
+        start_key: *const rocksdb_Slice,
+        limit_key: *const rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
     );
 }
 extern "C" {
     pub fn crocksdb_compact_range_cf(
         db: *mut rocksdb_DB,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-        start_key: *const libc::c_char,
-        start_key_len: usize,
-        limit_key: *const libc::c_char,
-        limit_key_len: usize,
+        start_key: *const rocksdb_Slice,
+        limit_key: *const rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
     );
 }
 extern "C" {
     pub fn crocksdb_compact_range_opt(
         db: *mut rocksdb_DB,
         opt: *const rocksdb_CompactRangeOptions,
-        start_key: *const libc::c_char,
-        start_key_len: usize,
-        limit_key: *const libc::c_char,
-        limit_key_len: usize,
+        start_key: *const rocksdb_Slice,
+        limit_key: *const rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
     );
 }
 extern "C" {
     pub fn crocksdb_compact_range_cf_opt(
         db: *mut rocksdb_DB,
-        column_family: *mut rocksdb_ColumnFamilyHandle,
         opt: *const rocksdb_CompactRangeOptions,
-        start_key: *const libc::c_char,
-        start_key_len: usize,
-        limit_key: *const libc::c_char,
-        limit_key_len: usize,
+        column_family: *mut rocksdb_ColumnFamilyHandle,
+        start_key: *const rocksdb_Slice,
+        limit_key: *const rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -1821,22 +1817,22 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_flush_cf(
         db: *mut rocksdb_DB,
-        column_family: *mut rocksdb_ColumnFamilyHandle,
         options: *const rocksdb_FlushOptions,
+        column_family: *mut rocksdb_ColumnFamilyHandle,
         s: *mut rocksdb_Status,
     );
 }
 extern "C" {
     pub fn crocksdb_flush_cfs(
         db: *mut rocksdb_DB,
-        column_familys: *mut *mut rocksdb_ColumnFamilyHandle,
-        num_handles: libc::c_int,
         options: *const rocksdb_FlushOptions,
+        column_families: *const *mut rocksdb_ColumnFamilyHandle,
+        num_handles: libc::c_int,
         s: *mut rocksdb_Status,
     );
 }
 extern "C" {
-    pub fn crocksdb_flush_wal(db: *mut rocksdb_DB, sync: libc::c_uchar, s: *mut rocksdb_Status);
+    pub fn crocksdb_flush_wal(db: *mut rocksdb_DB, sync: bool, s: *mut rocksdb_Status);
 }
 extern "C" {
     pub fn crocksdb_sync_wal(db: *mut rocksdb_DB, s: *mut rocksdb_Status);
@@ -1860,8 +1856,8 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_set_db_options(
         db: *mut rocksdb_DB,
-        names: *mut *const libc::c_char,
-        values: *mut *const libc::c_char,
+        names: *const rocksdb_Slice,
+        values: *const rocksdb_Slice,
         num_options: usize,
         s: *mut rocksdb_Status,
     );
@@ -1876,8 +1872,8 @@ extern "C" {
     pub fn crocksdb_set_options_cf(
         db: *mut rocksdb_DB,
         cf: *mut rocksdb_ColumnFamilyHandle,
-        names: *mut *const libc::c_char,
-        values: *mut *const libc::c_char,
+        names: *const rocksdb_Slice,
+        values: *const rocksdb_Slice,
         num_options: usize,
         s: *mut rocksdb_Status,
     );
@@ -4793,9 +4789,9 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_compact_files_cf(
         arg1: *mut rocksdb_DB,
-        arg2: *mut rocksdb_ColumnFamilyHandle,
-        arg3: *const rocksdb_CompactionOptions,
-        input_file_names: *mut *const libc::c_char,
+        arg2: *const rocksdb_CompactionOptions,
+        arg3: *mut rocksdb_ColumnFamilyHandle,
+        input_file_names: *const rocksdb_Slice,
         input_file_count: usize,
         output_level: libc::c_int,
         s: *mut rocksdb_Status,

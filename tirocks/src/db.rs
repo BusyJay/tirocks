@@ -3,6 +3,7 @@
 mod approximate;
 mod cf;
 mod db;
+mod flush;
 mod iter;
 mod open_options;
 pub mod pin_slice;

@@ -9,8 +9,10 @@ use std::slice;
 use std::sync::{Arc, Mutex};
 use tirocks_sys::{r, rocksdb_DB};
 
-use crate::option::{CfOptions, DbOptions, PathToSlice, ReadOptions, TitanCfOptions, WriteOptions};
-use crate::util::check_status;
+use crate::option::{
+    CfOptions, DbOptions, PathToSlice, RawOptions, ReadOptions, TitanCfOptions, WriteOptions,
+};
+use crate::util::{check_status, split_pairs};
 use crate::{comparator::SysComparator, env::Env};
 use crate::{Code, Result, Status};
 
@@ -211,6 +213,41 @@ impl RawDb {
             Ok(false)
         } else {
             Err(s)
+        }
+    }
+
+    pub fn set_cf_options(
+        &self,
+        cf: &RawColumnFamilyHandle,
+        options: &[(impl AsRef<[u8]>, impl AsRef<[u8]>)],
+    ) -> Result<()> {
+        unsafe {
+            let (key, val) = split_pairs(options);
+            let mut s = Status::default();
+            tirocks_sys::crocksdb_set_options_cf(
+                self.as_ptr(),
+                cf.as_mut_ptr(),
+                key.as_ptr(),
+                val.as_ptr(),
+                options.len(),
+                s.as_mut_ptr(),
+            );
+            check_status!(s)
+        }
+    }
+
+    pub fn set_db_options(&self, options: &[(impl AsRef<[u8]>, impl AsRef<[u8]>)]) -> Result<()> {
+        unsafe {
+            let (key, val) = split_pairs(options);
+            let mut s = Status::default();
+            tirocks_sys::crocksdb_set_db_options(
+                self.as_ptr(),
+                key.as_ptr(),
+                val.as_ptr(),
+                options.len(),
+                s.as_mut_ptr(),
+            );
+            check_status!(s)
         }
     }
 }

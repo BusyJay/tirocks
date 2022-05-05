@@ -1,5 +1,7 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
+use tirocks_sys::{r, rocksdb_Slice};
+
 macro_rules! utf8_name {
     ($slice:expr, $ctx:expr, $status:expr) => {
         match std::str::from_utf8(tirocks_sys::s($slice)) {
@@ -69,3 +71,15 @@ macro_rules! check_status {
 }
 
 pub(crate) use check_status;
+
+pub unsafe fn split_pairs(
+    pairs: &[(impl AsRef<[u8]>, impl AsRef<[u8]>)],
+) -> (Vec<rocksdb_Slice>, Vec<rocksdb_Slice>) {
+    let mut keys = Vec::with_capacity(pairs.len());
+    let mut values = Vec::with_capacity(pairs.len());
+    for (k, v) in pairs {
+        keys.push(r(k.as_ref()));
+        values.push(r(v.as_ref()));
+    }
+    (keys, values)
+}

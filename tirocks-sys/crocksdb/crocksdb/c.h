@@ -307,8 +307,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_destroy(DB* db);
 // This function will wait until all currently running background processes
 // finish. After it returns, no background process will be run until
 // crocksdb_continue_bg_work is called
-extern C_ROCKSDB_LIBRARY_API void crocksdb_pause_bg_work(DB* db);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_continue_bg_work(DB* db);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_pause_bg_work(DB* db, Status*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_continue_bg_work(DB* db, Status*);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_put(DB* db,
                                                const WriteOptions* options,
@@ -437,23 +437,21 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_approximate_memtable_stats_cf(
     DB* db, ColumnFamilyHandle*, const Range*, uint64_t* count, uint64_t* size);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compact_range(DB* db,
-                                                         const char* start_key,
-                                                         size_t start_key_len,
-                                                         const char* limit_key,
-                                                         size_t limit_key_len);
+                                                         const Slice* start_key,
+                                                         const Slice* limit_key,
+                                                         Status*);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compact_range_cf(
-    DB* db, ColumnFamilyHandle* column_family, const char* start_key,
-    size_t start_key_len, const char* limit_key, size_t limit_key_len);
+    DB* db, ColumnFamilyHandle* column_family, const Slice* start_key,
+    const Slice* limit_key, Status*);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compact_range_opt(
-    DB* db, const CompactRangeOptions* opt, const char* start_key,
-    size_t start_key_len, const char* limit_key, size_t limit_key_len);
+    DB* db, const CompactRangeOptions* opt, const Slice* start_key,
+    const Slice* limit_key, Status*);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compact_range_cf_opt(
-    DB* db, ColumnFamilyHandle* column_family, const CompactRangeOptions* opt,
-    const char* start_key, size_t start_key_len, const char* limit_key,
-    size_t limit_key_len);
+    DB* db, const CompactRangeOptions* opt, ColumnFamilyHandle* column_family,
+    const Slice* start_key, const Slice* limit_key, Status*);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_delete_file(DB* db, const char* name,
                                                        Status* s);
@@ -466,14 +464,14 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_flush(DB* db,
                                                  Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_flush_cf(
-    DB* db, ColumnFamilyHandle* column_family, const FlushOptions* options,
+    DB* db, const FlushOptions* options, ColumnFamilyHandle* column_family,
     Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_flush_cfs(
-    DB* db, ColumnFamilyHandle** column_familys, int num_handles,
-    const FlushOptions* options, Status* s);
+    DB* db, const FlushOptions* options,
+    ColumnFamilyHandle* const* column_families, int num_handles, Status* s);
 
-extern C_ROCKSDB_LIBRARY_API void crocksdb_flush_wal(DB* db, unsigned char sync,
+extern C_ROCKSDB_LIBRARY_API void crocksdb_flush_wal(DB* db, bool sync,
                                                      Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_sync_wal(DB* db, Status* s);
@@ -490,8 +488,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_enable_file_deletions(
 extern C_ROCKSDB_LIBRARY_API DBOptions* crocksdb_get_db_options(DB* db);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_set_db_options(DB* db,
-                                                          const char** names,
-                                                          const char** values,
+                                                          const Slice* names,
+                                                          const Slice* values,
                                                           size_t num_options,
                                                           Status* s);
 
@@ -499,7 +497,7 @@ extern C_ROCKSDB_LIBRARY_API Options* crocksdb_get_options_cf(
     const DB* db, ColumnFamilyHandle* column_family);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_set_options_cf(
-    DB* db, ColumnFamilyHandle* cf, const char** names, const char** values,
+    DB* db, ColumnFamilyHandle* cf, const Slice* names, const Slice* values,
     size_t num_options, Status* s);
 
 /* Management operations */
@@ -1889,8 +1887,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_compaction_options_init(
     CompactionOptions*);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compact_files_cf(
-    DB*, ColumnFamilyHandle*, const CompactionOptions*,
-    const char** input_file_names, size_t input_file_count, int output_level,
+    DB*, const CompactionOptions*, ColumnFamilyHandle*,
+    const Slice* input_file_names, size_t input_file_count, int output_level,
     Status* s);
 
 /* PerfContext */
