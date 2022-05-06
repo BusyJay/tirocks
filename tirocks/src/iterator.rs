@@ -8,9 +8,10 @@ use std::{
 
 use tirocks_sys::{r, rocksdb_Iterator, s};
 
-use crate::{option::ReadOptions, table_properties::user::SequenceNumber, RawDb, Status};
-
-use super::cf::RawColumnFamilyHandle;
+use crate::{
+    db::RawColumnFamilyHandle, option::ReadOptions, properties::table::user::SequenceNumber, Db,
+    RawDb, Status,
+};
 
 pub unsafe trait Iterable {
     fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawColumnFamilyHandle) -> *mut rocksdb_Iterator;
@@ -224,12 +225,19 @@ unsafe impl Iterable for RawDb {
     }
 }
 
-impl RawDb {
-    pub fn iter<'a>(
-        &'a self,
-        read: &'a mut ReadOptions,
-        cf: &RawColumnFamilyHandle,
-    ) -> RawIterator<'a> {
-        RawIterator::new(self, read, cf)
+unsafe impl Iterable for Db {
+    #[inline]
+    fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawColumnFamilyHandle) -> *mut rocksdb_Iterator {
+        unsafe {
+            if !self.is_titan() {
+                tirocks_sys::crocksdb_create_iterator_cf(
+                    self.as_ptr(),
+                    opt.get() as _,
+                    cf.as_mut_ptr(),
+                )
+            } else {
+                tirocks_sys::ctitandb_create_iterator_cf(self.as_ptr(), opt.get(), cf.as_mut_ptr())
+            }
+        }
     }
 }

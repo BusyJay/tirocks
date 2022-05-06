@@ -8,7 +8,7 @@ use tirocks_sys::{
     rocksdb_CompactionFilter_Context, rocksdb_CompactionFilter_Decision, rocksdb_Slice, s,
 };
 
-use crate::table_properties::{builtin::TableProperties, user::SequenceNumber};
+use crate::properties::{table::builtin::TableProperties, table::user::SequenceNumber};
 
 pub type ValueType = tirocks_sys::rocksdb_CompactionFilter_ValueType;
 pub type TableFileCreationReason = tirocks_sys::rocksdb_TableFileCreationReason;

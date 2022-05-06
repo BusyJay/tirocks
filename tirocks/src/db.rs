@@ -3,15 +3,9 @@
 mod cf;
 mod db;
 mod flush;
-mod iter;
-mod metadata;
 mod open_options;
-pub mod pin_slice;
 mod properties;
-mod snap;
 
-pub use self::db::{Db, RawDb};
-pub use self::open_options::{
-    DefaultCfOnlyBuilder, MultiCfBuilder, MultiCfTitanBuilder, OpenOptions,
-};
-pub use self::snap::{RawSnapshot, Snapshot};
+pub use cf::{ColumnFamilyHandle, RawColumnFamilyHandle, DEFAULT_CF_NAME};
+pub use db::{Db, RawDb, RawDbRef};
+pub use open_options::{DefaultCfOnlyBuilder, MultiCfBuilder, MultiCfTitanBuilder, OpenOptions};

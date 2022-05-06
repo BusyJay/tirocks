@@ -835,6 +835,29 @@ pub struct rocksdb_Snapshot {
     pub vtable_: *const rocksdb_Snapshot__bindgen_vtable,
 }
 #[repr(C)]
+pub struct rocksdb_WriteBatch_Handler__bindgen_vtable(libc::c_void);
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_WriteBatch_Handler {
+    pub vtable_: *const rocksdb_WriteBatch_Handler__bindgen_vtable,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_WriteBatch_Iterator {
+    pub rep_: rocksdb_Slice,
+    pub input_: rocksdb_Slice,
+    pub key_: rocksdb_Slice,
+    pub value_: rocksdb_Slice,
+    pub column_family_: u32,
+    pub tag_: libc::c_char,
+    pub valid_: bool,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_WriteBatch_WriteBatchRef {
+    pub rep_: *const rocksdb_Slice,
+}
+#[repr(C)]
 pub struct rocksdb_ColumnFamilyHandle__bindgen_vtable(libc::c_void);
 #[repr(C)]
 #[derive(Debug)]
@@ -1030,11 +1053,6 @@ pub struct crocksdb_slicetransform_t {
 #[repr(C)]
 #[derive(Debug)]
 pub struct crocksdb_writablefile_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_writebatch_t {
     _unused: [u8; 0],
 }
 #[repr(C)]
@@ -1264,11 +1282,6 @@ extern "C" {
 #[repr(C)]
 #[derive(Debug)]
 pub struct crocksdb_map_property_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_writebatch_iterator_t {
     _unused: [u8; 0],
 }
 #[repr(C)]
@@ -1587,7 +1600,7 @@ extern "C" {
     pub fn crocksdb_write(
         db: *mut rocksdb_DB,
         options: *const rocksdb_WriteOptions,
-        batch: *mut crocksdb_writebatch_t,
+        batch: *mut rocksdb_WriteBatch,
         s: *mut rocksdb_Status,
     );
 }
@@ -1921,340 +1934,268 @@ extern "C" {
     pub fn crocksdb_iter_refresh(arg1: *mut rocksdb_Iterator, arg2: *mut rocksdb_Status);
 }
 extern "C" {
-    pub fn crocksdb_writebatch_create() -> *mut crocksdb_writebatch_t;
+    pub fn crocksdb_writebatch_create() -> *mut rocksdb_WriteBatch;
 }
 extern "C" {
     pub fn crocksdb_writebatch_create_with_capacity(
         reserved_bytes: usize,
-    ) -> *mut crocksdb_writebatch_t;
+    ) -> *mut rocksdb_WriteBatch;
 }
 extern "C" {
-    pub fn crocksdb_writebatch_create_from(
-        rep: *const libc::c_char,
-        size: usize,
-    ) -> *mut crocksdb_writebatch_t;
+    pub fn crocksdb_writebatch_create_from(rep: rocksdb_Slice) -> *mut rocksdb_WriteBatch;
 }
 extern "C" {
-    pub fn crocksdb_writebatch_destroy(arg1: *mut crocksdb_writebatch_t);
+    pub fn crocksdb_writebatch_destroy(arg1: *mut rocksdb_WriteBatch);
 }
 extern "C" {
-    pub fn crocksdb_writebatch_clear(arg1: *mut crocksdb_writebatch_t);
+    pub fn crocksdb_writebatch_clear(arg1: *mut rocksdb_WriteBatch);
 }
 extern "C" {
-    pub fn crocksdb_writebatch_count(arg1: *mut crocksdb_writebatch_t) -> libc::c_int;
+    pub fn crocksdb_writebatch_count(arg1: *mut rocksdb_WriteBatch) -> libc::c_int;
 }
 extern "C" {
     pub fn crocksdb_writebatch_put(
-        arg1: *mut crocksdb_writebatch_t,
-        key: *const libc::c_char,
-        klen: usize,
-        val: *const libc::c_char,
-        vlen: usize,
+        arg1: *mut rocksdb_WriteBatch,
+        key: rocksdb_Slice,
+        val: rocksdb_Slice,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_put_cf(
-        arg1: *mut crocksdb_writebatch_t,
+        arg1: *mut rocksdb_WriteBatch,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-        key: *const libc::c_char,
-        klen: usize,
-        val: *const libc::c_char,
-        vlen: usize,
+        key: rocksdb_Slice,
+        val: rocksdb_Slice,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_putv(
-        b: *mut crocksdb_writebatch_t,
+        b: *mut rocksdb_WriteBatch,
         num_keys: libc::c_int,
-        keys_list: *const *const libc::c_char,
-        keys_list_sizes: *const usize,
+        keys: *const rocksdb_Slice,
         num_values: libc::c_int,
-        values_list: *const *const libc::c_char,
-        values_list_sizes: *const usize,
+        values: *const rocksdb_Slice,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_putv_cf(
-        b: *mut crocksdb_writebatch_t,
+        b: *mut rocksdb_WriteBatch,
         column_family: *mut rocksdb_ColumnFamilyHandle,
         num_keys: libc::c_int,
-        keys_list: *const *const libc::c_char,
-        keys_list_sizes: *const usize,
+        keys: *const rocksdb_Slice,
         num_values: libc::c_int,
-        values_list: *const *const libc::c_char,
-        values_list_sizes: *const usize,
+        values: *const rocksdb_Slice,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_merge(
-        arg1: *mut crocksdb_writebatch_t,
-        key: *const libc::c_char,
-        klen: usize,
-        val: *const libc::c_char,
-        vlen: usize,
+        arg1: *mut rocksdb_WriteBatch,
+        key: rocksdb_Slice,
+        val: rocksdb_Slice,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_merge_cf(
-        arg1: *mut crocksdb_writebatch_t,
+        arg1: *mut rocksdb_WriteBatch,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-        key: *const libc::c_char,
-        klen: usize,
-        val: *const libc::c_char,
-        vlen: usize,
+        key: rocksdb_Slice,
+        val: rocksdb_Slice,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_mergev(
-        b: *mut crocksdb_writebatch_t,
+        b: *mut rocksdb_WriteBatch,
         num_keys: libc::c_int,
-        keys_list: *const *const libc::c_char,
-        keys_list_sizes: *const usize,
+        keys: *const rocksdb_Slice,
         num_values: libc::c_int,
-        values_list: *const *const libc::c_char,
-        values_list_sizes: *const usize,
+        values: *const rocksdb_Slice,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_mergev_cf(
-        b: *mut crocksdb_writebatch_t,
+        b: *mut rocksdb_WriteBatch,
         column_family: *mut rocksdb_ColumnFamilyHandle,
         num_keys: libc::c_int,
-        keys_list: *const *const libc::c_char,
-        keys_list_sizes: *const usize,
+        keys: *const rocksdb_Slice,
         num_values: libc::c_int,
-        values_list: *const *const libc::c_char,
-        values_list_sizes: *const usize,
+        values: *const rocksdb_Slice,
     );
 }
 extern "C" {
-    pub fn crocksdb_writebatch_delete(
-        arg1: *mut crocksdb_writebatch_t,
-        key: *const libc::c_char,
-        klen: usize,
-    );
+    pub fn crocksdb_writebatch_delete(arg1: *mut rocksdb_WriteBatch, key: rocksdb_Slice);
 }
 extern "C" {
     pub fn crocksdb_writebatch_delete_cf(
-        arg1: *mut crocksdb_writebatch_t,
+        arg1: *mut rocksdb_WriteBatch,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-        key: *const libc::c_char,
-        klen: usize,
+        key: rocksdb_Slice,
     );
 }
 extern "C" {
-    pub fn crocksdb_writebatch_single_delete(
-        arg1: *mut crocksdb_writebatch_t,
-        key: *const libc::c_char,
-        klen: usize,
-    );
+    pub fn crocksdb_writebatch_single_delete(arg1: *mut rocksdb_WriteBatch, key: rocksdb_Slice);
 }
 extern "C" {
     pub fn crocksdb_writebatch_single_delete_cf(
-        arg1: *mut crocksdb_writebatch_t,
+        arg1: *mut rocksdb_WriteBatch,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-        key: *const libc::c_char,
-        klen: usize,
+        key: rocksdb_Slice,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_deletev(
-        b: *mut crocksdb_writebatch_t,
+        b: *mut rocksdb_WriteBatch,
         num_keys: libc::c_int,
-        keys_list: *const *const libc::c_char,
-        keys_list_sizes: *const usize,
+        keys: *const rocksdb_Slice,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_deletev_cf(
-        b: *mut crocksdb_writebatch_t,
+        b: *mut rocksdb_WriteBatch,
         column_family: *mut rocksdb_ColumnFamilyHandle,
         num_keys: libc::c_int,
-        keys_list: *const *const libc::c_char,
-        keys_list_sizes: *const usize,
+        keys: *const rocksdb_Slice,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_delete_range(
-        b: *mut crocksdb_writebatch_t,
-        start_key: *const libc::c_char,
-        start_key_len: usize,
-        end_key: *const libc::c_char,
-        end_key_len: usize,
+        b: *mut rocksdb_WriteBatch,
+        start_key: rocksdb_Slice,
+        end_key: rocksdb_Slice,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_delete_range_cf(
-        b: *mut crocksdb_writebatch_t,
+        b: *mut rocksdb_WriteBatch,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-        start_key: *const libc::c_char,
-        start_key_len: usize,
-        end_key: *const libc::c_char,
-        end_key_len: usize,
+        start_key: rocksdb_Slice,
+        end_key: rocksdb_Slice,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_delete_rangev(
-        b: *mut crocksdb_writebatch_t,
+        b: *mut rocksdb_WriteBatch,
         num_keys: libc::c_int,
-        start_keys_list: *const *const libc::c_char,
-        start_keys_list_sizes: *const usize,
-        end_keys_list: *const *const libc::c_char,
-        end_keys_list_sizes: *const usize,
+        start_keys: *const rocksdb_Slice,
+        end_keys: *const rocksdb_Slice,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_delete_rangev_cf(
-        b: *mut crocksdb_writebatch_t,
+        b: *mut rocksdb_WriteBatch,
         column_family: *mut rocksdb_ColumnFamilyHandle,
         num_keys: libc::c_int,
-        start_keys_list: *const *const libc::c_char,
-        start_keys_list_sizes: *const usize,
-        end_keys_list: *const *const libc::c_char,
-        end_keys_list_sizes: *const usize,
+        start_keys: *const rocksdb_Slice,
+        end_keys: *const rocksdb_Slice,
     );
 }
 extern "C" {
-    pub fn crocksdb_writebatch_put_log_data(
-        arg1: *mut crocksdb_writebatch_t,
-        blob: *const libc::c_char,
-        len: usize,
-    );
+    pub fn crocksdb_writebatch_put_log_data(arg1: *mut rocksdb_WriteBatch, blob: rocksdb_Slice);
 }
 extern "C" {
     pub fn crocksdb_writebatch_iterate(
-        arg1: *mut crocksdb_writebatch_t,
+        arg1: *mut rocksdb_WriteBatch,
         state: *mut libc::c_void,
         put: ::std::option::Option<
-            unsafe extern "C" fn(
-                arg1: *mut libc::c_void,
-                k: *const libc::c_char,
-                klen: usize,
-                v: *const libc::c_char,
-                vlen: usize,
-            ),
+            unsafe extern "C" fn(arg1: *mut libc::c_void, k: rocksdb_Slice, v: rocksdb_Slice),
         >,
         deleted: ::std::option::Option<
-            unsafe extern "C" fn(arg1: *mut libc::c_void, k: *const libc::c_char, klen: usize),
+            unsafe extern "C" fn(arg1: *mut libc::c_void, k: rocksdb_Slice),
         >,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_iterate_cf(
-        b: *mut crocksdb_writebatch_t,
+        b: *mut rocksdb_WriteBatch,
         state: *mut libc::c_void,
         put: ::std::option::Option<
-            unsafe extern "C" fn(
-                arg1: *mut libc::c_void,
-                k: *const libc::c_char,
-                klen: usize,
-                v: *const libc::c_char,
-                vlen: usize,
-            ),
+            unsafe extern "C" fn(arg1: *mut libc::c_void, k: rocksdb_Slice, v: rocksdb_Slice),
         >,
         put_cf: ::std::option::Option<
             unsafe extern "C" fn(
                 arg1: *mut libc::c_void,
                 cf: u32,
-                k: *const libc::c_char,
-                klen: usize,
-                v: *const libc::c_char,
-                vlen: usize,
-            ),
+                k: rocksdb_Slice,
+                v: rocksdb_Slice,
+            ) -> rocksdb_Status,
         >,
         deleted: ::std::option::Option<
-            unsafe extern "C" fn(arg1: *mut libc::c_void, k: *const libc::c_char, klen: usize),
+            unsafe extern "C" fn(arg1: *mut libc::c_void, k: rocksdb_Slice),
         >,
         deleted_cf: ::std::option::Option<
             unsafe extern "C" fn(
                 arg1: *mut libc::c_void,
                 cf: u32,
-                k: *const libc::c_char,
-                klen: usize,
-            ),
+                k: rocksdb_Slice,
+            ) -> rocksdb_Status,
         >,
     );
 }
 extern "C" {
-    pub fn crocksdb_writebatch_data(
-        arg1: *mut crocksdb_writebatch_t,
-        size: *mut usize,
-    ) -> *const libc::c_char;
+    pub fn crocksdb_writebatch_data(arg1: *const rocksdb_WriteBatch, arg2: *mut rocksdb_Slice);
 }
 extern "C" {
-    pub fn crocksdb_writebatch_set_save_point(arg1: *mut crocksdb_writebatch_t);
+    pub fn crocksdb_writebatch_set_save_point(arg1: *mut rocksdb_WriteBatch);
 }
 extern "C" {
     pub fn crocksdb_writebatch_pop_save_point(
-        arg1: *mut crocksdb_writebatch_t,
+        arg1: *mut rocksdb_WriteBatch,
         s: *mut rocksdb_Status,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_rollback_to_save_point(
-        arg1: *mut crocksdb_writebatch_t,
+        arg1: *mut rocksdb_WriteBatch,
         s: *mut rocksdb_Status,
     );
 }
 extern "C" {
-    pub fn crocksdb_writebatch_set_content(
-        b: *mut crocksdb_writebatch_t,
-        data: *const libc::c_char,
-        dlen: usize,
-    );
+    pub fn crocksdb_writebatch_set_content(b: *mut rocksdb_WriteBatch, data: rocksdb_Slice);
 }
 extern "C" {
-    pub fn crocksdb_writebatch_append_content(
-        dest: *mut crocksdb_writebatch_t,
-        data: *const libc::c_char,
-        dlen: usize,
-    );
+    pub fn crocksdb_writebatch_append_content(dest: *mut rocksdb_WriteBatch, data: rocksdb_Slice);
 }
 extern "C" {
-    pub fn crocksdb_writebatch_ref_count(data: *const libc::c_char, dlen: usize) -> libc::c_int;
+    pub fn crocksdb_writebatch_ref_count(data: rocksdb_Slice) -> libc::c_int;
 }
 extern "C" {
     pub fn crocksdb_writebatch_ref_iterator_create(
-        data: *const libc::c_char,
-        dlen: usize,
-    ) -> *mut crocksdb_writebatch_iterator_t;
+        data: rocksdb_Slice,
+    ) -> *mut rocksdb_WriteBatch_Iterator;
 }
 extern "C" {
     pub fn crocksdb_writebatch_iterator_create(
-        dest: *mut crocksdb_writebatch_t,
-    ) -> *mut crocksdb_writebatch_iterator_t;
+        dest: *mut rocksdb_WriteBatch,
+    ) -> *mut rocksdb_WriteBatch_Iterator;
 }
 extern "C" {
-    pub fn crocksdb_writebatch_iterator_destroy(it: *mut crocksdb_writebatch_iterator_t);
+    pub fn crocksdb_writebatch_iterator_destroy(it: *mut rocksdb_WriteBatch_Iterator);
 }
 extern "C" {
-    pub fn crocksdb_writebatch_iterator_valid(
-        it: *mut crocksdb_writebatch_iterator_t,
-    ) -> libc::c_uchar;
+    pub fn crocksdb_writebatch_iterator_valid(it: *mut rocksdb_WriteBatch_Iterator) -> bool;
 }
 extern "C" {
-    pub fn crocksdb_writebatch_iterator_next(it: *mut crocksdb_writebatch_iterator_t);
+    pub fn crocksdb_writebatch_iterator_next(it: *mut rocksdb_WriteBatch_Iterator);
 }
 extern "C" {
     pub fn crocksdb_writebatch_iterator_key(
-        it: *mut crocksdb_writebatch_iterator_t,
-        klen: *mut usize,
-    ) -> *const libc::c_char;
+        it: *mut rocksdb_WriteBatch_Iterator,
+        arg1: *mut rocksdb_Slice,
+    );
 }
 extern "C" {
     pub fn crocksdb_writebatch_iterator_value(
-        it: *mut crocksdb_writebatch_iterator_t,
-        klen: *mut usize,
-    ) -> *const libc::c_char;
+        it: *mut rocksdb_WriteBatch_Iterator,
+        arg1: *mut rocksdb_Slice,
+    );
 }
 extern "C" {
     pub fn crocksdb_writebatch_iterator_value_type(
-        it: *mut crocksdb_writebatch_iterator_t,
-    ) -> libc::c_int;
+        it: *mut rocksdb_WriteBatch_Iterator,
+    ) -> libc::c_char;
 }
 extern "C" {
     pub fn crocksdb_writebatch_iterator_column_family_id(
-        it: *mut crocksdb_writebatch_iterator_t,
+        it: *mut rocksdb_WriteBatch_Iterator,
     ) -> u32;
 }
 extern "C" {

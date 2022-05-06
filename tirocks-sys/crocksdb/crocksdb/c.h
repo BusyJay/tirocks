@@ -108,7 +108,6 @@ typedef struct crocksdb_randomfile_t crocksdb_randomfile_t;
 typedef struct crocksdb_seqfile_t crocksdb_seqfile_t;
 typedef struct crocksdb_slicetransform_t crocksdb_slicetransform_t;
 typedef struct crocksdb_writablefile_t crocksdb_writablefile_t;
-typedef struct crocksdb_writebatch_t crocksdb_writebatch_t;
 typedef struct crocksdb_livefiles_t crocksdb_livefiles_t;
 typedef struct crocksdb_envoptions_t crocksdb_envoptions_t;
 typedef struct crocksdb_sequential_file_t crocksdb_sequential_file_t;
@@ -181,7 +180,6 @@ extern Slice const crocksdb_property_name_block_cache_usage;
 extern Slice const crocksdb_property_name_block_cache_pinned_usage;
 extern Slice const crocksdb_property_name_options_statistics;
 typedef struct crocksdb_map_property_t crocksdb_map_property_t;
-typedef struct crocksdb_writebatch_iterator_t crocksdb_writebatch_iterator_t;
 typedef struct crocksdb_sst_partitioner_t crocksdb_sst_partitioner_t;
 typedef struct crocksdb_sst_partitioner_request_t
     crocksdb_sst_partitioner_request_t;
@@ -345,8 +343,7 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_merge_cf(
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_write(DB* db,
                                                  const WriteOptions* options,
-                                                 crocksdb_writebatch_t* batch,
-                                                 Status* s);
+                                                 WriteBatch* batch, Status* s);
 
 /* Returns NULL if not found.  A malloc()ed array otherwise.
    Stores the length of the array in *vallen. */
@@ -527,127 +524,106 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_iter_refresh(Iterator*, Status*);
 
 /* Write batch */
 
-extern C_ROCKSDB_LIBRARY_API crocksdb_writebatch_t*
-crocksdb_writebatch_create();
-extern C_ROCKSDB_LIBRARY_API crocksdb_writebatch_t*
+extern C_ROCKSDB_LIBRARY_API WriteBatch* crocksdb_writebatch_create();
+extern C_ROCKSDB_LIBRARY_API WriteBatch*
 crocksdb_writebatch_create_with_capacity(size_t reserved_bytes);
-extern C_ROCKSDB_LIBRARY_API crocksdb_writebatch_t*
-crocksdb_writebatch_create_from(const char* rep, size_t size);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_destroy(
-    crocksdb_writebatch_t*);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_clear(
-    crocksdb_writebatch_t*);
-extern C_ROCKSDB_LIBRARY_API int crocksdb_writebatch_count(
-    crocksdb_writebatch_t*);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_put(
-    crocksdb_writebatch_t*, const char* key, size_t klen, const char* val,
-    size_t vlen);
+extern C_ROCKSDB_LIBRARY_API WriteBatch* crocksdb_writebatch_create_from(
+    Slice rep);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_destroy(WriteBatch*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_clear(WriteBatch*);
+extern C_ROCKSDB_LIBRARY_API int crocksdb_writebatch_count(WriteBatch*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_put(WriteBatch*,
+                                                          Slice key, Slice val);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_put_cf(
-    crocksdb_writebatch_t*, ColumnFamilyHandle* column_family, const char* key,
-    size_t klen, const char* val, size_t vlen);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_putv(
-    crocksdb_writebatch_t* b, int num_keys, const char* const* keys_list,
-    const size_t* keys_list_sizes, int num_values,
-    const char* const* values_list, const size_t* values_list_sizes);
+    WriteBatch*, ColumnFamilyHandle* column_family, Slice key, Slice val);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_putv(WriteBatch* b,
+                                                           int num_keys,
+                                                           const Slice* keys,
+                                                           int num_values,
+                                                           const Slice* values);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_putv_cf(
-    crocksdb_writebatch_t* b, ColumnFamilyHandle* column_family, int num_keys,
-    const char* const* keys_list, const size_t* keys_list_sizes, int num_values,
-    const char* const* values_list, const size_t* values_list_sizes);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_merge(
-    crocksdb_writebatch_t*, const char* key, size_t klen, const char* val,
-    size_t vlen);
+    WriteBatch* b, ColumnFamilyHandle* column_family, int num_keys,
+    const Slice* keys, int num_values, const Slice* values);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_merge(WriteBatch*,
+                                                            Slice key,
+                                                            Slice val);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_merge_cf(
-    crocksdb_writebatch_t*, ColumnFamilyHandle* column_family, const char* key,
-    size_t klen, const char* val, size_t vlen);
+    WriteBatch*, ColumnFamilyHandle* column_family, Slice key, Slice val);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_mergev(
-    crocksdb_writebatch_t* b, int num_keys, const char* const* keys_list,
-    const size_t* keys_list_sizes, int num_values,
-    const char* const* values_list, const size_t* values_list_sizes);
+    WriteBatch* b, int num_keys, const Slice* keys, int num_values,
+    const Slice* values);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_mergev_cf(
-    crocksdb_writebatch_t* b, ColumnFamilyHandle* column_family, int num_keys,
-    const char* const* keys_list, const size_t* keys_list_sizes, int num_values,
-    const char* const* values_list, const size_t* values_list_sizes);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_delete(
-    crocksdb_writebatch_t*, const char* key, size_t klen);
+    WriteBatch* b, ColumnFamilyHandle* column_family, int num_keys,
+    const Slice* keys, int num_values, const Slice* values);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_delete(WriteBatch*,
+                                                             Slice key);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_delete_cf(
-    crocksdb_writebatch_t*, ColumnFamilyHandle* column_family, const char* key,
-    size_t klen);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_single_delete(
-    crocksdb_writebatch_t*, const char* key, size_t klen);
+    WriteBatch*, ColumnFamilyHandle* column_family, Slice key);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_single_delete(WriteBatch*,
+                                                                    Slice key);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_single_delete_cf(
-    crocksdb_writebatch_t*, ColumnFamilyHandle* column_family, const char* key,
-    size_t klen);
+    WriteBatch*, ColumnFamilyHandle* column_family, Slice key);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_deletev(
-    crocksdb_writebatch_t* b, int num_keys, const char* const* keys_list,
-    const size_t* keys_list_sizes);
+    WriteBatch* b, int num_keys, const Slice* keys);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_deletev_cf(
-    crocksdb_writebatch_t* b, ColumnFamilyHandle* column_family, int num_keys,
-    const char* const* keys_list, const size_t* keys_list_sizes);
+    WriteBatch* b, ColumnFamilyHandle* column_family, int num_keys,
+    const Slice* keys);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_delete_range(
-    crocksdb_writebatch_t* b, const char* start_key, size_t start_key_len,
-    const char* end_key, size_t end_key_len);
+    WriteBatch* b, Slice start_key, Slice end_key);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_delete_range_cf(
-    crocksdb_writebatch_t* b, ColumnFamilyHandle* column_family,
-    const char* start_key, size_t start_key_len, const char* end_key,
-    size_t end_key_len);
+    WriteBatch* b, ColumnFamilyHandle* column_family, Slice start_key,
+    Slice end_key);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_delete_rangev(
-    crocksdb_writebatch_t* b, int num_keys, const char* const* start_keys_list,
-    const size_t* start_keys_list_sizes, const char* const* end_keys_list,
-    const size_t* end_keys_list_sizes);
+    WriteBatch* b, int num_keys, const Slice* start_keys,
+    const Slice* end_keys);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_delete_rangev_cf(
-    crocksdb_writebatch_t* b, ColumnFamilyHandle* column_family, int num_keys,
-    const char* const* start_keys_list, const size_t* start_keys_list_sizes,
-    const char* const* end_keys_list, const size_t* end_keys_list_sizes);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_put_log_data(
-    crocksdb_writebatch_t*, const char* blob, size_t len);
+    WriteBatch* b, ColumnFamilyHandle* column_family, int num_keys,
+    const Slice* start_keys, const Slice* end_keys);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_put_log_data(WriteBatch*,
+                                                                   Slice blob);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_iterate(
-    crocksdb_writebatch_t*, void* state,
-    void (*put)(void*, const char* k, size_t klen, const char* v, size_t vlen),
-    void (*deleted)(void*, const char* k, size_t klen));
+    WriteBatch*, void* state, void (*put)(void*, Slice k, Slice v),
+    void (*deleted)(void*, Slice k));
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_iterate_cf(
-    crocksdb_writebatch_t* b, void* state,
-    void (*put)(void*, const char* k, size_t klen, const char* v, size_t vlen),
-    void (*put_cf)(void*, uint32_t cf, const char* k, size_t klen,
-                   const char* v, size_t vlen),
-    void (*deleted)(void*, const char* k, size_t klen),
-    void (*deleted_cf)(void*, uint32_t cf, const char* k, size_t klen));
+    WriteBatch* b, void* state, void (*put)(void*, Slice k, Slice v),
+    Status (*put_cf)(void*, uint32_t cf, Slice k, Slice v),
+    void (*deleted)(void*, Slice k),
+    Status (*deleted_cf)(void*, uint32_t cf, Slice k));
 
-extern C_ROCKSDB_LIBRARY_API const char* crocksdb_writebatch_data(
-    crocksdb_writebatch_t*, size_t* size);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_data(const WriteBatch*,
+                                                           Slice*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_set_save_point(
-    crocksdb_writebatch_t*);
+    WriteBatch*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_pop_save_point(
-    crocksdb_writebatch_t*, Status* s);
+    WriteBatch*, Status* s);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_rollback_to_save_point(
-    crocksdb_writebatch_t*, Status* s);
+    WriteBatch*, Status* s);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_rollback_to_save_point(
-    crocksdb_writebatch_t*, Status* s);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_set_content(
-    crocksdb_writebatch_t* b, const char* data, size_t dlen);
+    WriteBatch*, Status* s);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_set_content(WriteBatch* b,
+                                                                  Slice data);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_append_content(
-    crocksdb_writebatch_t* dest, const char* data, size_t dlen);
-extern C_ROCKSDB_LIBRARY_API int crocksdb_writebatch_ref_count(const char* data,
-                                                               size_t dlen);
-extern C_ROCKSDB_LIBRARY_API crocksdb_writebatch_iterator_t*
-crocksdb_writebatch_ref_iterator_create(const char* data, size_t dlen);
-extern C_ROCKSDB_LIBRARY_API crocksdb_writebatch_iterator_t*
-crocksdb_writebatch_iterator_create(crocksdb_writebatch_t* dest);
+    WriteBatch* dest, Slice data);
+extern C_ROCKSDB_LIBRARY_API int crocksdb_writebatch_ref_count(Slice data);
+extern C_ROCKSDB_LIBRARY_API WriteBatch::Iterator*
+crocksdb_writebatch_ref_iterator_create(Slice data);
+extern C_ROCKSDB_LIBRARY_API WriteBatch::Iterator*
+crocksdb_writebatch_iterator_create(WriteBatch* dest);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_iterator_destroy(
-    crocksdb_writebatch_iterator_t* it);
-extern C_ROCKSDB_LIBRARY_API unsigned char crocksdb_writebatch_iterator_valid(
-    crocksdb_writebatch_iterator_t* it);
+    WriteBatch::Iterator* it);
+extern C_ROCKSDB_LIBRARY_API bool crocksdb_writebatch_iterator_valid(
+    WriteBatch::Iterator* it);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_iterator_next(
-    crocksdb_writebatch_iterator_t* it);
-extern C_ROCKSDB_LIBRARY_API const char* crocksdb_writebatch_iterator_key(
-    crocksdb_writebatch_iterator_t* it, size_t* klen);
-extern C_ROCKSDB_LIBRARY_API const char* crocksdb_writebatch_iterator_value(
-    crocksdb_writebatch_iterator_t* it, size_t* klen);
-extern C_ROCKSDB_LIBRARY_API int crocksdb_writebatch_iterator_value_type(
-    crocksdb_writebatch_iterator_t* it);
+    WriteBatch::Iterator* it);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_iterator_key(
+    WriteBatch::Iterator* it, Slice*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_iterator_value(
+    WriteBatch::Iterator* it, Slice*);
+extern C_ROCKSDB_LIBRARY_API char crocksdb_writebatch_iterator_value_type(
+    WriteBatch::Iterator* it);
 extern C_ROCKSDB_LIBRARY_API uint32_t
-crocksdb_writebatch_iterator_column_family_id(
-    crocksdb_writebatch_iterator_t* it);
+crocksdb_writebatch_iterator_column_family_id(WriteBatch::Iterator* it);
 
 /* Block based table options */
 

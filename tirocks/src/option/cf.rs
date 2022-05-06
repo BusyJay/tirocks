@@ -8,9 +8,9 @@ use std::{
 
 use crate::{
     cache::SysCache, compaction_filter::SysCompactionFilterFactory, comparator::SysComparator,
-    mem_table::SysMemTableRepFactory, slice_transform::SysSliceTransform,
-    sst_partitioner::SysSstParitionerFactory, table::SysTableFactory,
-    table_properties::user::SysTablePropertiesCollectorFactory, util::simple_access,
+    mem_table::SysMemTableRepFactory, properties::table::user::SysTablePropertiesCollectorFactory,
+    slice_transform::SysSliceTransform, sst_partitioner::SysSstParitionerFactory,
+    table::SysTableFactory, util::simple_access,
 };
 use tirocks_sys::{rocksdb_ColumnFamilyOptions, rocksdb_titandb_TitanCFOptions};
 

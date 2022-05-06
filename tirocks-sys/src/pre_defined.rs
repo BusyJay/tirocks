@@ -22,3 +22,4 @@ pub enum rocksdb_LiveFileMetaData {}
 pub enum rocksdb_SstFileMetaData {}
 pub enum rocksdb_LevelMetaData {}
 pub enum rocksdb_ColumnFamilyMetaData {}
+pub enum rocksdb_WriteBatch {}

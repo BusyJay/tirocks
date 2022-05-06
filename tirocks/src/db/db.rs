@@ -6,24 +6,22 @@ use std::ops::Deref;
 use std::path::Path;
 use std::ptr::NonNull;
 use std::slice;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tirocks_sys::{r, rocksdb_DB};
 
+use crate::metadata::{ColumnFamilyMetaData, SizeApproximationOptions};
 use crate::option::{
     CfOptions, DbOptions, OwnedRawDbOptions, OwnedRawTitanDbOptions, PathToSlice, RawCfOptions,
-    RawDbOptions, RawOptions, RawTitanDbOptions, RawTitanOptions, ReadOptions, TitanCfOptions,
-    WriteOptions,
+    RawDbOptions, RawOptions, RawTitanOptions, ReadOptions, TitanCfOptions, WriteOptions,
 };
-use crate::table_properties::user::SequenceNumber;
-use crate::util::{check_status, split_pairs};
+use crate::properties::table::user::SequenceNumber;
+use crate::util::{check_status, range_to_rocks, split_pairs};
 use crate::{comparator::SysComparator, env::Env};
-use crate::{Code, Result, Status};
+use crate::{Code, PinSlice, RawIterator, Result, Status};
 
 use crate::db::cf::RawColumnFamilyHandle;
 
 use super::cf::DEFAULT_CF_NAME;
-use super::pin_slice::PinSlice;
 
 pub trait RawDbRef {
     fn visit<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T;
@@ -220,6 +218,14 @@ impl RawDb {
         }
     }
 
+    pub fn iter<'a>(
+        &'a self,
+        read: &'a mut ReadOptions,
+        cf: &RawColumnFamilyHandle,
+    ) -> RawIterator<'a> {
+        RawIterator::new(self, read, cf)
+    }
+
     pub fn set_cf_options(
         &self,
         cf: &RawColumnFamilyHandle,
@@ -324,6 +330,75 @@ impl RawDb {
             let mut s = Status::default();
             tirocks_sys::crocksdb_delete_file(self.as_ptr(), name.path_to_slice(), s.as_mut_ptr());
             check_status!(s)
+        }
+    }
+
+    /// Obtains the meta data of the specified column family of the DB.
+    ///
+    /// Existing data will be cleared first.
+    #[inline]
+    pub fn cf_metadata(&self, cf: &RawColumnFamilyHandle, data: &mut ColumnFamilyMetaData) {
+        unsafe {
+            tirocks_sys::crocksdb_get_column_family_meta_data(
+                self.as_ptr(),
+                cf.as_mut_ptr(),
+                data.as_mut_ptr(),
+            );
+        }
+    }
+
+    /// Return the approximate file system space used by keys in "[range[i].0 .. range[i].1)".
+    ///
+    /// Note that the returned sizes measure file system space usage, so if the user data
+    /// compresses by a factor of ten, the returned sizes will be one-tenth the size of the
+    /// corresponding user data size.
+    pub fn approximate_sizes(
+        &self,
+        opt: &SizeApproximationOptions,
+        cf: &RawColumnFamilyHandle,
+        ranges: &[(impl AsRef<[u8]>, impl AsRef<[u8]>)],
+    ) -> Result<Vec<u64>> {
+        let mut sizes = Vec::with_capacity(ranges.len());
+        unsafe {
+            let raw_ranges: Vec<_> = ranges
+                .into_iter()
+                .map(|(s, e)| range_to_rocks(s, e))
+                .collect();
+            let mut s = Status::default();
+            tirocks_sys::crocksdb_approximate_sizes_cf(
+                self.as_ptr(),
+                opt,
+                cf.as_mut_ptr(),
+                raw_ranges.as_ptr(),
+                raw_ranges.len() as i32,
+                sizes.as_mut_ptr(),
+                s.as_mut_ptr(),
+            );
+            check_status!(s)?;
+            sizes.set_len(raw_ranges.len());
+            Ok(sizes)
+        }
+    }
+
+    /// The method is similar to [`approximate_sizes`], except it returns approximate number
+    /// and size of records in memtables.
+    pub fn approximate_mem_table_stats(
+        &self,
+        cf: &RawColumnFamilyHandle,
+        start_key: &[u8],
+        end_key: &[u8],
+    ) -> (u64, u64) {
+        unsafe {
+            let raw_range = range_to_rocks(&start_key, &end_key);
+            let (mut count, mut size) = (0, 0);
+            tirocks_sys::crocksdb_approximate_memtable_stats_cf(
+                self.as_ptr(),
+                cf.as_mut_ptr(),
+                &raw_range,
+                &mut count,
+                &mut size,
+            );
+            (count, size)
         }
     }
 
@@ -576,11 +651,22 @@ impl Db {
         }
     }
 
-    #[inline]
-    pub fn destroy_on_drop(&self) {}
-
     pub(crate) fn get(&self) -> *mut rocksdb_DB {
         self.ptr
+    }
+
+    #[inline]
+    pub fn is_titan(&self) -> bool {
+        self.is_titan
+    }
+
+    #[inline]
+    pub fn iter<'a>(
+        &'a self,
+        read: &'a mut ReadOptions,
+        cf: &'a RawColumnFamilyHandle,
+    ) -> RawIterator<'a> {
+        RawIterator::new(self, read, cf)
     }
 }
 

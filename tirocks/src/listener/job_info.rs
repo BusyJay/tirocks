@@ -11,9 +11,7 @@ use tirocks_sys::{
 };
 
 use crate::{
-    table_properties::builtin::{
-        OwnedTablePropertiesCollection, TableProperties, TablePropertiesCollection,
-    },
+    properties::table::builtin::{TableProperties, TablePropertiesCollection},
     Status,
 };
 
