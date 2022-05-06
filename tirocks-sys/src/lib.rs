@@ -18,9 +18,36 @@ mod bindings {
     include!(env!("BINDING_PATH"));
 }
 
-use std::{ffi::CStr, str::Utf8Error};
+use std::{ffi::CStr, mem, str::Utf8Error};
 
 pub use bindings::*;
+
+/// Check if it's safe to convert transmute from `&[u8]` to `rocksdb_Slice`.
+///
+/// Following code should be optimized away in release build.
+pub fn rocks_slice_same_as_rust() -> bool {
+    // Type is important.
+    let rst: &[u8] = &[1, 2];
+    unsafe {
+        let rocks = r(rst);
+        let size = mem::size_of_val(&rst);
+        if mem::size_of_val(&rocks) != mem::size_of_val(&rst) || size != 16 {
+            return false;
+        }
+        if mem::align_of_val(&rocks) != mem::align_of_val(&rst) {
+            return false;
+        }
+        let rst_ptr = &rst as *const _ as *const u8;
+        let rocks_ptr = &rocks as *const _ as *const u8;
+        // libc::memcpy doesn't trigger optimization correctly.
+        for i in 0..16 {
+            if *rst_ptr.offset(i) != *rocks_ptr.offset(i) {
+                return false;
+            }
+        }
+        true
+    }
+}
 
 /// Convert a rust slice to rocksdb slice.
 ///

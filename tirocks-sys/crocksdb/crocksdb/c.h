@@ -533,63 +533,74 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_destroy(WriteBatch*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_clear(WriteBatch*);
 extern C_ROCKSDB_LIBRARY_API int crocksdb_writebatch_count(WriteBatch*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_put(WriteBatch*,
-                                                          Slice key, Slice val);
+                                                          Slice key, Slice val,
+                                                          Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_put_cf(
-    WriteBatch*, ColumnFamilyHandle* column_family, Slice key, Slice val);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_putv(WriteBatch* b,
-                                                           int num_keys,
-                                                           const Slice* keys,
-                                                           int num_values,
-                                                           const Slice* values);
+    WriteBatch*, ColumnFamilyHandle* column_family, Slice key, Slice val,
+    Status*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_putv(
+    WriteBatch* b, int num_keys, const Slice* keys, int num_values,
+    const Slice* values, Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_putv_cf(
     WriteBatch* b, ColumnFamilyHandle* column_family, int num_keys,
-    const Slice* keys, int num_values, const Slice* values);
+    const Slice* keys, int num_values, const Slice* values, Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_merge(WriteBatch*,
                                                             Slice key,
-                                                            Slice val);
+                                                            Slice val, Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_merge_cf(
-    WriteBatch*, ColumnFamilyHandle* column_family, Slice key, Slice val);
+    WriteBatch*, ColumnFamilyHandle* column_family, Slice key, Slice val,
+    Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_mergev(
     WriteBatch* b, int num_keys, const Slice* keys, int num_values,
-    const Slice* values);
+    const Slice* values, Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_mergev_cf(
     WriteBatch* b, ColumnFamilyHandle* column_family, int num_keys,
-    const Slice* keys, int num_values, const Slice* values);
+    const Slice* keys, int num_values, const Slice* values, Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_delete(WriteBatch*,
-                                                             Slice key);
+                                                             Slice key,
+                                                             Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_delete_cf(
-    WriteBatch*, ColumnFamilyHandle* column_family, Slice key);
+    WriteBatch*, ColumnFamilyHandle* column_family, Slice key, Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_single_delete(WriteBatch*,
-                                                                    Slice key);
+                                                                    Slice key,
+                                                                    Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_single_delete_cf(
-    WriteBatch*, ColumnFamilyHandle* column_family, Slice key);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_deletev(
-    WriteBatch* b, int num_keys, const Slice* keys);
+    WriteBatch*, ColumnFamilyHandle* column_family, Slice key, Status*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_single_deletev(
+    WriteBatch* b, int num_keys, const Slice* keys, Status*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_single_deletev_cf(
+    WriteBatch* b, ColumnFamilyHandle* column_family, int num_keys,
+    const Slice* keys, Status*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_deletev(WriteBatch* b,
+                                                              int num_keys,
+                                                              const Slice* keys,
+                                                              Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_deletev_cf(
     WriteBatch* b, ColumnFamilyHandle* column_family, int num_keys,
-    const Slice* keys);
+    const Slice* keys, Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_delete_range(
-    WriteBatch* b, Slice start_key, Slice end_key);
+    WriteBatch* b, Slice start_key, Slice end_key, Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_delete_range_cf(
     WriteBatch* b, ColumnFamilyHandle* column_family, Slice start_key,
-    Slice end_key);
+    Slice end_key, Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_delete_rangev(
-    WriteBatch* b, int num_keys, const Slice* start_keys,
-    const Slice* end_keys);
+    WriteBatch* b, int num_start_keys, const Slice* start_keys,
+    int num_end_keys, const Slice* end_keys, Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_delete_rangev_cf(
-    WriteBatch* b, ColumnFamilyHandle* column_family, int num_keys,
-    const Slice* start_keys, const Slice* end_keys);
+    WriteBatch* b, ColumnFamilyHandle* column_family, int num_start_keys,
+    const Slice* start_keys, int num_end_keys, const Slice* end_keys, Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_put_log_data(WriteBatch*,
-                                                                   Slice blob);
+                                                                   Slice blob,
+                                                                   Status*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_iterate(
     WriteBatch*, void* state, void (*put)(void*, Slice k, Slice v),
-    void (*deleted)(void*, Slice k));
+    void (*deleted)(void*, Slice k), Status*);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_iterate_cf(
     WriteBatch* b, void* state, void (*put)(void*, Slice k, Slice v),
     Status (*put_cf)(void*, uint32_t cf, Slice k, Slice v),
     void (*deleted)(void*, Slice k),
-    Status (*deleted_cf)(void*, uint32_t cf, Slice k));
+    Status (*deleted_cf)(void*, uint32_t cf, Slice k), Status*);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_data(const WriteBatch*,
                                                            Slice*);
@@ -599,12 +610,10 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_pop_save_point(
     WriteBatch*, Status* s);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_rollback_to_save_point(
     WriteBatch*, Status* s);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_rollback_to_save_point(
-    WriteBatch*, Status* s);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_set_content(WriteBatch* b,
                                                                   Slice data);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_append_content(
-    WriteBatch* dest, Slice data);
+    WriteBatch* dest, Slice data, Status*);
 extern C_ROCKSDB_LIBRARY_API int crocksdb_writebatch_ref_count(Slice data);
 extern C_ROCKSDB_LIBRARY_API WriteBatch::Iterator*
 crocksdb_writebatch_ref_iterator_create(Slice data);

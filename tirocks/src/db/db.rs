@@ -16,6 +16,7 @@ use crate::option::{
 };
 use crate::properties::table::user::SequenceNumber;
 use crate::util::{check_status, range_to_rocks, split_pairs};
+use crate::write_batch::WriteBatch;
 use crate::{comparator::SysComparator, env::Env};
 use crate::{Code, PinSlice, RawIterator, Result, Status};
 
@@ -154,6 +155,25 @@ impl RawDb {
                 cf.as_mut_ptr(),
                 r(begin_key),
                 r(end_key),
+                s.as_mut_ptr(),
+            );
+        }
+        check_status!(s)
+    }
+
+    /// Apply the specified updates to the database.
+    /// If `updates` contains no update, WAL will still be synced if
+    /// options.sync=true.
+    /// Returns OK on success, non-OK on failure.
+    /// Note: consider setting options.sync = true.
+    #[inline]
+    pub fn write(&self, opt: &WriteOptions, updates: &mut WriteBatch) -> Result<()> {
+        let mut s = Status::default();
+        unsafe {
+            tirocks_sys::crocksdb_write(
+                self.as_ptr(),
+                opt.get(),
+                updates.as_mut_ptr(),
                 s.as_mut_ptr(),
             );
         }

@@ -1958,6 +1958,7 @@ extern "C" {
         arg1: *mut rocksdb_WriteBatch,
         key: rocksdb_Slice,
         val: rocksdb_Slice,
+        arg2: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -1966,6 +1967,7 @@ extern "C" {
         column_family: *mut rocksdb_ColumnFamilyHandle,
         key: rocksdb_Slice,
         val: rocksdb_Slice,
+        arg2: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -1975,6 +1977,7 @@ extern "C" {
         keys: *const rocksdb_Slice,
         num_values: libc::c_int,
         values: *const rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -1985,6 +1988,7 @@ extern "C" {
         keys: *const rocksdb_Slice,
         num_values: libc::c_int,
         values: *const rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -1992,6 +1996,7 @@ extern "C" {
         arg1: *mut rocksdb_WriteBatch,
         key: rocksdb_Slice,
         val: rocksdb_Slice,
+        arg2: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -2000,6 +2005,7 @@ extern "C" {
         column_family: *mut rocksdb_ColumnFamilyHandle,
         key: rocksdb_Slice,
         val: rocksdb_Slice,
+        arg2: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -2009,6 +2015,7 @@ extern "C" {
         keys: *const rocksdb_Slice,
         num_values: libc::c_int,
         values: *const rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -2019,26 +2026,54 @@ extern "C" {
         keys: *const rocksdb_Slice,
         num_values: libc::c_int,
         values: *const rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
     );
 }
 extern "C" {
-    pub fn crocksdb_writebatch_delete(arg1: *mut rocksdb_WriteBatch, key: rocksdb_Slice);
+    pub fn crocksdb_writebatch_delete(
+        arg1: *mut rocksdb_WriteBatch,
+        key: rocksdb_Slice,
+        arg2: *mut rocksdb_Status,
+    );
 }
 extern "C" {
     pub fn crocksdb_writebatch_delete_cf(
         arg1: *mut rocksdb_WriteBatch,
         column_family: *mut rocksdb_ColumnFamilyHandle,
         key: rocksdb_Slice,
+        arg2: *mut rocksdb_Status,
     );
 }
 extern "C" {
-    pub fn crocksdb_writebatch_single_delete(arg1: *mut rocksdb_WriteBatch, key: rocksdb_Slice);
+    pub fn crocksdb_writebatch_single_delete(
+        arg1: *mut rocksdb_WriteBatch,
+        key: rocksdb_Slice,
+        arg2: *mut rocksdb_Status,
+    );
 }
 extern "C" {
     pub fn crocksdb_writebatch_single_delete_cf(
         arg1: *mut rocksdb_WriteBatch,
         column_family: *mut rocksdb_ColumnFamilyHandle,
         key: rocksdb_Slice,
+        arg2: *mut rocksdb_Status,
+    );
+}
+extern "C" {
+    pub fn crocksdb_writebatch_single_deletev(
+        b: *mut rocksdb_WriteBatch,
+        num_keys: libc::c_int,
+        keys: *const rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
+    );
+}
+extern "C" {
+    pub fn crocksdb_writebatch_single_deletev_cf(
+        b: *mut rocksdb_WriteBatch,
+        column_family: *mut rocksdb_ColumnFamilyHandle,
+        num_keys: libc::c_int,
+        keys: *const rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -2046,6 +2081,7 @@ extern "C" {
         b: *mut rocksdb_WriteBatch,
         num_keys: libc::c_int,
         keys: *const rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -2054,6 +2090,7 @@ extern "C" {
         column_family: *mut rocksdb_ColumnFamilyHandle,
         num_keys: libc::c_int,
         keys: *const rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -2061,6 +2098,7 @@ extern "C" {
         b: *mut rocksdb_WriteBatch,
         start_key: rocksdb_Slice,
         end_key: rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -2069,27 +2107,36 @@ extern "C" {
         column_family: *mut rocksdb_ColumnFamilyHandle,
         start_key: rocksdb_Slice,
         end_key: rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_delete_rangev(
         b: *mut rocksdb_WriteBatch,
-        num_keys: libc::c_int,
+        num_start_keys: libc::c_int,
         start_keys: *const rocksdb_Slice,
+        num_end_keys: libc::c_int,
         end_keys: *const rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
     );
 }
 extern "C" {
     pub fn crocksdb_writebatch_delete_rangev_cf(
         b: *mut rocksdb_WriteBatch,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-        num_keys: libc::c_int,
+        num_start_keys: libc::c_int,
         start_keys: *const rocksdb_Slice,
+        num_end_keys: libc::c_int,
         end_keys: *const rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
     );
 }
 extern "C" {
-    pub fn crocksdb_writebatch_put_log_data(arg1: *mut rocksdb_WriteBatch, blob: rocksdb_Slice);
+    pub fn crocksdb_writebatch_put_log_data(
+        arg1: *mut rocksdb_WriteBatch,
+        blob: rocksdb_Slice,
+        arg2: *mut rocksdb_Status,
+    );
 }
 extern "C" {
     pub fn crocksdb_writebatch_iterate(
@@ -2101,6 +2148,7 @@ extern "C" {
         deleted: ::std::option::Option<
             unsafe extern "C" fn(arg1: *mut libc::c_void, k: rocksdb_Slice),
         >,
+        arg2: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -2128,6 +2176,7 @@ extern "C" {
                 k: rocksdb_Slice,
             ) -> rocksdb_Status,
         >,
+        arg1: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -2152,7 +2201,11 @@ extern "C" {
     pub fn crocksdb_writebatch_set_content(b: *mut rocksdb_WriteBatch, data: rocksdb_Slice);
 }
 extern "C" {
-    pub fn crocksdb_writebatch_append_content(dest: *mut rocksdb_WriteBatch, data: rocksdb_Slice);
+    pub fn crocksdb_writebatch_append_content(
+        dest: *mut rocksdb_WriteBatch,
+        data: rocksdb_Slice,
+        arg1: *mut rocksdb_Status,
+    );
 }
 extern "C" {
     pub fn crocksdb_writebatch_ref_count(data: rocksdb_Slice) -> libc::c_int;

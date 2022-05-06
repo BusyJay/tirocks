@@ -1385,114 +1385,136 @@ void crocksdb_writebatch_clear(WriteBatch* b) { b->Clear(); }
 
 int crocksdb_writebatch_count(WriteBatch* b) { return b->Count(); }
 
-void crocksdb_writebatch_put(WriteBatch* b, Slice key, Slice val) {
-  b->Put(key, val);
+void crocksdb_writebatch_put(WriteBatch* b, Slice key, Slice val, Status* s) {
+  *s = b->Put(key, val);
 }
 
 void crocksdb_writebatch_put_cf(WriteBatch* b,
                                 ColumnFamilyHandle* column_family, Slice key,
-                                Slice val) {
-  b->Put(column_family, key, val);
+                                Slice val, Status* s) {
+  *s = b->Put(column_family, key, val);
 }
 
 void crocksdb_writebatch_putv(WriteBatch* b, int num_keys, const Slice* keys,
-                              int num_values, const Slice* values) {
-  b->Put(SliceParts(keys, num_keys), SliceParts(values, num_values));
+                              int num_values, const Slice* values, Status* s) {
+  *s = b->Put(SliceParts(keys, num_keys), SliceParts(values, num_values));
 }
 
 void crocksdb_writebatch_putv_cf(WriteBatch* b,
                                  ColumnFamilyHandle* column_family,
                                  int num_keys, const Slice* keys,
-                                 int num_values, const Slice* values) {
-  b->Put(column_family, SliceParts(keys, num_keys),
-         SliceParts(values, num_values));
+                                 int num_values, const Slice* values,
+                                 Status* s) {
+  *s = b->Put(column_family, SliceParts(keys, num_keys),
+              SliceParts(values, num_values));
 }
 
-void crocksdb_writebatch_merge(WriteBatch* b, Slice key, Slice val) {
-  b->Merge(key, val);
+void crocksdb_writebatch_merge(WriteBatch* b, Slice key, Slice val, Status* s) {
+  *s = b->Merge(key, val);
 }
 
 void crocksdb_writebatch_merge_cf(WriteBatch* b,
                                   ColumnFamilyHandle* column_family, Slice key,
-                                  Slice val) {
-  b->Merge(column_family, key, val);
+                                  Slice val, Status* s) {
+  *s = b->Merge(column_family, key, val);
 }
 
 void crocksdb_writebatch_mergev(WriteBatch* b, int num_keys, const Slice* keys,
-                                int num_values, const Slice* values) {
-  b->Merge(SliceParts(keys, num_keys), SliceParts(values, num_values));
+                                int num_values, const Slice* values,
+                                Status* s) {
+  *s = b->Merge(SliceParts(keys, num_keys), SliceParts(values, num_values));
 }
 
 void crocksdb_writebatch_mergev_cf(WriteBatch* b,
                                    ColumnFamilyHandle* column_family,
                                    int num_keys, const Slice* keys,
-                                   int num_values, const Slice* values) {
-  b->Merge(column_family, SliceParts(keys, num_keys),
-           SliceParts(values, num_values));
+                                   int num_values, const Slice* values,
+                                   Status* s) {
+  *s = b->Merge(column_family, SliceParts(keys, num_keys),
+                SliceParts(values, num_values));
 }
 
-void crocksdb_writebatch_delete(WriteBatch* b, Slice key) { b->Delete(key); }
+void crocksdb_writebatch_delete(WriteBatch* b, Slice key, Status* s) {
+  *s = b->Delete(key);
+}
 
 void crocksdb_writebatch_delete_cf(WriteBatch* b,
-                                   ColumnFamilyHandle* column_family,
-                                   Slice key) {
-  b->Delete(column_family, key);
+                                   ColumnFamilyHandle* column_family, Slice key,
+                                   Status* s) {
+  *s = b->Delete(column_family, key);
 }
 
-void crocksdb_writebatch_single_delete(WriteBatch* b, Slice key) {
-  b->SingleDelete(key);
+void crocksdb_writebatch_single_delete(WriteBatch* b, Slice key, Status* s) {
+  *s = b->SingleDelete(key);
 }
 
 void crocksdb_writebatch_single_delete_cf(WriteBatch* b,
                                           ColumnFamilyHandle* column_family,
-                                          Slice key) {
-  b->SingleDelete(column_family, key);
+                                          Slice key, Status* s) {
+  *s = b->SingleDelete(column_family, key);
 }
 
-void crocksdb_writebatch_deletev(WriteBatch* b, int num_keys,
-                                 const Slice* keys) {
-  b->Delete(SliceParts(keys, num_keys));
+void crocksdb_writebatch_single_deletev(WriteBatch* b, int num_keys,
+                                        const Slice* keys, Status* s) {
+  *s = b->SingleDelete(SliceParts(keys, num_keys));
+}
+
+void crocksdb_writebatch_single_deletev_cf(WriteBatch* b,
+                                           ColumnFamilyHandle* column_family,
+                                           int num_keys, const Slice* keys,
+                                           Status* s) {
+  *s = b->SingleDelete(column_family, SliceParts(keys, num_keys));
+}
+
+void crocksdb_writebatch_deletev(WriteBatch* b, int num_keys, const Slice* keys,
+                                 Status* s) {
+  *s = b->Delete(SliceParts(keys, num_keys));
 }
 
 void crocksdb_writebatch_deletev_cf(WriteBatch* b,
                                     ColumnFamilyHandle* column_family,
-                                    int num_keys, const Slice* keys) {
-  b->Delete(column_family, SliceParts(keys, num_keys));
+                                    int num_keys, const Slice* keys,
+                                    Status* s) {
+  *s = b->Delete(column_family, SliceParts(keys, num_keys));
 }
 
 void crocksdb_writebatch_delete_range(WriteBatch* b, Slice start_key,
-                                      Slice end_key) {
-  b->DeleteRange(start_key, end_key);
+                                      Slice end_key, Status* s) {
+  *s = b->DeleteRange(start_key, end_key);
 }
 
 void crocksdb_writebatch_delete_range_cf(WriteBatch* b,
                                          ColumnFamilyHandle* column_family,
-                                         Slice start_key, Slice end_key) {
-  b->DeleteRange(column_family, start_key, end_key);
+                                         Slice start_key, Slice end_key,
+                                         Status* s) {
+  *s = b->DeleteRange(column_family, start_key, end_key);
 }
 
-void crocksdb_writebatch_delete_rangev(WriteBatch* b, int num_keys,
+void crocksdb_writebatch_delete_rangev(WriteBatch* b, int num_start_keys,
                                        const Slice* start_keys,
-                                       const Slice* end_keys) {
-  b->DeleteRange(SliceParts(start_keys, num_keys),
-                 SliceParts(end_keys, num_keys));
+                                       int num_end_keys, const Slice* end_keys,
+                                       Status* s) {
+  *s = b->DeleteRange(SliceParts(start_keys, num_start_keys),
+                      SliceParts(end_keys, num_end_keys));
 }
 
 void crocksdb_writebatch_delete_rangev_cf(WriteBatch* b,
                                           ColumnFamilyHandle* column_family,
-                                          int num_keys, const Slice* start_keys,
-                                          const Slice* end_keys) {
-  b->DeleteRange(column_family, SliceParts(start_keys, num_keys),
-                 SliceParts(end_keys, num_keys));
+                                          int num_start_keys,
+                                          const Slice* start_keys,
+                                          int num_end_keys,
+                                          const Slice* end_keys, Status* s) {
+  *s = b->DeleteRange(column_family, SliceParts(start_keys, num_start_keys),
+                      SliceParts(end_keys, num_end_keys));
 }
 
-void crocksdb_writebatch_put_log_data(WriteBatch* b, Slice blob) {
-  b->PutLogData(blob);
+void crocksdb_writebatch_put_log_data(WriteBatch* b, Slice blob, Status* s) {
+  *s = b->PutLogData(blob);
 }
 
 void crocksdb_writebatch_iterate(WriteBatch* b, void* state,
                                  void (*put)(void*, Slice k, Slice v),
-                                 void (*deleted)(void*, Slice k)) {
+                                 void (*deleted)(void*, Slice k), Status* s) {
   class HandlerWrapper : public WriteBatch::Handler {
    public:
     void* state_;
@@ -1507,14 +1529,14 @@ void crocksdb_writebatch_iterate(WriteBatch* b, void* state,
   handler.state_ = state;
   handler.put_ = put;
   handler.deleted_ = deleted;
-  b->Iterate(&handler);
+  *s = b->Iterate(&handler);
 }
 
 void crocksdb_writebatch_iterate_cf(
     WriteBatch* b, void* state, void (*put)(void*, Slice k, Slice v),
     Status (*put_cf)(void*, uint32_t cf, Slice k, Slice v),
     void (*deleted)(void*, Slice k),
-    Status (*deleted_cf)(void*, uint32_t cf, Slice k)) {
+    Status (*deleted_cf)(void*, uint32_t cf, Slice k), Status* s) {
   class HandlerWrapper : public WriteBatch::Handler {
    public:
     void* state_;
@@ -1544,7 +1566,7 @@ void crocksdb_writebatch_iterate_cf(
   handler.put_cf_ = put_cf;
   handler.deleted_ = deleted;
   handler.deleted_cf_ = deleted_cf;
-  b->Iterate(&handler);
+  *s = b->Iterate(&handler);
 }
 
 void crocksdb_writebatch_data(const WriteBatch* b, Slice* data) {
@@ -1565,8 +1587,9 @@ void crocksdb_writebatch_set_content(WriteBatch* b, Slice data) {
   rocksdb::WriteBatchInternal::SetContents(b, data);
 }
 
-void crocksdb_writebatch_append_content(WriteBatch* dest, Slice data) {
-  rocksdb::WriteBatchInternal::AppendContents(dest, data);
+void crocksdb_writebatch_append_content(WriteBatch* dest, Slice data,
+                                        Status* s) {
+  *s = rocksdb::WriteBatchInternal::AppendContents(dest, data);
 }
 
 int crocksdb_writebatch_ref_count(Slice data) {

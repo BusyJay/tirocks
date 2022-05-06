@@ -32,3 +32,4 @@ pub use iterator::{Iterable, Iterator, RawIterator};
 pub use pin_slice::PinSlice;
 pub use snapshot::{RawSnapshot, Snapshot};
 pub use statistics::Statistics;
+pub use write_batch::{WriteBatch, WriteBatchIter};
