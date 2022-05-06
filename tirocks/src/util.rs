@@ -1,6 +1,6 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use tirocks_sys::{r, rocksdb_Slice};
+use tirocks_sys::{r, rocksdb_Range, rocksdb_Slice};
 
 macro_rules! utf8_name {
     ($slice:expr, $ctx:expr, $status:expr) => {
@@ -82,4 +82,12 @@ pub unsafe fn split_pairs(
         values.push(r(v.as_ref()));
     }
     (keys, values)
+}
+
+#[inline]
+pub unsafe fn range_to_rocks(start: &impl AsRef<[u8]>, end: &impl AsRef<[u8]>) -> rocksdb_Range {
+    rocksdb_Range {
+        start: r(start.as_ref()),
+        limit: r(end.as_ref()),
+    }
 }

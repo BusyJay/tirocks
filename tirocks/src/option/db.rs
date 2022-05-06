@@ -1,9 +1,10 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
 use std::{
-    mem::{self},
+    mem::{self, ManuallyDrop},
     ops::{Deref, DerefMut},
     path::Path,
+    ptr::NonNull,
     sync::Arc,
     time::Duration,
 };
@@ -29,9 +30,46 @@ pub type WalRecoveryMode = tirocks_sys::rocksdb_WALRecoveryMode;
 pub struct RawDbOptions(rocksdb_DBOptions);
 
 #[derive(Debug)]
+pub struct OwnedRawDbOptions {
+    ptr: NonNull<RawDbOptions>,
+}
+
+impl OwnedRawDbOptions {
+    #[inline]
+    pub(crate) unsafe fn from_ptr(ptr: *mut rocksdb_DBOptions) -> OwnedRawDbOptions {
+        OwnedRawDbOptions {
+            ptr: NonNull::new(ptr as *mut RawDbOptions).unwrap(),
+        }
+    }
+}
+
+impl Deref for OwnedRawDbOptions {
+    type Target = RawDbOptions;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { self.ptr.as_ref() }
+    }
+}
+
+impl DerefMut for OwnedRawDbOptions {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { self.ptr.as_mut() }
+    }
+}
+
+impl Drop for OwnedRawDbOptions {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe { tirocks_sys::crocksdb_dboptions_destroy(self.ptr.as_ptr() as _) }
+    }
+}
+
+#[derive(Debug)]
 #[repr(C)]
 pub struct DbOptions {
-    ptr: *mut RawDbOptions,
+    opt: ManuallyDrop<OwnedRawDbOptions>,
     env: Option<Arc<Env>>,
 }
 
@@ -40,14 +78,14 @@ impl Deref for DbOptions {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        unsafe { &*self.ptr }
+        &self.opt
     }
 }
 
 impl DerefMut for DbOptions {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut *self.ptr }
+        &mut self.opt
     }
 }
 
@@ -57,7 +95,7 @@ impl Default for DbOptions {
         unsafe {
             let ptr = tirocks_sys::crocksdb_dboptions_create();
             DbOptions {
-                ptr: ptr as _,
+                opt: ManuallyDrop::new(OwnedRawDbOptions::from_ptr(ptr)),
                 env: None,
             }
         }
@@ -67,7 +105,7 @@ impl Default for DbOptions {
 impl Drop for DbOptions {
     #[inline]
     fn drop(&mut self) {
-        unsafe { tirocks_sys::crocksdb_dboptions_destroy(self.ptr as _) }
+        unsafe { ManuallyDrop::drop(&mut self.opt) }
     }
 }
 
@@ -585,12 +623,16 @@ impl RawDbOptions {
         atomic_flush: bool
     }
 
-    pub(crate) unsafe fn from_ptr<'a>(ptr: *const rocksdb_DBOptions) -> &'a RawDbOptions {
-        &*(ptr as *const RawDbOptions)
+    pub(crate) unsafe fn from_ptr<'a>(ptr: *mut rocksdb_DBOptions) -> &'a RawDbOptions {
+        &*(ptr as *mut RawDbOptions)
     }
 
     pub(crate) unsafe fn from_ptr_mut<'a>(ptr: *mut rocksdb_DBOptions) -> &'a mut RawDbOptions {
         &mut *(ptr as *mut RawDbOptions)
+    }
+
+    pub(crate) fn as_ptr(&self) -> *const rocksdb_DBOptions {
+        self as *const _ as _
     }
 
     pub(crate) fn as_mut_ptr(&mut self) -> *mut rocksdb_DBOptions {
@@ -616,7 +658,7 @@ impl DbOptions {
 
     #[inline]
     pub(crate) fn get(&self) -> *mut rocksdb_DBOptions {
-        self.ptr as _
+        self.opt.ptr.as_ptr() as _
     }
 }
 
@@ -646,9 +688,49 @@ impl DerefMut for RawTitanDbOptions {
 }
 
 #[derive(Debug)]
+pub struct OwnedRawTitanDbOptions {
+    ptr: NonNull<RawTitanDbOptions>,
+}
+
+impl Drop for OwnedRawTitanDbOptions {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            tirocks_sys::ctitandb_dboptions_destroy(self.ptr.as_ptr() as _);
+        }
+    }
+}
+
+impl Deref for OwnedRawTitanDbOptions {
+    type Target = RawTitanDbOptions;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { self.ptr.as_ref() }
+    }
+}
+
+impl DerefMut for OwnedRawTitanDbOptions {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { self.ptr.as_mut() }
+    }
+}
+
+impl OwnedRawTitanDbOptions {
+    pub(crate) unsafe fn from_ptr(
+        ptr: *mut rocksdb_titandb_TitanDBOptions,
+    ) -> OwnedRawTitanDbOptions {
+        OwnedRawTitanDbOptions {
+            ptr: NonNull::new(ptr as *mut RawTitanDbOptions).unwrap(),
+        }
+    }
+}
+
+#[derive(Debug)]
 #[repr(C)]
 pub struct TitanDbOptions {
-    ptr: *mut RawTitanDbOptions,
+    opt: ManuallyDrop<OwnedRawTitanDbOptions>,
     env: Option<Arc<Env>>,
 }
 
@@ -657,14 +739,14 @@ impl Deref for TitanDbOptions {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        unsafe { &*self.ptr }
+        &self.opt
     }
 }
 
 impl DerefMut for TitanDbOptions {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut *self.ptr }
+        &mut self.opt
     }
 }
 
@@ -696,16 +778,21 @@ impl RawTitanDbOptions {
         purge_obsolete_files_period / purge_obsolete_files_period_sec / : Duration [ .as_secs() as u32 ]
     }
 
-    pub(crate) unsafe fn from_ptr<'a>(ptr: *const rocksdb_titandb_TitanDBOptions) -> &'a Self {
-        &*(ptr as *const RawTitanDbOptions)
+    #[inline]
+    pub(crate) unsafe fn from_ptr<'a>(
+        ptr: *mut rocksdb_titandb_TitanDBOptions,
+    ) -> &'a RawTitanDbOptions {
+        &*(ptr as *mut RawTitanDbOptions)
     }
 
+    #[inline]
     pub(crate) unsafe fn from_ptr_mut<'a>(
         ptr: *mut rocksdb_titandb_TitanDBOptions,
-    ) -> &'a mut Self {
+    ) -> &'a mut RawTitanDbOptions {
         &mut *(ptr as *mut RawTitanDbOptions)
     }
 
+    #[inline]
     pub(crate) fn as_mut_ptr(&mut self) -> *mut rocksdb_titandb_TitanDBOptions {
         self as *mut _ as _
     }
@@ -717,7 +804,7 @@ impl Default for TitanDbOptions {
         unsafe {
             let ptr = tirocks_sys::ctitandb_dboptions_create();
             TitanDbOptions {
-                ptr: ptr as _,
+                opt: ManuallyDrop::new(OwnedRawTitanDbOptions::from_ptr(ptr)),
                 env: None,
             }
         }
@@ -742,13 +829,13 @@ impl TitanDbOptions {
 
     #[inline]
     pub(crate) fn get(&self) -> *mut rocksdb_titandb_TitanDBOptions {
-        self.ptr as _
+        self.opt.ptr.as_ptr() as _
     }
 }
 
 impl Drop for TitanDbOptions {
     #[inline]
     fn drop(&mut self) {
-        unsafe { tirocks_sys::ctitandb_dboptions_destroy(self.ptr as _) }
+        unsafe { ManuallyDrop::drop(&mut self.opt) }
     }
 }

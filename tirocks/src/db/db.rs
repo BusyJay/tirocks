@@ -6,12 +6,16 @@ use std::ops::Deref;
 use std::path::Path;
 use std::ptr::NonNull;
 use std::slice;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tirocks_sys::{r, rocksdb_DB};
 
 use crate::option::{
-    CfOptions, DbOptions, PathToSlice, RawOptions, ReadOptions, TitanCfOptions, WriteOptions,
+    CfOptions, DbOptions, OwnedRawDbOptions, OwnedRawTitanDbOptions, PathToSlice, RawCfOptions,
+    RawDbOptions, RawOptions, RawTitanDbOptions, RawTitanOptions, ReadOptions, TitanCfOptions,
+    WriteOptions,
 };
+use crate::table_properties::user::SequenceNumber;
 use crate::util::{check_status, split_pairs};
 use crate::{comparator::SysComparator, env::Env};
 use crate::{Code, Result, Status};
@@ -250,6 +254,131 @@ impl RawDb {
             check_status!(s)
         }
     }
+
+    /// Get Options that we use.  During the process of opening the
+    /// column family, the options provided when calling DB::Open() or
+    /// DB::CreateColumnFamily() will have been "sanitized" and transformed
+    /// in an implementation-defined manner.
+    #[inline]
+    pub fn cf_options(&self, cf: &RawColumnFamilyHandle) -> RawOptions {
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_get_options_cf(self.as_ptr(), cf.as_mut_ptr());
+            RawOptions::from_ptr(ptr)
+        }
+    }
+
+    #[inline]
+    pub fn db_options(&self) -> OwnedRawDbOptions {
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_get_db_options(self.as_ptr());
+            OwnedRawDbOptions::from_ptr(ptr)
+        }
+    }
+
+    /// The sequence number of the most recent transaction.
+    #[inline]
+    pub fn latest_sequence_number(&self) -> SequenceNumber {
+        unsafe {
+            let mut n = 0;
+            tirocks_sys::crocksdb_get_latest_sequence_number(self.as_ptr(), &mut n);
+            n
+        }
+    }
+
+    /// Prevent file deletions. Compactions will continue to occur,
+    /// but no obsolete files will be deleted. Calling this multiple
+    /// times have the same effect as calling it once.
+    #[inline]
+    pub fn disable_file_deletions(&self) -> Result<()> {
+        unsafe {
+            let mut s = Status::default();
+            tirocks_sys::crocksdb_disable_file_deletions(self.as_ptr(), s.as_mut_ptr());
+            check_status!(s)
+        }
+    }
+
+    /// Allow compactions to delete obsolete files.
+    /// If force == true, the call to [`enable_file_deletions`] will guarantee that
+    /// file deletions are enabled after the call, even if [`disable_file_deletions`]
+    /// was called multiple times before.
+    /// If force == false, [`enable_file_deletions`] will only enable file deletion
+    /// after it's been called at least as many times as [`disable_file_deletions`]
+    /// enabling the two methods to be called by two threads concurrently without
+    /// synchronization -- i.e., file deletions will be enabled only after both
+    /// threads call [`enable_file_deletions`]
+    #[inline]
+    pub fn enable_file_deletions(&self, force: bool) -> Result<()> {
+        unsafe {
+            let mut s = Status::default();
+            tirocks_sys::crocksdb_enable_file_deletions(self.as_ptr(), force, s.as_mut_ptr());
+            check_status!(s)
+        }
+    }
+
+    /// Delete the file name from the db directory and update the internal state to
+    /// reflect that. Supports deletion of sst and log files only. 'name' must be
+    /// path relative to the db directory. eg. 000001.sst, /archive/000003.log
+    #[inline]
+    pub fn delete_file(&self, name: impl AsRef<Path>) -> Result<()> {
+        unsafe {
+            let mut s = Status::default();
+            tirocks_sys::crocksdb_delete_file(self.as_ptr(), name.path_to_slice(), s.as_mut_ptr());
+            check_status!(s)
+        }
+    }
+
+    /// Destroy the contents of the specified database. Be very careful using this method.
+    #[inline]
+    pub fn destroy(
+        path: impl AsRef<Path>,
+        options: &RawOptions,
+        cfs: &[(impl AsRef<str>, impl AsRef<RawCfOptions>)],
+    ) -> Result<()> {
+        unsafe {
+            let mut cf_names = Vec::with_capacity(cfs.len());
+            let mut cf_opts = Vec::with_capacity(cfs.len());
+            for (name, opt) in cfs {
+                cf_names.push(r(name.as_ref().as_bytes()));
+                cf_opts.push(opt.as_ref().as_ptr());
+            }
+            let mut s = Status::default();
+            tirocks_sys::crocksdb_destroy_db(
+                path.path_to_slice(),
+                options.get(),
+                cf_names.as_ptr(),
+                cf_opts.as_ptr(),
+                cfs.len(),
+                s.as_mut_ptr(),
+            );
+            check_status!(s)
+        }
+    }
+
+    #[inline]
+    pub fn repair(
+        path: impl AsRef<Path>,
+        options: &RawDbOptions,
+        cfs: &[(impl AsRef<str>, impl AsRef<RawCfOptions>)],
+    ) -> Result<()> {
+        unsafe {
+            let mut cf_names = Vec::with_capacity(cfs.len());
+            let mut cf_opts = Vec::with_capacity(cfs.len());
+            for (name, opt) in cfs {
+                cf_names.push(r(name.as_ref().as_bytes()));
+                cf_opts.push(opt.as_ref().as_ptr());
+            }
+            let mut s = Status::default();
+            tirocks_sys::crocksdb_repair_db(
+                path.path_to_slice(),
+                options.as_ptr(),
+                cf_names.as_ptr(),
+                cf_opts.as_ptr(),
+                cfs.len(),
+                s.as_mut_ptr(),
+            );
+            check_status!(s)
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -270,7 +399,7 @@ impl Drop for Db {
                     continue;
                 }
                 // TODO: may should log.
-                let _ = h.as_mut().destroy(self.ptr);
+                let _ = h.as_mut().drop(self.ptr);
             }
             tirocks_sys::crocksdb_destroy(self.ptr as _);
         }
@@ -385,7 +514,7 @@ impl Db {
         Ok(())
     }
 
-    pub fn drop_column_family(&mut self, name: &str) -> Result<()> {
+    pub fn destroy_column_family(&mut self, name: &str) -> Result<()> {
         if name == DEFAULT_CF_NAME {
             return Err(Status::with_invalid_argument(
                 "default cf can't be dropped.",
@@ -402,7 +531,7 @@ impl Db {
         let mut h = self.handles.swap_remove(pos);
         unsafe {
             let destroy_res = h.as_mut().destroy(self.ptr);
-            let drop_res = h.as_mut().drop(self);
+            let drop_res = h.as_mut().drop(self.ptr);
             destroy_res.and(drop_res)
         }
     }
@@ -420,6 +549,35 @@ impl Db {
         }
         None
     }
+
+    // TitanOptions doesn't inherit Options, so we can mix them.
+    #[inline]
+    pub fn cf_options_titan(&self, cf: &RawColumnFamilyHandle) -> Option<RawTitanOptions> {
+        unsafe {
+            if self.is_titan {
+                let ptr =
+                    tirocks_sys::ctitandb_get_titan_options_cf(self.as_ptr(), cf.as_mut_ptr());
+                Some(RawTitanOptions::from_ptr(ptr))
+            } else {
+                None
+            }
+        }
+    }
+
+    #[inline]
+    pub fn db_options_titan(&self) -> Option<OwnedRawTitanDbOptions> {
+        unsafe {
+            if self.is_titan {
+                let ptr = tirocks_sys::ctitandb_get_titan_db_options(self.as_ptr());
+                Some(OwnedRawTitanDbOptions::from_ptr(ptr))
+            } else {
+                None
+            }
+        }
+    }
+
+    #[inline]
+    pub fn destroy_on_drop(&self) {}
 
     pub(crate) fn get(&self) -> *mut rocksdb_DB {
         self.ptr

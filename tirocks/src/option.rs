@@ -7,6 +7,7 @@ mod read;
 mod write;
 
 use std::{
+    mem::ManuallyDrop,
     ops::{Deref, DerefMut},
     os::unix::prelude::OsStrExt,
     path::Path,
@@ -15,26 +16,25 @@ use std::{
 };
 
 pub use cf::{
-    CfOptions, CompactionPriority, CompactionStyle, FifoCompactionOptions, TitanBlobRunMode,
-    TitanCfOptions, UniversalCompactionOptions,
+    CfOptions, CompactionPriority, CompactionStyle, FifoCompactionOptions, RawCfOptions,
+    RawTitanCfOptions, TitanBlobRunMode, TitanCfOptions, UniversalCompactionOptions,
 };
-pub use db::{DbOptions, TitanDbOptions};
+pub use db::{
+    DbOptions, OwnedRawDbOptions, OwnedRawTitanDbOptions, RawDbOptions, RawTitanDbOptions,
+    TitanDbOptions,
+};
 pub use flush::{
     BottommostLevelCompaction, CompactRangeOptions, CompactionOptions, FlushOptions,
     IngestExternalFileOptions,
 };
 pub use read::{ReadOptions, ReadTier};
 use tirocks_sys::{
-    r, rocksdb_CompressionType, rocksdb_Options, rocksdb_Slice, rocksdb_titandb_TitanOptions,
+    r, rocksdb_CompressionType, rocksdb_Options, rocksdb_Slice, rocksdb_titandb_TitanCFOptions,
+    rocksdb_titandb_TitanOptions,
 };
 pub use write::WriteOptions;
 
 use crate::{comparator::SysComparator, env::Env};
-
-use self::{
-    cf::{RawCfOptions, RawTitanCfOptions},
-    db::{RawDbOptions, RawTitanDbOptions},
-};
 
 pub type CompressionType = rocksdb_CompressionType;
 
@@ -94,8 +94,10 @@ impl<T: AsRef<Path>> PathToSlice for T {
 }
 
 /// Options to control the behavior of a database (passed to DB::Open)
-#[repr(transparent)]
-pub struct RawOptions(rocksdb_Options);
+#[derive(Debug)]
+pub struct RawOptions {
+    ptr: *mut rocksdb_Options,
+}
 
 impl RawOptions {
     /// All data will be in level 0 without any automatic compaction.
@@ -104,61 +106,54 @@ impl RawOptions {
     #[inline]
     pub fn prepare_for_bulk_load(&mut self) -> &mut Self {
         unsafe {
-            tirocks_sys::crocksdb_options_prepare_for_bulk_load(self as *mut _ as _);
+            tirocks_sys::crocksdb_options_prepare_for_bulk_load(self.ptr);
         }
         self
     }
 
     #[inline]
-    pub fn as_db_options(&self) -> &RawDbOptions {
-        unsafe {
-            RawDbOptions::from_ptr(tirocks_sys::crocksdb_options_get_dboptions(
-                self as *const _ as _,
-            ))
-        }
+    pub fn db_options(&self) -> &RawDbOptions {
+        unsafe { RawDbOptions::from_ptr(tirocks_sys::crocksdb_options_get_dboptions(self.ptr)) }
     }
 
     #[inline]
-    pub fn as_db_options_mut(&mut self) -> &mut RawDbOptions {
-        unsafe {
-            RawDbOptions::from_ptr_mut(tirocks_sys::crocksdb_options_get_dboptions(
-                self as *const _ as _,
-            ))
-        }
+    pub fn db_options_mut(&mut self) -> &mut RawDbOptions {
+        unsafe { RawDbOptions::from_ptr_mut(tirocks_sys::crocksdb_options_get_dboptions(self.ptr)) }
     }
 
     #[inline]
     pub fn as_cf_options(&self) -> &RawCfOptions {
-        unsafe {
-            RawCfOptions::from_ptr(tirocks_sys::crocksdb_options_get_cfoptions(
-                self as *const _ as _,
-            ))
-        }
+        unsafe { RawCfOptions::from_ptr(tirocks_sys::crocksdb_options_get_cfoptions(self.ptr)) }
     }
 
     #[inline]
     pub fn as_cf_options_mut(&mut self) -> &mut RawCfOptions {
+        unsafe { RawCfOptions::from_ptr_mut(tirocks_sys::crocksdb_options_get_cfoptions(self.ptr)) }
+    }
+
+    #[inline]
+    pub(crate) unsafe fn from_ptr(ptr: *mut rocksdb_Options) -> RawOptions {
+        RawOptions { ptr }
+    }
+
+    #[inline]
+    pub fn get(&self) -> *const rocksdb_Options {
+        self.ptr
+    }
+}
+
+impl Drop for RawOptions {
+    #[inline]
+    fn drop(&mut self) {
         unsafe {
-            RawCfOptions::from_ptr_mut(tirocks_sys::crocksdb_options_get_cfoptions(
-                self as *const _ as _,
-            ))
+            tirocks_sys::crocksdb_options_destroy(self.ptr);
         }
-    }
-
-    #[inline]
-    pub(crate) unsafe fn from_ptr<'a>(ptr: *const rocksdb_Options) -> &'a RawOptions {
-        &*(ptr as *const RawOptions)
-    }
-
-    #[inline]
-    pub(crate) unsafe fn from_ptr_mut<'a>(ptr: *mut rocksdb_Options) -> &'a mut RawOptions {
-        &mut *(ptr as *mut RawOptions)
     }
 }
 
 #[derive(Debug)]
 pub struct Options {
-    ptr: *mut RawOptions,
+    opt: ManuallyDrop<RawOptions>,
     env: Option<Arc<Env>>,
     comparator: Option<Arc<SysComparator>>,
 }
@@ -166,11 +161,13 @@ pub struct Options {
 impl Default for Options {
     #[inline]
     fn default() -> Self {
-        let ptr = unsafe { tirocks_sys::crocksdb_options_create() };
-        Self {
-            ptr: ptr as *mut RawOptions,
-            env: None,
-            comparator: None,
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_options_create();
+            Self {
+                opt: ManuallyDrop::new(RawOptions::from_ptr(ptr)),
+                env: None,
+                comparator: None,
+            }
         }
     }
 }
@@ -180,14 +177,14 @@ impl Deref for Options {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        unsafe { &*self.ptr }
+        &self.opt
     }
 }
 
 impl DerefMut for Options {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut *self.ptr }
+        &mut self.opt
     }
 }
 
@@ -196,7 +193,7 @@ impl Options {
     #[inline]
     pub fn set_env(&mut self, env: Arc<Env>) -> &mut Self {
         unsafe {
-            self.as_db_options_mut().set_env(&env);
+            self.db_options_mut().set_env(&env);
         }
         self.env = Some(env);
         self
@@ -224,63 +221,69 @@ impl Options {
 
     #[inline]
     pub(crate) fn get(&self) -> *mut rocksdb_Options {
-        self.ptr as _
+        self.opt.ptr
     }
 }
 
 impl Drop for Options {
     #[inline]
     fn drop(&mut self) {
-        unsafe {
-            tirocks_sys::crocksdb_options_destroy(self.ptr as _);
-        }
+        unsafe { ManuallyDrop::drop(&mut self.opt) }
     }
 }
 
-#[repr(transparent)]
-pub struct RawTitanOptions(rocksdb_titandb_TitanOptions);
+#[derive(Debug)]
+pub struct RawTitanOptions {
+    ptr: *mut rocksdb_titandb_TitanOptions,
+}
 
 impl RawTitanOptions {
     #[inline]
     pub fn as_db_options(&self) -> &RawTitanDbOptions {
         unsafe {
-            RawTitanDbOptions::from_ptr(tirocks_sys::ctitandb_options_get_dboptions(
-                self as *const _ as _,
-            ))
+            RawTitanDbOptions::from_ptr(tirocks_sys::ctitandb_options_get_dboptions(self.ptr))
         }
     }
 
     #[inline]
     pub fn as_db_options_mut(&mut self) -> &mut RawTitanDbOptions {
         unsafe {
-            RawTitanDbOptions::from_ptr_mut(tirocks_sys::ctitandb_options_get_dboptions(
-                self as *mut _ as _,
-            ))
+            RawTitanDbOptions::from_ptr_mut(tirocks_sys::ctitandb_options_get_dboptions(self.ptr))
         }
     }
 
     #[inline]
     pub fn as_cf_options(&self) -> &RawTitanCfOptions {
         unsafe {
-            RawTitanCfOptions::from_ptr(tirocks_sys::ctitandb_options_get_cfoptions(
-                self as *const _ as _,
-            ))
+            RawTitanCfOptions::from_ptr(tirocks_sys::ctitandb_options_get_cfoptions(self.ptr))
         }
     }
 
     #[inline]
     pub fn as_cf_options_mut(&mut self) -> &mut RawTitanCfOptions {
         unsafe {
-            RawTitanCfOptions::from_ptr_mut(tirocks_sys::ctitandb_options_get_cfoptions(
-                self as *mut _ as _,
-            ))
+            RawTitanCfOptions::from_ptr_mut(tirocks_sys::ctitandb_options_get_cfoptions(self.ptr))
+        }
+    }
+
+    #[inline]
+    pub(crate) unsafe fn from_ptr(ptr: *mut rocksdb_titandb_TitanOptions) -> RawTitanOptions {
+        RawTitanOptions { ptr }
+    }
+}
+
+impl Drop for RawTitanOptions {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            tirocks_sys::ctitandb_options_destroy(self.ptr);
         }
     }
 }
 
 #[derive(Debug)]
 pub struct TitanOptions {
-    ptr: *mut RawTitanOptions,
+    opt: ManuallyDrop<RawTitanOptions>,
     env: Option<Arc<Env>>,
     comparator: Option<Arc<SysComparator>>,
 }
@@ -290,7 +293,7 @@ impl Default for TitanOptions {
     fn default() -> Self {
         let ptr = unsafe { tirocks_sys::ctitandb_options_create() };
         Self {
-            ptr: ptr as _,
+            opt: ManuallyDrop::new(unsafe { RawTitanOptions::from_ptr(ptr) }),
             env: None,
             comparator: None,
         }
@@ -302,14 +305,14 @@ impl Deref for TitanOptions {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        unsafe { &*self.ptr }
+        &self.opt
     }
 }
 
 impl DerefMut for TitanOptions {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut *self.ptr }
+        &mut self.opt
     }
 }
 
@@ -338,8 +341,6 @@ impl TitanOptions {
 impl Drop for TitanOptions {
     #[inline]
     fn drop(&mut self) {
-        unsafe {
-            tirocks_sys::crocksdb_options_destroy(self.ptr as _);
-        }
+        unsafe { ManuallyDrop::drop(&mut self.opt) }
     }
 }

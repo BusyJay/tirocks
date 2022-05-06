@@ -18,3 +18,7 @@ pub enum rocksdb_CompactionFilter_Context {}
 pub enum rocksdb_LRUCacheOptions {}
 pub enum rocksdb_BlockBasedTableOptions {}
 pub enum rocksdb_PinnableSlice {}
+pub enum rocksdb_LiveFileMetaData {}
+pub enum rocksdb_SstFileMetaData {}
+pub enum rocksdb_LevelMetaData {}
+pub enum rocksdb_ColumnFamilyMetaData {}

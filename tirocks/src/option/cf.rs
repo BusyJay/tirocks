@@ -784,6 +784,10 @@ impl RawCfOptions {
         &mut *(ptr as *mut RawCfOptions)
     }
 
+    pub(crate) fn as_ptr(&self) -> *const rocksdb_ColumnFamilyOptions {
+        self as *const _ as _
+    }
+
     pub(crate) fn as_mut_ptr(&mut self) -> *mut rocksdb_ColumnFamilyOptions {
         self as *mut _ as _
     }

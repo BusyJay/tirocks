@@ -3,7 +3,7 @@
 use std::{
     fmt::{self, Debug, Formatter},
     marker::PhantomData,
-    ops::Index,
+    ops::{Deref, Index},
     ptr::{self, NonNull},
     slice,
     str::{self, Utf8Error},
@@ -289,52 +289,20 @@ impl Debug for TableProperties {
     }
 }
 
-enum Collection<'a> {
-    Owned(NonNull<rocksdb_TablePropertiesCollection>),
-    Borrowed(&'a rocksdb_TablePropertiesCollection),
-}
+#[repr(transparent)]
+pub struct TablePropertiesCollection(rocksdb_TablePropertiesCollection);
 
-pub struct TablePropertiesCollection<'a> {
-    ptr: Collection<'a>,
-}
-
-impl<'a> Drop for TablePropertiesCollection<'a> {
+impl TablePropertiesCollection {
     #[inline]
-    fn drop(&mut self) {
-        if let Collection::Owned(ptr) = self.ptr {
-            unsafe {
-                let ptr = ptr.as_ptr();
-                tirocks_sys::crocksdb_table_properties_collection_destroy(ptr);
-            }
-        }
-    }
-}
-
-impl<'a> TablePropertiesCollection<'a> {
-    #[inline]
-    pub(crate) unsafe fn from_borrowed(
+    pub(crate) unsafe fn from_ptr<'a>(
         ptr: *const tirocks_sys::rocksdb_TablePropertiesCollection,
-    ) -> Self {
-        Self {
-            ptr: Collection::Borrowed(&*ptr),
-        }
+    ) -> &'a Self {
+        &*(ptr as *const TablePropertiesCollection)
     }
 
     #[inline]
-    pub(crate) unsafe fn from_owned(
-        ptr: *mut tirocks_sys::rocksdb_TablePropertiesCollection,
-    ) -> TablePropertiesCollection<'static> {
-        TablePropertiesCollection {
-            ptr: Collection::Owned(NonNull::new_unchecked(ptr)),
-        }
-    }
-
-    #[inline]
-    fn as_ptr(&self) -> *const tirocks_sys::rocksdb_TablePropertiesCollection {
-        match self.ptr {
-            Collection::Borrowed(p) => p,
-            Collection::Owned(p) => p.as_ptr(),
-        }
+    fn as_ptr(&self) -> *const rocksdb_TablePropertiesCollection {
+        self as *const _ as _
     }
 
     #[inline]
@@ -362,7 +330,7 @@ impl<'a> TablePropertiesCollection<'a> {
     }
 }
 
-impl<'a, Q: AsRef<[u8]>> Index<Q> for TablePropertiesCollection<'a> {
+impl<Q: AsRef<[u8]>> Index<Q> for TablePropertiesCollection {
     type Output = TableProperties;
 
     #[inline]
@@ -373,7 +341,7 @@ impl<'a, Q: AsRef<[u8]>> Index<Q> for TablePropertiesCollection<'a> {
     }
 }
 
-impl<'a> IntoIterator for &'a TablePropertiesCollection<'_> {
+impl<'a> IntoIterator for &'a TablePropertiesCollection {
     type Item = (&'a [u8], &'a TableProperties);
     type IntoIter = TablePropertiesCollectionIter<'a>;
 
@@ -385,7 +353,7 @@ impl<'a> IntoIterator for &'a TablePropertiesCollection<'_> {
 
 pub struct TablePropertiesCollectionIter<'a> {
     ptr: *mut crocksdb_table_properties_collection_iterator_t,
-    _life: PhantomData<&'a TablePropertiesCollection<'a>>,
+    _life: PhantomData<&'a TablePropertiesCollection>,
 }
 
 impl<'a> Drop for TablePropertiesCollectionIter<'a> {
@@ -424,5 +392,59 @@ impl<'a> Iterator for TablePropertiesCollectionIter<'a> {
                 None
             }
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct OwnedTablePropertiesCollection {
+    ptr: *mut rocksdb_TablePropertiesCollection,
+}
+
+impl Drop for OwnedTablePropertiesCollection {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            tirocks_sys::crocksdb_table_properties_collection_destroy(self.ptr);
+        }
+    }
+}
+
+impl Deref for OwnedTablePropertiesCollection {
+    type Target = TablePropertiesCollection;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { TablePropertiesCollection::from_ptr(self.ptr) }
+    }
+}
+
+impl Default for OwnedTablePropertiesCollection {
+    #[inline]
+    fn default() -> Self {
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_table_properties_collection_create();
+            Self::from_ptr(ptr)
+        }
+    }
+}
+
+impl OwnedTablePropertiesCollection {
+    #[inline]
+    pub fn clear(&mut self) {
+        unsafe {
+            tirocks_sys::crocksdb_table_properties_collection_clear(self.ptr);
+        }
+    }
+
+    #[inline]
+    pub(crate) fn get(&self) -> *mut rocksdb_TablePropertiesCollection {
+        self.ptr
+    }
+
+    #[inline]
+    pub(crate) unsafe fn from_ptr(
+        ptr: *mut rocksdb_TablePropertiesCollection,
+    ) -> OwnedTablePropertiesCollection {
+        OwnedTablePropertiesCollection { ptr }
     }
 }

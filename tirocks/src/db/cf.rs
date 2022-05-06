@@ -29,13 +29,9 @@ impl RawColumnFamilyHandle {
     }
 
     #[inline]
-    pub unsafe fn drop(&mut self, db: &Db) -> Result<()> {
+    pub unsafe fn drop(&mut self, db: *mut rocksdb_DB) -> Result<()> {
         let mut s = Status::default();
-        tirocks_sys::crocksdb_column_family_handle_destroy(
-            db.get(),
-            self.as_mut_ptr(),
-            s.as_mut_ptr(),
-        );
+        tirocks_sys::crocksdb_column_family_handle_destroy(db, self.as_mut_ptr(), s.as_mut_ptr());
         check_status!(s)
     }
 

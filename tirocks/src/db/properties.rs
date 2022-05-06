@@ -3,7 +3,11 @@
 use libc::c_void;
 use tirocks_sys::{crocksdb_map_property_t, r, s};
 
-use crate::RawDb;
+use crate::{
+    table_properties::builtin::{OwnedTablePropertiesCollection, TablePropertiesCollection},
+    util::{check_status, range_to_rocks},
+    RawDb, Result, Status,
+};
 
 use super::cf::RawColumnFamilyHandle;
 use std::{ffi::CStr, io::Write, ops::Index};
@@ -457,6 +461,7 @@ impl RawDb {
     /// DB implementations can export properties about their state via this method. If "prop"
     /// is a valid property understood by this DB implementation (see struct inherits `Property`
     /// trait for valid options), returns true. Otherwise, returns false.
+    #[inline]
     pub fn property(&self, cf: &RawColumnFamilyHandle, prop: &impl Property) -> Option<Vec<u8>> {
         let key = prop.key();
         unsafe {
@@ -474,6 +479,7 @@ impl RawDb {
 
     /// Similar to [`property`], but only works for a subset of properties whose return value
     /// is an integer.
+    #[inline]
     pub fn property_u64(&self, cf: &RawColumnFamilyHandle, prop: &impl IntProperty) -> Option<u64> {
         let key = prop.key();
         unsafe {
@@ -494,6 +500,7 @@ impl RawDb {
 
     /// Same as [`property_u64`], but this one returns the aggregated u64 property from all column
     /// families.
+    #[inline]
     pub fn property_aggregated_u64(&self, prop: &impl IntProperty) -> Option<u64> {
         let key = prop.key();
         unsafe {
@@ -513,6 +520,7 @@ impl RawDb {
 
     /// Similar to [`property`], but only works for a subset of properties whose return value
     /// is a map.
+    #[inline]
     pub fn property_map(
         &self,
         cf: &RawColumnFamilyHandle,
@@ -527,6 +535,7 @@ impl RawDb {
     }
 
     /// Similar to [`property_map`], but allow reusing existing map.
+    #[inline]
     pub fn property_map_to(
         &self,
         cf: &RawColumnFamilyHandle,
@@ -541,6 +550,49 @@ impl RawDb {
                 r(key),
                 value.ptr,
             )
+        }
+    }
+
+    #[inline]
+    pub fn properties_of_all_tables(
+        &self,
+        cf: &RawColumnFamilyHandle,
+        c: &mut OwnedTablePropertiesCollection,
+    ) -> Result<()> {
+        unsafe {
+            let mut s = Status::default();
+            tirocks_sys::crocksdb_get_properties_of_all_tables_cf(
+                self.as_ptr(),
+                cf.as_mut_ptr(),
+                c.get(),
+                s.as_mut_ptr(),
+            );
+            check_status!(s)
+        }
+    }
+
+    #[inline]
+    pub fn properties_of_tables_in_range(
+        &self,
+        cf: &RawColumnFamilyHandle,
+        ranges: &[(impl AsRef<[u8]>, impl AsRef<[u8]>)],
+        c: &mut OwnedTablePropertiesCollection,
+    ) -> Result<()> {
+        unsafe {
+            let mut s = Status::default();
+            let ranges: Vec<_> = ranges
+                .into_iter()
+                .map(|(s, e)| range_to_rocks(s, e))
+                .collect();
+            tirocks_sys::crocksdb_get_properties_of_tables_in_range(
+                self.as_ptr(),
+                cf.as_mut_ptr(),
+                c.get(),
+                ranges.len() as i32,
+                ranges.as_ptr(),
+                s.as_mut_ptr(),
+            );
+            check_status!(s)
         }
     }
 }
