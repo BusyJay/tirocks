@@ -23,8 +23,7 @@ impl RawDb {
     pub fn property(&self, cf: &RawColumnFamilyHandle, prop: &impl Property) -> Option<Vec<u8>> {
         let key = prop.key();
         unsafe {
-            let ptr =
-                tirocks_sys::crocksdb_property_value_cf(self.as_ptr(), cf.as_mut_ptr(), r(key));
+            let ptr = tirocks_sys::crocksdb_property_value_cf(self.as_ptr(), cf.get(), r(key));
             if !ptr.is_null() {
                 let res = Some(CStr::from_ptr(ptr).to_bytes().to_vec());
                 libc::free(ptr as *mut c_void);
@@ -44,7 +43,7 @@ impl RawDb {
             let mut value = 0;
             let f = tirocks_sys::crocksdb_property_int_value_cf(
                 self.as_ptr(),
-                cf.as_mut_ptr(),
+                cf.get(),
                 r(key),
                 &mut value,
             );
@@ -104,7 +103,7 @@ impl RawDb {
         unsafe {
             tirocks_sys::crocksdb_get_map_property_cf(
                 self.as_ptr(),
-                cf.as_mut_ptr(),
+                cf.get(),
                 r(key),
                 value.as_mut_ptr(),
             )
@@ -121,7 +120,7 @@ impl RawDb {
             let mut s = Status::default();
             tirocks_sys::crocksdb_get_properties_of_all_tables_cf(
                 self.as_ptr(),
-                cf.as_mut_ptr(),
+                cf.get(),
                 c.get(),
                 s.as_mut_ptr(),
             );
@@ -144,7 +143,7 @@ impl RawDb {
                 .collect();
             tirocks_sys::crocksdb_get_properties_of_tables_in_range(
                 self.as_ptr(),
-                cf.as_mut_ptr(),
+                cf.get(),
                 c.get(),
                 ranges.len() as i32,
                 ranges.as_ptr(),

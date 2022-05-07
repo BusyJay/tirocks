@@ -1,8 +1,13 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::{mem, ops::Deref, ptr::NonNull, str::Utf8Error};
+use std::{
+    ops::Deref,
+    ptr::NonNull,
+    str::Utf8Error,
+    sync::atomic::{self, AtomicUsize, Ordering},
+};
 
-use crate::{db::Db, util::check_status, RawDb, Result, Status};
+use crate::{util::check_status, RawDb, Result, Status};
 use tirocks_sys::{r, rocksdb_ColumnFamilyHandle, rocksdb_DB, s};
 
 use super::db::DbRef;
@@ -16,64 +21,125 @@ pub struct RawColumnFamilyHandle(rocksdb_ColumnFamilyHandle);
 impl RawColumnFamilyHandle {
     #[inline]
     pub fn id(&self) -> u32 {
-        unsafe { tirocks_sys::crocksdb_column_family_handle_id(self.as_mut_ptr()) }
+        unsafe { tirocks_sys::crocksdb_column_family_handle_id(self.get()) }
     }
 
     #[inline]
     pub fn name(&self) -> std::result::Result<&str, Utf8Error> {
         unsafe {
             let mut name = r(&[]);
-            tirocks_sys::crocksdb_column_family_handle_name(self.as_mut_ptr(), &mut name);
+            tirocks_sys::crocksdb_column_family_handle_name(self.get(), &mut name);
             std::str::from_utf8(s(name))
         }
-    }
-
-    #[inline]
-    pub unsafe fn drop(&mut self, db: *mut rocksdb_DB) -> Result<()> {
-        let mut s = Status::default();
-        tirocks_sys::crocksdb_column_family_handle_destroy(db, self.as_mut_ptr(), s.as_mut_ptr());
-        check_status!(s)
     }
 
     pub fn is_default_cf(&self) -> bool {
         self.name().map_or(false, |n| n == DEFAULT_CF_NAME)
     }
 
+    pub(crate) unsafe fn get(&self) -> *mut rocksdb_ColumnFamilyHandle {
+        self as *const _ as *mut _
+    }
+}
+
+#[derive(Debug)]
+struct Inner {
+    ptr: *mut rocksdb_ColumnFamilyHandle,
+    ref_count: AtomicUsize,
+}
+
+#[derive(Debug)]
+pub struct RefCountedColumnFamilyHandle {
+    inner: NonNull<Inner>,
+}
+
+impl RefCountedColumnFamilyHandle {
+    #[inline]
+    pub unsafe fn maybe_drop(&mut self, db: *mut rocksdb_DB) -> Result<bool> {
+        let cnt = self
+            .inner
+            .as_ref()
+            .ref_count
+            .fetch_sub(1, Ordering::Release);
+        if cnt > 1 {
+            return Ok(false);
+        }
+        // TODO: thread sanitizer doesn't support fence.
+        atomic::fence(Ordering::Acquire);
+        let mut s = Status::default();
+        if !self.is_default_cf() {
+            tirocks_sys::crocksdb_column_family_handle_destroy(db, self.get(), s.as_mut_ptr());
+        }
+        drop(Box::from(self.inner.as_ptr()));
+        check_status!(s)?;
+        Ok(true)
+    }
+
     pub(crate) unsafe fn destroy(&mut self, db: *mut rocksdb_DB) -> Result<()> {
         let mut s = Status::default();
-        tirocks_sys::crocksdb_drop_column_family(db, self.as_mut_ptr(), s.as_mut_ptr());
+        tirocks_sys::crocksdb_drop_column_family(db, self.get(), s.as_mut_ptr());
         check_status!(s)
     }
 
-    pub(crate) unsafe fn as_mut_ptr(&self) -> *mut rocksdb_ColumnFamilyHandle {
-        self as *const _ as *mut rocksdb_ColumnFamilyHandle
+    pub(crate) unsafe fn get(&self) -> *mut rocksdb_ColumnFamilyHandle {
+        self.inner.as_ref().ptr
+    }
+
+    #[inline]
+    pub(crate) unsafe fn from_ptr(
+        ptr: *mut rocksdb_ColumnFamilyHandle,
+    ) -> RefCountedColumnFamilyHandle {
+        let inner = Box::into_raw(Box::new(Inner {
+            ptr,
+            ref_count: AtomicUsize::new(1),
+        }));
+        RefCountedColumnFamilyHandle {
+            inner: NonNull::new_unchecked(inner),
+        }
+    }
+}
+
+impl Deref for RefCountedColumnFamilyHandle {
+    type Target = RawColumnFamilyHandle;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*(self.inner.as_ref().ptr as *mut RawColumnFamilyHandle) }
+    }
+}
+
+impl Clone for RefCountedColumnFamilyHandle {
+    #[inline]
+    fn clone(&self) -> Self {
+        unsafe {
+            self.inner
+                .as_ref()
+                .ref_count
+                .fetch_add(1, Ordering::Relaxed);
+            Self { inner: self.inner }
+        }
     }
 }
 
 pub struct ColumnFamilyHandle<D: DbRef> {
-    ptr: NonNull<rocksdb_ColumnFamilyHandle>,
+    handle: RefCountedColumnFamilyHandle,
     // Make sure handle won't outlive db.
-    _db: D,
+    db: D,
 }
 
 impl<D: DbRef> ColumnFamilyHandle<D> {
     pub fn new(db: D, name: &str) -> Option<Self> {
         unsafe {
-            let ptr = db.visit(|d| d.cf_raw(name));
-            Some(Self {
-                ptr: mem::transmute(ptr?),
-                _db: db,
-            })
+            let handle = db.visit(|d| d.cf_raw(name).cloned())?;
+            Some(Self { handle, db })
         }
     }
 
     pub fn default(db: D) -> Self {
         unsafe {
-            let ptr = db.visit(|d| d.default_cf_raw());
-            Self {
-                ptr: mem::transmute(ptr),
-                _db: db,
-            }
+            // Search instead of using raw pointer to avoid allocation.
+            let handle = db.visit(|d| d.cf_raw(DEFAULT_CF_NAME).cloned()).unwrap();
+            Self { handle, db }
         }
     }
 }
@@ -83,7 +149,19 @@ impl<D: DbRef> Deref for ColumnFamilyHandle<D> {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        unsafe { &*(self.ptr.as_ptr() as *mut RawColumnFamilyHandle) }
+        &self.handle
+    }
+}
+
+impl<D: DbRef> Drop for ColumnFamilyHandle<D> {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            let handle = &mut self.handle;
+            self.db.visit(|d| {
+                let _ = handle.maybe_drop(d.as_ptr());
+            });
+        }
     }
 }
 

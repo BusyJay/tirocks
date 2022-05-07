@@ -8,7 +8,10 @@ use crate::{
     Result, Status,
 };
 
-use super::{cf::RawColumnFamilyHandle, db::Db};
+use super::{
+    cf::{RawColumnFamilyHandle, RefCountedColumnFamilyHandle},
+    db::Db,
+};
 
 #[derive(Default, Debug)]
 pub struct DefaultCfOnlyBuilder {
@@ -250,7 +253,7 @@ impl OpenOptions {
         if s.ok() {
             let handles = handles
                 .into_iter()
-                .map(|p| NonNull::new(p as *mut RawColumnFamilyHandle).unwrap())
+                .map(|p| unsafe { RefCountedColumnFamilyHandle::from_ptr(p) })
                 .collect();
             Ok(Db::new(ptr, env, comparator, handles, is_titan))
         } else {

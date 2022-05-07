@@ -71,7 +71,7 @@ impl WriteBatch {
             let mut s = Status::default();
             tirocks_sys::crocksdb_writebatch_put_cf(
                 self.ptr,
-                cf.as_mut_ptr(),
+                cf.get(),
                 r(key),
                 r(value),
                 s.as_mut_ptr(),
@@ -107,7 +107,7 @@ impl WriteBatch {
                 let values: &[_] = mem::transmute(values);
                 tirocks_sys::crocksdb_writebatch_putv_cf(
                     self.ptr,
-                    cf.as_mut_ptr(),
+                    cf.get(),
                     keys.len() as i32,
                     keys.as_ptr(),
                     values.len() as i32,
@@ -119,7 +119,7 @@ impl WriteBatch {
                 let values: Vec<_> = values.into_iter().map(|v| r(v)).collect();
                 tirocks_sys::crocksdb_writebatch_putv_cf(
                     self.ptr,
-                    cf.as_mut_ptr(),
+                    cf.get(),
                     keys.len() as i32,
                     keys.as_ptr(),
                     values.len() as i32,
@@ -168,12 +168,7 @@ impl WriteBatch {
     pub fn delete(&mut self, cf: &RawColumnFamilyHandle, key: &[u8]) -> Result<()> {
         unsafe {
             let mut s = Status::default();
-            tirocks_sys::crocksdb_writebatch_delete_cf(
-                self.ptr,
-                cf.as_mut_ptr(),
-                r(key),
-                s.as_mut_ptr(),
-            );
+            tirocks_sys::crocksdb_writebatch_delete_cf(self.ptr, cf.get(), r(key), s.as_mut_ptr());
             check_status!(s)
         }
     }
@@ -196,7 +191,7 @@ impl WriteBatch {
                 let keys: &[_] = mem::transmute(keys);
                 tirocks_sys::crocksdb_writebatch_deletev_cf(
                     self.ptr,
-                    cf.as_mut_ptr(),
+                    cf.get(),
                     keys.len() as i32,
                     keys.as_ptr(),
                     s.as_mut_ptr(),
@@ -205,7 +200,7 @@ impl WriteBatch {
                 let keys: Vec<_> = keys.into_iter().map(|k| r(k)).collect();
                 tirocks_sys::crocksdb_writebatch_deletev_cf(
                     self.ptr,
-                    cf.as_mut_ptr(),
+                    cf.get(),
                     keys.len() as i32,
                     keys.as_ptr(),
                     s.as_mut_ptr(),
@@ -247,7 +242,7 @@ impl WriteBatch {
             let mut s = Status::default();
             tirocks_sys::crocksdb_writebatch_single_delete_cf(
                 self.ptr,
-                cf.as_mut_ptr(),
+                cf.get(),
                 r(key),
                 s.as_mut_ptr(),
             );
@@ -277,7 +272,7 @@ impl WriteBatch {
                 let keys: &[_] = mem::transmute(keys);
                 tirocks_sys::crocksdb_writebatch_single_deletev_cf(
                     self.ptr,
-                    cf.as_mut_ptr(),
+                    cf.get(),
                     keys.len() as i32,
                     keys.as_ptr(),
                     s.as_mut_ptr(),
@@ -286,7 +281,7 @@ impl WriteBatch {
                 let keys: Vec<_> = keys.into_iter().map(|k| r(k)).collect();
                 tirocks_sys::crocksdb_writebatch_single_deletev_cf(
                     self.ptr,
-                    cf.as_mut_ptr(),
+                    cf.get(),
                     keys.len() as i32,
                     keys.as_ptr(),
                     s.as_mut_ptr(),
@@ -333,7 +328,7 @@ impl WriteBatch {
             let mut s = Status::default();
             tirocks_sys::crocksdb_writebatch_delete_range_cf(
                 self.ptr,
-                cf.as_mut_ptr(),
+                cf.get(),
                 r(begin_key),
                 r(end_key),
                 s.as_mut_ptr(),
@@ -371,7 +366,7 @@ impl WriteBatch {
                 let end_keys: &[_] = mem::transmute(end_keys);
                 tirocks_sys::crocksdb_writebatch_delete_rangev_cf(
                     self.ptr,
-                    cf.as_mut_ptr(),
+                    cf.get(),
                     begin_keys.len() as i32,
                     begin_keys.as_ptr(),
                     end_keys.len() as i32,
@@ -383,7 +378,7 @@ impl WriteBatch {
                 let end_keys: Vec<_> = end_keys.into_iter().map(|k| r(k)).collect();
                 tirocks_sys::crocksdb_writebatch_delete_rangev_cf(
                     self.ptr,
-                    cf.as_mut_ptr(),
+                    cf.get(),
                     begin_keys.len() as i32,
                     begin_keys.as_ptr(),
                     end_keys.len() as i32,

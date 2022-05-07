@@ -4,7 +4,6 @@ use libc::c_void;
 use std::ffi::CStr;
 use std::ops::Deref;
 use std::path::Path;
-use std::ptr::NonNull;
 use std::slice;
 use std::sync::{Arc, Mutex};
 use tirocks_sys::{r, rocksdb_DB};
@@ -22,7 +21,7 @@ use crate::{Code, PinSlice, RawIterator, Result, Status};
 
 use crate::db::cf::RawColumnFamilyHandle;
 
-use super::cf::DEFAULT_CF_NAME;
+use super::cf::{RefCountedColumnFamilyHandle, DEFAULT_CF_NAME};
 
 pub trait RawDbRef {
     fn visit<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T;
@@ -98,7 +97,7 @@ impl RawDb {
             tirocks_sys::crocksdb_put_cf(
                 self.as_ptr(),
                 opt.get(),
-                cf.as_mut_ptr(),
+                cf.get(),
                 r(key),
                 r(val),
                 s.as_mut_ptr(),
@@ -113,7 +112,7 @@ impl RawDb {
             tirocks_sys::crocksdb_delete_cf(
                 self.as_ptr(),
                 opt.get(),
-                cf.as_mut_ptr(),
+                cf.get(),
                 r(key),
                 s.as_mut_ptr(),
             );
@@ -132,7 +131,7 @@ impl RawDb {
             tirocks_sys::crocksdb_single_delete_cf(
                 self.as_ptr(),
                 opt.get(),
-                cf.as_mut_ptr(),
+                cf.get(),
                 r(key),
                 s.as_mut_ptr(),
             );
@@ -152,7 +151,7 @@ impl RawDb {
             tirocks_sys::crocksdb_delete_range_cf(
                 self.as_ptr(),
                 opt.get(),
-                cf.as_mut_ptr(),
+                cf.get(),
                 r(begin_key),
                 r(end_key),
                 s.as_mut_ptr(),
@@ -192,7 +191,7 @@ impl RawDb {
             tirocks_sys::crocksdb_get_cf(
                 self.as_ptr(),
                 opt.get() as _,
-                cf.as_mut_ptr(),
+                cf.get(),
                 r(key),
                 &mut len,
                 s.as_mut_ptr(),
@@ -223,7 +222,7 @@ impl RawDb {
             tirocks_sys::crocksdb_get_pinned_cf(
                 self.as_ptr(),
                 opt.get() as _,
-                cf.as_mut_ptr(),
+                cf.get(),
                 r(key),
                 value.get(),
                 s.as_mut_ptr(),
@@ -256,7 +255,7 @@ impl RawDb {
             let mut s = Status::default();
             tirocks_sys::crocksdb_set_options_cf(
                 self.as_ptr(),
-                cf.as_mut_ptr(),
+                cf.get(),
                 key.as_ptr(),
                 val.as_ptr(),
                 options.len(),
@@ -288,7 +287,7 @@ impl RawDb {
     #[inline]
     pub fn cf_options(&self, cf: &RawColumnFamilyHandle) -> RawOptions {
         unsafe {
-            let ptr = tirocks_sys::crocksdb_get_options_cf(self.as_ptr(), cf.as_mut_ptr());
+            let ptr = tirocks_sys::crocksdb_get_options_cf(self.as_ptr(), cf.get());
             RawOptions::from_ptr(ptr)
         }
     }
@@ -361,7 +360,7 @@ impl RawDb {
         unsafe {
             tirocks_sys::crocksdb_get_column_family_meta_data(
                 self.as_ptr(),
-                cf.as_mut_ptr(),
+                cf.get(),
                 data.as_mut_ptr(),
             );
         }
@@ -388,7 +387,7 @@ impl RawDb {
             tirocks_sys::crocksdb_approximate_sizes_cf(
                 self.as_ptr(),
                 opt,
-                cf.as_mut_ptr(),
+                cf.get(),
                 raw_ranges.as_ptr(),
                 raw_ranges.len() as i32,
                 sizes.as_mut_ptr(),
@@ -413,7 +412,7 @@ impl RawDb {
             let (mut count, mut size) = (0, 0);
             tirocks_sys::crocksdb_approximate_memtable_stats_cf(
                 self.as_ptr(),
-                cf.as_mut_ptr(),
+                cf.get(),
                 &raw_range,
                 &mut count,
                 &mut size,
@@ -481,7 +480,7 @@ pub struct Db {
     ptr: *mut rocksdb_DB,
     env: Option<Arc<Env>>,
     comparator: Vec<Arc<SysComparator>>,
-    handles: Vec<NonNull<RawColumnFamilyHandle>>,
+    handles: Vec<RefCountedColumnFamilyHandle>,
     is_titan: bool,
 }
 
@@ -490,11 +489,8 @@ impl Drop for Db {
     fn drop(&mut self) {
         unsafe {
             for h in &mut self.handles {
-                if h.as_ref().is_default_cf() {
-                    continue;
-                }
                 // TODO: may should log.
-                let _ = h.as_mut().drop(self.ptr);
+                let _ = h.maybe_drop(self.ptr);
             }
             tirocks_sys::crocksdb_destroy(self.ptr as _);
         }
@@ -506,7 +502,7 @@ impl Db {
         ptr: *mut rocksdb_DB,
         env: Option<Arc<Env>>,
         comparator: Vec<Arc<SysComparator>>,
-        handles: Vec<NonNull<RawColumnFamilyHandle>>,
+        handles: Vec<RefCountedColumnFamilyHandle>,
         is_titan: bool,
     ) -> Self {
         Self {
@@ -581,7 +577,7 @@ impl Db {
         check_status!(s)?;
         opt.comparator().map(|c| self.comparator.push(c.clone()));
         self.handles
-            .push(NonNull::new(ptr as *mut RawColumnFamilyHandle).unwrap());
+            .push(unsafe { RefCountedColumnFamilyHandle::from_ptr(ptr) });
         Ok(())
     }
 
@@ -605,11 +601,11 @@ impl Db {
         check_status!(s)?;
         opt.comparator().map(|c| self.comparator.push(c.clone()));
         self.handles
-            .push(NonNull::new(ptr as *mut RawColumnFamilyHandle).unwrap());
+            .push(unsafe { RefCountedColumnFamilyHandle::from_ptr(ptr) });
         Ok(())
     }
 
-    pub fn destroy_column_family(&mut self, name: &str) -> Result<()> {
+    pub fn destroy_column_family(&mut self, name: &str) -> Result<bool> {
         if name == DEFAULT_CF_NAME {
             return Err(Status::with_invalid_argument(
                 "default cf can't be dropped.",
@@ -618,28 +614,27 @@ impl Db {
         let pos = self
             .handles
             .iter()
-            .position(|h| unsafe { h.as_ref().name().map_or(false, |n| n == name) });
+            .position(|h| unsafe { h.name().map_or(false, |n| n == name) });
         let pos = match pos {
             Some(p) => p,
             None => return Err(Status::with_code(Code::kNotFound)),
         };
         let mut h = self.handles.swap_remove(pos);
         unsafe {
-            let destroy_res = h.as_mut().destroy(self.ptr);
-            let drop_res = h.as_mut().drop(self.ptr);
+            let destroy_res = h.destroy(self.ptr);
+            let drop_res = h.maybe_drop(self.ptr);
             destroy_res.and(drop_res)
         }
     }
 
     pub fn cf(&self, name: &str) -> Option<&RawColumnFamilyHandle> {
-        unsafe { self.cf_raw(name).map(|c| c.as_ref()) }
+        unsafe { self.cf_raw(name).map(|c| &**c) }
     }
 
-    // TODO: what if it's dropped?
-    pub(crate) unsafe fn cf_raw(&self, name: &str) -> Option<NonNull<RawColumnFamilyHandle>> {
+    pub(crate) unsafe fn cf_raw(&self, name: &str) -> Option<&RefCountedColumnFamilyHandle> {
         for h in &self.handles {
-            if h.as_ref().name().map_or(false, |n| n == name) {
-                return Some(*h);
+            if h.name().map_or(false, |n| n == name) {
+                return Some(h);
             }
         }
         None
@@ -650,8 +645,7 @@ impl Db {
     pub fn cf_options_titan(&self, cf: &RawColumnFamilyHandle) -> Option<RawTitanOptions> {
         unsafe {
             if self.is_titan {
-                let ptr =
-                    tirocks_sys::ctitandb_get_titan_options_cf(self.as_ptr(), cf.as_mut_ptr());
+                let ptr = tirocks_sys::ctitandb_get_titan_options_cf(self.as_ptr(), cf.get());
                 Some(RawTitanOptions::from_ptr(ptr))
             } else {
                 None

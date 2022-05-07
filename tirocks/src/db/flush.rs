@@ -54,7 +54,7 @@ impl RawDb {
             tirocks_sys::crocksdb_compact_range_cf_opt(
                 self.as_ptr(),
                 opt.as_ptr(),
-                cf.as_mut_ptr(),
+                cf.get(),
                 begin.as_ref().map_or_else(ptr::null, |k| k),
                 end.as_ref().map_or_else(ptr::null, |k| k),
                 s.as_mut_ptr(),
@@ -83,7 +83,7 @@ impl RawDb {
             tirocks_sys::crocksdb_compact_files_cf(
                 self.as_ptr(),
                 opt.as_ptr(),
-                cf.as_mut_ptr(),
+                cf.get(),
                 input_file_names.as_ptr(),
                 input_file_names.len(),
                 output_level,
@@ -123,7 +123,7 @@ impl RawDb {
             tirocks_sys::crocksdb_flush_cf(
                 self.as_ptr(),
                 option.as_ptr(),
-                cf.as_mut_ptr(),
+                cf.get(),
                 s.as_mut_ptr(),
             );
             check_status!(s)
@@ -140,7 +140,7 @@ impl RawDb {
     #[inline]
     pub fn flush_multi(&self, option: &FlushOptions, cfs: &[&RawColumnFamilyHandle]) -> Result<()> {
         unsafe {
-            let cfs: Vec<_> = cfs.into_iter().map(|c| c.as_mut_ptr()).collect();
+            let cfs: Vec<_> = cfs.into_iter().map(|c| c.get()).collect();
             let mut s = Status::default();
             tirocks_sys::crocksdb_flush_cfs(
                 self.as_ptr(),
@@ -206,7 +206,7 @@ impl RawDb {
             let mut s = Status::default();
             tirocks_sys::crocksdb_ingest_external_file_cf(
                 self.as_ptr(),
-                cf.as_mut_ptr(),
+                cf.get(),
                 files.as_ptr(),
                 files.len(),
                 opt.as_ptr(),
@@ -229,7 +229,7 @@ impl RawDb {
             let mut s = Status::default();
             let flushed = tirocks_sys::crocksdb_ingest_external_file_optimized(
                 self.as_ptr(),
-                cf.as_mut_ptr(),
+                cf.get(),
                 files.as_ptr(),
                 files.len(),
                 opt.as_ptr(),
@@ -266,7 +266,7 @@ impl RawDb {
             let mut file_count_list = Vec::with_capacity(args.len());
             let mut opts = Vec::with_capacity(args.len());
             for arg in args {
-                cfs.push(arg.cf.as_mut_ptr());
+                cfs.push(arg.cf.get());
                 let mut list = ManuallyDrop::new(Vec::with_capacity(arg.file_list.len()));
                 for f in arg.file_list {
                     list.push(f.path_to_slice());
