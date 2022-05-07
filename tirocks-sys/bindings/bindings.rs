@@ -5418,8 +5418,7 @@ extern "C" {
 }
 extern "C" {
     pub fn ctitandb_decode_blob_index(
-        value: *const libc::c_char,
-        value_size: usize,
+        value: rocksdb_Slice,
         index: *mut ctitandb_blob_index_t,
         s: *mut rocksdb_Status,
     );

@@ -25,6 +25,7 @@ pub mod sst_partitioner;
 mod statistics;
 pub mod table;
 pub mod table_filter;
+pub mod titan;
 mod util;
 mod write_batch;
 

@@ -2181,8 +2181,7 @@ extern C_ROCKSDB_LIBRARY_API CompressionOptions*
 ctitandb_options_get_blob_file_compression_options(TitanCFOptions* opt);
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_decode_blob_index(
-    const char* value, size_t value_size, ctitandb_blob_index_t* index,
-    Status* s);
+    Slice value, ctitandb_blob_index_t* index, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_encode_blob_index(
     const ctitandb_blob_index_t* index, char** value, size_t* value_size);

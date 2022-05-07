@@ -5142,11 +5142,10 @@ void ctitandb_options_set_gc_merge_rewrite(TitanCFOptions* opts, bool enable) {
   opts->gc_merge_rewrite = enable;
 }
 
-void ctitandb_decode_blob_index(const char* value, size_t value_size,
-                                ctitandb_blob_index_t* index, Status* s) {
-  Slice v(value, value_size);
+void ctitandb_decode_blob_index(Slice value, ctitandb_blob_index_t* index,
+                                Status* s) {
   BlobIndex bi;
-  *s = bi.DecodeFrom(&v);
+  *s = bi.DecodeFrom(&value);
   if (!s->ok()) {
     return;
   }
