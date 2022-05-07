@@ -492,7 +492,7 @@ impl RawCfOptions {
         /// the tables.
         /// Default: empty vector -- no user-defined statistics collection will be
         /// performed.
-        <add> table_properties_collector_factory: &SysTablePropertiesCollectorFactory [ .get() ]
+        (add) table_properties_collector_factory: &SysTablePropertiesCollectorFactory [ .get() ]
 
         /// Maximum number of successive merge operations on a key in the memtable.
         ///

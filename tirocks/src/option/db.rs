@@ -510,7 +510,7 @@ impl RawDbOptions {
         /// Add an EventListeners whose callback functions will be called
         /// when specific RocksDB event happens. Listener can be shared with multiple
         /// DBs.
-        <add> event_listener / eventlistener/ : &SysEventListener [ .get() ]
+        (add) event_listener / eventlistener/ : &SysEventListener [ .get() ]
 
         /// The limited write rate to DB if soft_pending_compaction_bytes_limit or
         /// level0_slowdown_writes_trigger is triggered, or we are writing to the

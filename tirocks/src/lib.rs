@@ -15,6 +15,7 @@ mod listener;
 pub mod mem_table;
 pub mod metadata;
 pub mod option;
+pub mod perf_context;
 mod pin_slice;
 pub mod properties;
 pub mod rate_limiter;
@@ -23,6 +24,7 @@ mod snapshot;
 pub mod sst_partitioner;
 mod statistics;
 pub mod table;
+pub mod table_filter;
 mod util;
 mod write_batch;
 

@@ -5,7 +5,10 @@ use std::{
     mem::MaybeUninit,
 };
 
+use libc::c_void;
 use tirocks_sys::{rocksdb_Snapshot, rocksdb_titandb_TitanReadOptions};
+
+use crate::table_filter::{self, TableFilter};
 
 use super::OwnedSlice;
 
@@ -230,6 +233,26 @@ impl ReadOptions {
     #[inline]
     pub fn set_ignore_range_deletions(&mut self, ignore: bool) -> &mut Self {
         self.raw._base.ignore_range_deletions = ignore;
+        self
+    }
+
+    /// A callback to determine whether relevant keys for this scan exist in a
+    /// given table based on the table's properties. The callback is passed the
+    /// properties of each table during iteration. If the callback returns false,
+    /// the table will not be scanned. This option only affects Iterators and has
+    /// no impact on point lookups.
+    /// Default: empty (every table will be scanned)
+    #[inline]
+    pub fn set_table_filter<T: TableFilter>(&mut self, f: T) -> &mut Self {
+        unsafe {
+            let filter = Box::into_raw(Box::new(f));
+            tirocks_sys::crocksdb_readoptions_set_table_filter(
+                &mut self.raw._base,
+                filter as *mut c_void,
+                Some(table_filter::filter::<T>),
+                Some(table_filter::destroy::<T>),
+            )
+        }
         self
     }
 

@@ -19,9 +19,8 @@ macro_rules! utf8_name {
 
 pub(crate) use utf8_name;
 
-// TODO: simplify the definition
-macro_rules! simple_access {
-    ($(#[$outer:meta])* imp $prefix:ident <$op:ident> $field:ident / $rename:ident / :$ty:ty$([$($new_tt:tt)*])?) => {
+macro_rules! expand_one_row {
+    (setter $(#[$outer:meta])* $prefix:ident <$op:ident> $field:ident / $rename:ident / :$ty:ty$([$($new_tt:tt)*])?) => {
         paste::paste! {
             $(#[$outer])*
             #[inline]
@@ -33,20 +32,43 @@ macro_rules! simple_access {
             }
         }
     };
-    ($(#[$outer:meta])* imp $prefix:ident <$op:ident> $field:ident:$ty:ty$([$($new_tt:tt)*])?) => {
-        $crate::util::simple_access!($(#[$outer])* imp $prefix <$op> $field / $field /:$ty $([$($new_tt)*])? );
+    (getter $(#[$outer:meta])* $prefix:ident $(<$op:ident>)? $field:ident / $rename:ident / :$ty:ty$([$($new_tt:tt)*])?) => {
+        paste::paste! {
+            $(#[$outer])*
+            #[inline]
+            pub fn $field(&self) -> $ty {
+                unsafe {
+                    $($($new_tt)*)? tirocks_sys::[<$prefix _ $($op _)? $rename>](self.as_ptr())
+                }
+            }
+        }
     };
-    ($(#[$outer:meta])* imp $prefix:ident $field:ident / $rename:ident / :$ty:ty$([$($new_tt:tt)*])?) => {
-        $crate::util::simple_access!($(#[$outer])* imp $prefix <set> $field / $rename /:$ty $([$($new_tt)*])? );
+}
+
+pub(crate) use expand_one_row;
+
+// TODO: simplify the definition
+macro_rules! simple_access {
+    ($(#[$outer:meta])* <$method:ident> $prefix:ident $(<$op:ident>)? $field:ident / $rename:ident / :$ty:ty$([$($new_tt:tt)*])?) => {
+        $crate::util::expand_one_row!($method $(#[$outer])* $prefix $(<$op>)? $field / $rename / :$ty $([$($new_tt)*])? );
     };
-    ($(#[$outer:meta])* imp $prefix:ident $field:ident:$ty:ty$([$($new_tt:tt)*])?) => {
-        $crate::util::simple_access!($(#[$outer])* imp $prefix <set> $field / $field /:$ty $([$($new_tt)*])? );
+    ($(#[$outer:meta])* <$method:ident> $prefix:ident $(<$op:ident>)? $field:ident:$ty:ty$([$($new_tt:tt)*])?) => {
+        $crate::util::expand_one_row!($method $(#[$outer])* $prefix $(<$op>)? $field / $field /:$ty $([$($new_tt)*])? );
     };
-    ($prefix:ident $($(#[$outer:meta])*$(<$op:ident>)?$field:ident$(/$rename:ident/)?:$ty:ty$([$($new_tt:tt)*])?)+) => {
+    ($(#[$outer:meta])* imp $prefix:ident $field:ident$(/$rename:ident/)?:$ty:ty$([$($new_tt:tt)*])?) => {
+        $crate::util::simple_access!($(#[$outer])* <setter> $prefix <set> $field$(/$rename/)?:$ty$([$($new_tt)*])?);
+    };
+    ($(#[$outer:meta])* imp $prefix:ident ($op:ident)$field:ident$(/$rename:ident/)?:$ty:ty$([$($new_tt:tt)*])?) => {
+        $crate::util::simple_access!($(#[$outer])* <setter> $prefix <$op> $field$(/$rename/)?:$ty$([$($new_tt)*])?);
+    };
+    ($(#[$outer:meta])* imp $prefix:ident (<$($op:ident)?) $field:ident$(/$rename:ident/)?:$ty:ty$([$($new_tt:tt)*])?) => {
+        $crate::util::simple_access!($(#[$outer])* <getter> $prefix $(<$op>)? $field$(/$rename/)?:$ty$([$($new_tt)*])?);
+    };
+    ($prefix:ident $($(#[$outer:meta])*$(($($t:tt)*))?$field:ident$(/$rename:ident/)?:$ty:ty$([$($new_tt:tt)*])?)+) => {
         $(
             $crate::util::simple_access!(
                 $(#[$outer])*
-                imp $prefix $(<$op>)? $field$(/$rename/)?:$ty$([$($new_tt)*])?
+                imp $prefix $(($($t)*))? $field$(/$rename/)?:$ty$([$($new_tt)*])?
             );
         )+
     };
