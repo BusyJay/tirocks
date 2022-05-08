@@ -302,9 +302,6 @@ struct crocksdb_externalsstfileinfo_t {
 struct crocksdb_ratelimiter_t {
   std::shared_ptr<RateLimiter> rep;
 };
-struct crocksdb_histogramdata_t {
-  HistogramData rep;
-};
 
 struct crocksdb_keyversions_t {
   std::vector<KeyVersion> rep;
@@ -2831,9 +2828,11 @@ void crocksdb_statistics_reset(crocksdb_statistics_t* s) {
 
 void crocksdb_statistics_destroy(crocksdb_statistics_t* ptr) { delete ptr; }
 
-char* crocksdb_statistics_get_string(crocksdb_statistics_t* ptr) {
+void crocksdb_statistics_get_string(crocksdb_statistics_t* ptr, void* ctx,
+                                    void (*fp)(void*, Slice)) {
   rocksdb::Statistics* statistics = ptr->statistics.get();
-  return strdup(statistics->ToString().c_str());
+  std::string s = statistics->ToString();
+  fp(ctx, s);
 }
 
 uint64_t crocksdb_statistics_get_ticker_count(crocksdb_statistics_t* ptr,
@@ -2848,27 +2847,18 @@ uint64_t crocksdb_statistics_get_and_reset_ticker_count(
   return statistics->getAndResetTickerCount(ticker_type);
 }
 
-char* crocksdb_statistics_get_histogram_string(crocksdb_statistics_t* ptr,
-                                               uint32_t type) {
+void crocksdb_statistics_get_histogram_string(crocksdb_statistics_t* ptr,
+                                              uint32_t type, void* ctx,
+                                              void (*fp)(void*, Slice)) {
   rocksdb::Statistics* statistics = ptr->statistics.get();
-  return strdup(statistics->getHistogramString(type).c_str());
+  std::string s = statistics->getHistogramString(type);
+  fp(ctx, s);
 }
 
 void crocksdb_statistics_get_histogram(crocksdb_statistics_t* ptr,
-                                       uint32_t type, double* median,
-                                       double* percentile95,
-                                       double* percentile99, double* average,
-                                       double* standard_deviation,
-                                       double* max) {
+                                       uint32_t type, HistogramData* data) {
   rocksdb::Statistics* statistics = ptr->statistics.get();
-  crocksdb_histogramdata_t data;
-  statistics->histogramData(type, &data.rep);
-  *median = data.rep.median;
-  *percentile95 = data.rep.percentile95;
-  *percentile99 = data.rep.percentile99;
-  *average = data.rep.average;
-  *standard_deviation = data.rep.standard_deviation;
-  *max = data.rep.max;
+  statistics->histogramData(type, data);
 }
 
 void crocksdb_options_set_ratelimiter(DBOptions* opt,

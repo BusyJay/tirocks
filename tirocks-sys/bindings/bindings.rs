@@ -664,6 +664,19 @@ pub enum rocksdb_Histograms {
     DB_WRITE_WAL_TIME = 48,
     HISTOGRAM_ENUM_MAX = 49,
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_HistogramData {
+    pub median: f64,
+    pub percentile95: f64,
+    pub percentile99: f64,
+    pub average: f64,
+    pub standard_deviation: f64,
+    pub max: f64,
+    pub count: u64,
+    pub sum: u64,
+    pub min: f64,
+}
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_CompressionType {
@@ -3159,10 +3172,19 @@ extern "C" {
     pub fn crocksdb_statistics_create() -> *mut crocksdb_statistics_t;
 }
 extern "C" {
+    pub fn crocksdb_statistics_reset(arg1: *mut crocksdb_statistics_t);
+}
+extern "C" {
     pub fn crocksdb_statistics_destroy(arg1: *mut crocksdb_statistics_t);
 }
 extern "C" {
-    pub fn crocksdb_statistics_get_string(arg1: *mut crocksdb_statistics_t) -> *mut libc::c_char;
+    pub fn crocksdb_statistics_get_string(
+        ptr: *mut crocksdb_statistics_t,
+        ctx: *mut libc::c_void,
+        fp: ::std::option::Option<
+            unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: rocksdb_Slice),
+        >,
+    );
 }
 extern "C" {
     pub fn crocksdb_statistics_get_ticker_count(
@@ -3178,20 +3200,19 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_statistics_get_histogram_string(
-        arg1: *mut crocksdb_statistics_t,
+        ptr: *mut crocksdb_statistics_t,
         type_: u32,
-    ) -> *mut libc::c_char;
+        ctx: *mut libc::c_void,
+        fp: ::std::option::Option<
+            unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: rocksdb_Slice),
+        >,
+    );
 }
 extern "C" {
     pub fn crocksdb_statistics_get_histogram(
-        arg1: *mut crocksdb_statistics_t,
+        ptr: *mut crocksdb_statistics_t,
         type_: u32,
-        median: *mut f64,
-        percentile95: *mut f64,
-        percentile99: *mut f64,
-        average: *mut f64,
-        standard_deviation: *mut f64,
-        max: *mut f64,
+        arg1: *mut rocksdb_HistogramData,
     );
 }
 extern "C" {
