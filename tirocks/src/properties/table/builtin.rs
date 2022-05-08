@@ -1,17 +1,18 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
 use std::{
-    fmt::{self, Debug, Formatter},
+    fmt::{self, Debug, Display, Formatter},
     marker::PhantomData,
     ops::{Deref, Index},
-    ptr::{self, NonNull},
-    slice,
+    ptr,
     str::{self, Utf8Error},
 };
 
 use tirocks_sys::{
     crocksdb_table_properties_collection_iterator_t, r, rocksdb_TablePropertiesCollection, s,
 };
+
+use crate::util;
 
 #[repr(transparent)]
 pub struct TableProperties(tirocks_sys::rocksdb_TableProperties);
@@ -275,17 +276,17 @@ impl TableProperties {
     }
 }
 
-impl Debug for TableProperties {
+impl Display for TableProperties {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let mut len = 0;
+        let mut res = Ok(());
+        let mut receiver = |buf: &[u8]| {
+            res = write!(f, "{}", String::from_utf8_lossy(buf));
+        };
         unsafe {
-            let s =
-                tirocks_sys::crocksdb_table_properties_to_string(self as *const _ as _, &mut len);
-            let buf = slice::from_raw_parts(s as *mut u8, len);
-            let res = write!(f, "{}", String::from_utf8_lossy(buf));
-            libc::free(s as _);
-            res
+            let (ctx, fp) = util::wrap_string_receiver(&mut receiver);
+            tirocks_sys::crocksdb_table_properties_to_string(self as *const _ as _, ctx, Some(fp));
         }
+        res
     }
 }
 

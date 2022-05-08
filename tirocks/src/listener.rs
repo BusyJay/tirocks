@@ -7,7 +7,7 @@ use tirocks_sys::{
     rocksdb_SubcompactionJobInfo, rocksdb_WriteStallInfo,
 };
 
-use crate::Status;
+use crate::{RawDb, Status};
 
 use self::{
     job_info::{CompactionJobInfo, FlushJobInfo, SubcompactionJobInfo},
@@ -36,7 +36,7 @@ pub trait EventListener: Send + Sync {
     /// Note that the this function must be implemented in a way such that
     /// it should not run for an extended period of time before the function
     /// returns.  Otherwise, RocksDB may be blocked.
-    fn on_flush_begin(&self, _: &FlushJobInfo) {}
+    fn on_flush_begin(&self, _: &RawDb, _: &FlushJobInfo) {}
 
     /// A callback function to RocksDB which will be called whenever a
     /// registered RocksDB flushes a file.  The default implementation is
@@ -45,7 +45,7 @@ pub trait EventListener: Send + Sync {
     /// Note that the this function must be implemented in a way such that
     /// it should not run for an extended period of time before the function
     /// returns.  Otherwise, RocksDB may be blocked.
-    fn on_flush_completed(&self, _: &FlushJobInfo) {}
+    fn on_flush_completed(&self, _: &RawDb, _: &FlushJobInfo) {}
 
     /// A callback function to RocksDB which will be called before a
     /// RocksDB starts to compact.  The default implementation is
@@ -54,7 +54,7 @@ pub trait EventListener: Send + Sync {
     /// Note that the this function must be implemented in a way such that
     /// it should not run for an extended period of time before the function
     /// returns.  Otherwise, RocksDB may be blocked.
-    fn on_compaction_begin(&self, _: &CompactionJobInfo) {}
+    fn on_compaction_begin(&self, _: &RawDb, _: &CompactionJobInfo) {}
 
     /// A callback function for RocksDB which will be called whenever
     /// a registered RocksDB compacts a file. The default implementation
@@ -69,7 +69,7 @@ pub trait EventListener: Send + Sync {
     /// @param ci a reference to a CompactionJobInfo struct. 'ci' is released
     ///  after this function is returned, and must be copied if it is needed
     ///  outside of this function.
-    fn on_compaction_completed(&self, _: &CompactionJobInfo) {}
+    fn on_compaction_completed(&self, _: &RawDb, _: &CompactionJobInfo) {}
 
     /// A callback function for RocksDB which will be called each time when
     /// a registered RocksDB uses multiple subcompactions to compact a file. The
@@ -87,7 +87,7 @@ pub trait EventListener: Send + Sync {
     /// Note that the this function will run on the same thread as
     /// IngestExternalFile(), if this function is blocked, IngestExternalFile()
     /// will be blocked from finishing.
-    fn on_external_file_ingested(&self, _: &ExternalFileIngestionInfo) {}
+    fn on_external_file_ingested(&self, _: &RawDb, _: &ExternalFileIngestionInfo) {}
 
     /// A callback function for RocksDB which will be called before setting the
     /// background error status to a non-OK value. The new background error status
@@ -117,49 +117,47 @@ extern "C" fn destructor<E: EventListener>(ctx: *mut c_void) {
     }
 }
 
-// Maybe we should reuse db instance?
-// TODO: refactor DB implement so that we can convert DBInstance to DB.
 extern "C" fn on_flush_begin<E: EventListener>(
     ctx: *mut c_void,
-    _: *mut rocksdb_DB,
+    db: *mut rocksdb_DB,
     info: *const rocksdb_FlushJobInfo,
 ) {
     unsafe {
         let l = &*(ctx as *mut E);
-        l.on_flush_begin(FlushJobInfo::from_ptr(info));
+        l.on_flush_begin(RawDb::from_ptr(db), FlushJobInfo::from_ptr(info));
     }
 }
 
 extern "C" fn on_flush_completed<E: EventListener>(
     ctx: *mut c_void,
-    _: *mut rocksdb_DB,
+    db: *mut rocksdb_DB,
     info: *const rocksdb_FlushJobInfo,
 ) {
     unsafe {
         let l = &*(ctx as *mut E);
-        l.on_flush_completed(FlushJobInfo::from_ptr(info));
+        l.on_flush_completed(RawDb::from_ptr(db), FlushJobInfo::from_ptr(info));
     }
 }
 
 extern "C" fn on_compaction_begin<E: EventListener>(
     ctx: *mut c_void,
-    _: *mut rocksdb_DB,
+    db: *mut rocksdb_DB,
     info: *const rocksdb_CompactionJobInfo,
 ) {
     unsafe {
         let l = &*(ctx as *mut E);
-        l.on_compaction_begin(CompactionJobInfo::from_ptr(info));
+        l.on_compaction_begin(RawDb::from_ptr(db), CompactionJobInfo::from_ptr(info));
     }
 }
 
 extern "C" fn on_compaction_completed<E: EventListener>(
     ctx: *mut c_void,
-    _: *mut rocksdb_DB,
+    db: *mut rocksdb_DB,
     info: *const rocksdb_CompactionJobInfo,
 ) {
     unsafe {
         let l = &*(ctx as *mut E);
-        l.on_compaction_completed(CompactionJobInfo::from_ptr(info));
+        l.on_compaction_completed(RawDb::from_ptr(db), CompactionJobInfo::from_ptr(info));
     }
 }
 
@@ -185,12 +183,15 @@ extern "C" fn on_subcompaction_completed<E: EventListener>(
 
 extern "C" fn on_external_file_ingested<E: EventListener>(
     ctx: *mut c_void,
-    _: *mut rocksdb_DB,
+    db: *mut rocksdb_DB,
     info: *const rocksdb_ExternalFileIngestionInfo,
 ) {
     unsafe {
         let l = &*(ctx as *mut E);
-        l.on_external_file_ingested(ExternalFileIngestionInfo::from_ptr(info));
+        l.on_external_file_ingested(
+            RawDb::from_ptr(db),
+            ExternalFileIngestionInfo::from_ptr(info),
+        );
     }
 }
 

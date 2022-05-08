@@ -192,6 +192,8 @@ typedef struct crocksdb_sst_partitioner_factory_t
 typedef struct crocksdb_file_system_inspector_t
     crocksdb_file_system_inspector_t;
 
+typedef void (*bytes_receiver_cb)(void*, Slice);
+
 /* DB operations */
 
 extern C_ROCKSDB_LIBRARY_API DB* crocksdb_open(const Options* options,
@@ -273,11 +275,8 @@ extern C_ROCKSDB_LIBRARY_API DB* crocksdb_open_for_read_only_column_families(
     ColumnFamilyHandle** column_family_handles, bool error_if_log_file_exist,
     Status* s);
 
-extern C_ROCKSDB_LIBRARY_API char** crocksdb_list_column_families(
-    const DBOptions* options, Slice name, size_t* lencf, Status* s);
-
-extern C_ROCKSDB_LIBRARY_API void crocksdb_list_column_families_destroy(
-    char** list, size_t len);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_list_column_families(
+    const DBOptions* options, Slice name, void*, bytes_receiver_cb, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API ColumnFamilyHandle* crocksdb_create_column_family(
     DB* db, const ColumnFamilyOptions* column_family_options,
@@ -346,38 +345,23 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_write(DB* db,
                                                  const WriteOptions* options,
                                                  WriteBatch* batch, Status* s);
 
-/* Returns NULL if not found.  A malloc()ed array otherwise.
-   Stores the length of the array in *vallen. */
-extern C_ROCKSDB_LIBRARY_API char* crocksdb_get(DB* db,
-                                                const ReadOptions* options,
-                                                Slice key, size_t* vallen,
-                                                Status* s);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_get(DB* db,
+                                               const ReadOptions* options,
+                                               Slice key, void* ctx,
+                                               bytes_receiver_cb fp, Status* s);
 
-extern C_ROCKSDB_LIBRARY_API char* crocksdb_get_cf(
+extern C_ROCKSDB_LIBRARY_API void crocksdb_get_cf(
     DB* db, const ReadOptions* options, ColumnFamilyHandle* column_family,
-    Slice key, size_t* vallen, Status* s);
+    Slice key, void* ctx, bytes_receiver_cb fp, Status* s);
 
-// if values_list[i] == NULL and errs[i] == NULL,
-// then we got status.IsNotFound(), which we will not return.
-// all errors except status status.ok() and status.IsNotFound() are returned.
-//
-// errs, values_list and values_list_sizes must be num_keys in length,
-// allocated by the caller.
-// errs is a list of strings as opposed to the conventional one error,
-// where errs[i] is the status for retrieval of keys_list[i].
-// each non-NULL errs entry is a malloc()ed, null terminated string.
-// each non-NULL values_list entry is a malloc()ed array, with
-// the length for each stored in values_list_sizes[i].
 extern C_ROCKSDB_LIBRARY_API void crocksdb_multi_get(
-    DB* db, const ReadOptions* options, size_t num_keys,
-    const char* const* keys_list, const size_t* keys_list_sizes,
-    char** values_list, size_t* values_list_sizes, Status* statuses);
+    DB* db, const ReadOptions* options, size_t num_keys, const Slice* keys_list,
+    void* ctx, bytes_receiver_cb fp, Status* status_list);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_multi_get_cf(
     DB* db, const ReadOptions* options, ColumnFamilyHandle** column_families,
-    size_t num_keys, const char* const* keys_list,
-    const size_t* keys_list_sizes, char** values_list,
-    size_t* values_list_sizes, Status* statuses);
+    size_t num_keys, const Slice* keys_list, void* ctx, bytes_receiver_cb fp,
+    Status* status_list);
 
 extern C_ROCKSDB_LIBRARY_API Iterator* crocksdb_create_iterator(
     DB* db, const ReadOptions* options);
@@ -414,10 +398,12 @@ extern C_ROCKSDB_LIBRARY_API bool crocksdb_map_property_value(
 extern C_ROCKSDB_LIBRARY_API bool crocksdb_map_property_int_value(
     crocksdb_map_property_t* info, Slice propname, uint64_t*);
 
-extern C_ROCKSDB_LIBRARY_API char* crocksdb_property_value(DB* db,
-                                                           Slice propname);
-extern C_ROCKSDB_LIBRARY_API char* crocksdb_property_value_cf(
-    DB* db, ColumnFamilyHandle* column_family, Slice propname);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_property_value(DB* db,
+                                                          Slice propname, void*,
+                                                          bytes_receiver_cb);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_property_value_cf(
+    DB* db, ColumnFamilyHandle* column_family, Slice propname, void*,
+    bytes_receiver_cb);
 extern C_ROCKSDB_LIBRARY_API bool crocksdb_property_int_value_cf(
     DB* db, ColumnFamilyHandle* column_family, Slice propname, uint64_t*);
 extern C_ROCKSDB_LIBRARY_API bool crocksdb_property_aggregated_int_value(
@@ -999,15 +985,14 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_statistics_reset(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_statistics_destroy(
     crocksdb_statistics_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_statistics_get_string(
-    crocksdb_statistics_t* ptr, void* ctx, void (*fp)(void*, Slice));
+    crocksdb_statistics_t* ptr, void* ctx, bytes_receiver_cb);
 extern C_ROCKSDB_LIBRARY_API uint64_t crocksdb_statistics_get_ticker_count(
     crocksdb_statistics_t*, uint32_t ticker_type);
 extern C_ROCKSDB_LIBRARY_API uint64_t
 crocksdb_statistics_get_and_reset_ticker_count(crocksdb_statistics_t*,
                                                uint32_t ticker_type);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_statistics_get_histogram_string(
-    crocksdb_statistics_t* ptr, uint32_t type, void* ctx,
-    void (*fp)(void*, Slice));
+    crocksdb_statistics_t* ptr, uint32_t type, void* ctx, bytes_receiver_cb);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_statistics_get_histogram(
     crocksdb_statistics_t* ptr, uint32_t type, HistogramData*);
 
@@ -1632,6 +1617,10 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_get_pinned(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_get_pinned_cf(
     DB* db, const ReadOptions* options, ColumnFamilyHandle* column_family,
     Slice key, PinnableSlice* val, Status* s);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_multiget_pinned_cf(
+    DB* db, const ReadOptions* options, ColumnFamilyHandle* column_family,
+    const size_t num_keys, const Slice* keys, PinnableSlice* values, Status* s,
+    bool input_sorted);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_pinnableslice_destroy(
     PinnableSlice* v);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_pinnableslice_reset(
@@ -1711,8 +1700,8 @@ extern C_ROCKSDB_LIBRARY_API void
 crocksdb_table_properties_get_compression_options(const TableProperties*,
                                                   Slice* val);
 
-extern C_ROCKSDB_LIBRARY_API char* crocksdb_table_properties_to_string(
-    const TableProperties*, size_t* len);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_table_properties_to_string(
+    const TableProperties* props, void* ctx, bytes_receiver_cb fp);
 
 extern C_ROCKSDB_LIBRARY_API const UserCollectedProperties*
 crocksdb_table_properties_get_user_properties(const TableProperties*);
@@ -2184,7 +2173,7 @@ extern C_ROCKSDB_LIBRARY_API void ctitandb_decode_blob_index(
     Slice value, ctitandb_blob_index_t* index, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_encode_blob_index(
-    const ctitandb_blob_index_t* index, char** value, size_t* value_size);
+    const ctitandb_blob_index_t* index, void* ctx, bytes_receiver_cb fp);
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_options_set_disable_background_gc(
     TitanDBOptions* options, bool disable);

@@ -29,8 +29,7 @@ pub use flush::{
 };
 pub use read::{ReadOptions, ReadTier};
 use tirocks_sys::{
-    r, rocksdb_CompressionType, rocksdb_Options, rocksdb_Slice, rocksdb_titandb_TitanCFOptions,
-    rocksdb_titandb_TitanOptions,
+    r, rocksdb_CompressionType, rocksdb_Options, rocksdb_Slice, rocksdb_titandb_TitanOptions,
 };
 pub use write::WriteOptions;
 

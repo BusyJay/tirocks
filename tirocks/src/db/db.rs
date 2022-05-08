@@ -1,10 +1,8 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use libc::c_void;
-use std::ffi::CStr;
 use std::ops::Deref;
 use std::path::Path;
-use std::slice;
+use std::str;
 use std::sync::{Arc, Mutex};
 use tirocks_sys::{r, rocksdb_DB};
 
@@ -14,7 +12,7 @@ use crate::option::{
     RawDbOptions, RawOptions, RawTitanOptions, ReadOptions, TitanCfOptions, WriteOptions,
 };
 use crate::properties::table::user::SequenceNumber;
-use crate::util::{check_status, range_to_rocks, split_pairs};
+use crate::util::{self, check_status, range_to_rocks, split_pairs};
 use crate::write_batch::WriteBatch;
 use crate::{comparator::SysComparator, env::Env};
 use crate::{Code, PinSlice, RawIterator, Result, Status};
@@ -186,23 +184,22 @@ impl RawDb {
         key: &[u8],
     ) -> Result<Option<Vec<u8>>> {
         let mut s = Status::default();
-        let mut len = 0;
-        let val_ptr = unsafe {
+        let mut res = None;
+        unsafe {
+            let mut f = |r: &[u8]| res = Some(r.to_vec());
+            let (ctx, fp) = util::wrap_string_receiver(&mut f);
             tirocks_sys::crocksdb_get_cf(
                 self.as_ptr(),
                 opt.get() as _,
                 cf.get(),
                 r(key),
-                &mut len,
+                ctx,
+                Some(fp),
                 s.as_mut_ptr(),
             )
         };
         if s.ok() {
-            unsafe {
-                let res = slice::from_raw_parts(val_ptr as *const u8, len).to_vec();
-                libc::free(val_ptr as *mut c_void);
-                Ok(Some(res))
-            }
+            Ok(res)
         } else if s.code() == Code::kNotFound {
             Ok(None)
         } else {
@@ -478,7 +475,7 @@ impl RawDb {
 #[derive(Debug)]
 pub struct Db {
     ptr: *mut rocksdb_DB,
-    env: Option<Arc<Env>>,
+    _env: Option<Arc<Env>>,
     comparator: Vec<Arc<SysComparator>>,
     handles: Vec<RefCountedColumnFamilyHandle>,
     is_titan: bool,
@@ -507,7 +504,7 @@ impl Db {
     ) -> Self {
         Self {
             ptr,
-            env,
+            _env: env,
             comparator,
             handles,
             is_titan,
@@ -523,41 +520,28 @@ impl Db {
     }
 
     pub fn list_column_families(db: DbOptions, path: impl AsRef<Path>) -> Result<Vec<String>> {
-        unsafe fn cleanup(ptr: *mut *mut i8, off: usize, total: usize) {
-            for i in off..total {
-                libc::free(*ptr.add(i) as *mut c_void);
-            }
-            libc::free(ptr as *mut c_void);
-        }
-        let mut len: usize = 0;
+        let mut convert_s = Status::default();
         let mut s = Status::default();
-        let names_ptr = unsafe {
+        let mut names = Vec::new();
+        unsafe {
+            let mut handle = |name: &[u8]| match str::from_utf8(name) {
+                Ok(n) => names.push(n.to_string()),
+                Err(e) => {
+                    convert_s = Status::with_error(Code::kCorruption, format!("{}", e));
+                }
+            };
+            let (ctx, fp) = util::wrap_string_receiver(&mut handle);
             tirocks_sys::crocksdb_list_column_families(
                 db.get(),
                 path.as_ref().path_to_slice(),
-                &mut len,
+                ctx,
+                Some(fp),
                 s.as_mut_ptr(),
             )
-        };
+        }
 
         check_status!(s)?;
-
-        let mut names = Vec::with_capacity(len);
-        unsafe {
-            for i in 0..len {
-                let n_ptr = *names_ptr.add(i);
-                let name = CStr::from_ptr(n_ptr);
-                match name.to_str() {
-                    Ok(n) => names.push(n.to_string()),
-                    Err(e) => {
-                        cleanup(names_ptr, i, len);
-                        return Err(Status::with_error(Code::kCorruption, format!("{}", e)));
-                    }
-                }
-                libc::free(n_ptr as *mut c_void);
-            }
-            libc::free(names_ptr as *mut c_void);
-        }
+        check_status!(convert_s)?;
         Ok(names)
     }
 
@@ -614,7 +598,7 @@ impl Db {
         let pos = self
             .handles
             .iter()
-            .position(|h| unsafe { h.name().map_or(false, |n| n == name) });
+            .position(|h| h.name().map_or(false, |n| n == name));
         let pos = match pos {
             Some(p) => p,
             None => return Err(Status::with_code(Code::kNotFound)),

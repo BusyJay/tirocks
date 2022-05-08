@@ -1433,6 +1433,8 @@ pub struct crocksdb_sst_partitioner_factory_t {
 pub struct crocksdb_file_system_inspector_t {
     _unused: [u8; 0],
 }
+pub type bytes_receiver_cb =
+    ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: rocksdb_Slice)>;
 extern "C" {
     pub fn crocksdb_open(
         options: *const rocksdb_Options,
@@ -1579,12 +1581,10 @@ extern "C" {
     pub fn crocksdb_list_column_families(
         options: *const rocksdb_DBOptions,
         name: rocksdb_Slice,
-        lencf: *mut usize,
+        arg1: *mut libc::c_void,
+        arg2: bytes_receiver_cb,
         s: *mut rocksdb_Status,
-    ) -> *mut *mut libc::c_char;
-}
-extern "C" {
-    pub fn crocksdb_list_column_families_destroy(list: *mut *mut libc::c_char, len: usize);
+    );
 }
 extern "C" {
     pub fn crocksdb_create_column_family(
@@ -1733,9 +1733,10 @@ extern "C" {
         db: *mut rocksdb_DB,
         options: *const rocksdb_ReadOptions,
         key: rocksdb_Slice,
-        vallen: *mut usize,
+        ctx: *mut libc::c_void,
+        fp: bytes_receiver_cb,
         s: *mut rocksdb_Status,
-    ) -> *mut libc::c_char;
+    );
 }
 extern "C" {
     pub fn crocksdb_get_cf(
@@ -1743,20 +1744,20 @@ extern "C" {
         options: *const rocksdb_ReadOptions,
         column_family: *mut rocksdb_ColumnFamilyHandle,
         key: rocksdb_Slice,
-        vallen: *mut usize,
+        ctx: *mut libc::c_void,
+        fp: bytes_receiver_cb,
         s: *mut rocksdb_Status,
-    ) -> *mut libc::c_char;
+    );
 }
 extern "C" {
     pub fn crocksdb_multi_get(
         db: *mut rocksdb_DB,
         options: *const rocksdb_ReadOptions,
         num_keys: usize,
-        keys_list: *const *const libc::c_char,
-        keys_list_sizes: *const usize,
-        values_list: *mut *mut libc::c_char,
-        values_list_sizes: *mut usize,
-        statuses: *mut rocksdb_Status,
+        keys_list: *const rocksdb_Slice,
+        ctx: *mut libc::c_void,
+        fp: bytes_receiver_cb,
+        status_list: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -1765,11 +1766,10 @@ extern "C" {
         options: *const rocksdb_ReadOptions,
         column_families: *mut *mut rocksdb_ColumnFamilyHandle,
         num_keys: usize,
-        keys_list: *const *const libc::c_char,
-        keys_list_sizes: *const usize,
-        values_list: *mut *mut libc::c_char,
-        values_list_sizes: *mut usize,
-        statuses: *mut rocksdb_Status,
+        keys_list: *const rocksdb_Slice,
+        ctx: *mut libc::c_void,
+        fp: bytes_receiver_cb,
+        status_list: *mut rocksdb_Status,
     );
 }
 extern "C" {
@@ -1839,14 +1839,18 @@ extern "C" {
     pub fn crocksdb_property_value(
         db: *mut rocksdb_DB,
         propname: rocksdb_Slice,
-    ) -> *mut libc::c_char;
+        arg1: *mut libc::c_void,
+        arg2: bytes_receiver_cb,
+    );
 }
 extern "C" {
     pub fn crocksdb_property_value_cf(
         db: *mut rocksdb_DB,
         column_family: *mut rocksdb_ColumnFamilyHandle,
         propname: rocksdb_Slice,
-    ) -> *mut libc::c_char;
+        arg1: *mut libc::c_void,
+        arg2: bytes_receiver_cb,
+    );
 }
 extern "C" {
     pub fn crocksdb_property_int_value_cf(
@@ -3181,9 +3185,7 @@ extern "C" {
     pub fn crocksdb_statistics_get_string(
         ptr: *mut crocksdb_statistics_t,
         ctx: *mut libc::c_void,
-        fp: ::std::option::Option<
-            unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: rocksdb_Slice),
-        >,
+        arg1: bytes_receiver_cb,
     );
 }
 extern "C" {
@@ -3203,9 +3205,7 @@ extern "C" {
         ptr: *mut crocksdb_statistics_t,
         type_: u32,
         ctx: *mut libc::c_void,
-        fp: ::std::option::Option<
-            unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: rocksdb_Slice),
-        >,
+        arg1: bytes_receiver_cb,
     );
 }
 extern "C" {
@@ -4486,6 +4486,18 @@ extern "C" {
     );
 }
 extern "C" {
+    pub fn crocksdb_multiget_pinned_cf(
+        db: *mut rocksdb_DB,
+        options: *const rocksdb_ReadOptions,
+        column_family: *mut rocksdb_ColumnFamilyHandle,
+        num_keys: usize,
+        keys: *const rocksdb_Slice,
+        values: *mut rocksdb_PinnableSlice,
+        s: *mut rocksdb_Status,
+        input_sorted: bool,
+    );
+}
+extern "C" {
     pub fn crocksdb_pinnableslice_destroy(v: *mut rocksdb_PinnableSlice);
 }
 extern "C" {
@@ -4637,9 +4649,10 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_table_properties_to_string(
-        arg1: *const rocksdb_TableProperties,
-        len: *mut usize,
-    ) -> *mut libc::c_char;
+        props: *const rocksdb_TableProperties,
+        ctx: *mut libc::c_void,
+        fp: bytes_receiver_cb,
+    );
 }
 extern "C" {
     pub fn crocksdb_table_properties_get_user_properties(
@@ -5447,8 +5460,8 @@ extern "C" {
 extern "C" {
     pub fn ctitandb_encode_blob_index(
         index: *const ctitandb_blob_index_t,
-        value: *mut *mut libc::c_char,
-        value_size: *mut usize,
+        ctx: *mut libc::c_void,
+        fp: bytes_receiver_cb,
     );
 }
 extern "C" {

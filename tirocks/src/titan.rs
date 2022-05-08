@@ -3,12 +3,14 @@
 use std::{
     mem::MaybeUninit,
     ops::{Deref, DerefMut},
-    ptr, slice,
 };
 
 use tirocks_sys::{ctitandb_blob_index_t, r};
 
-use crate::{util::check_status, Result, Status};
+use crate::{
+    util::{self, check_status},
+    Result, Status,
+};
 
 /// Format of blob index (not fixed size):
 ///
@@ -40,18 +42,12 @@ impl BlobIndex {
     }
 
     pub fn encode(&self) -> Vec<u8> {
-        let mut value = ptr::null_mut();
-        let mut value_size = 0;
+        let mut content = vec![];
         unsafe {
-            tirocks_sys::ctitandb_encode_blob_index(
-                &self as *const _ as _,
-                &mut value,
-                &mut value_size,
-            );
-            let slice = slice::from_raw_parts(value as *mut u8, value_size);
-            let vec = slice.to_vec();
-            libc::free(value as *mut libc::c_void);
-            vec
+            let mut handle = |res: &[u8]| content.extend_from_slice(res);
+            let (ctx, fp) = util::wrap_string_receiver(&mut handle);
+            tirocks_sys::ctitandb_encode_blob_index(&self as *const _ as _, ctx, Some(fp));
+            content
         }
     }
 }

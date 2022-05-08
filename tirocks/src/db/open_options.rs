@@ -1,6 +1,6 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::{path::Path, ptr::NonNull};
+use std::path::Path;
 use tirocks_sys::r;
 
 use crate::{
@@ -8,10 +8,7 @@ use crate::{
     Result, Status,
 };
 
-use super::{
-    cf::{RawColumnFamilyHandle, RefCountedColumnFamilyHandle},
-    db::Db,
-};
+use super::{cf::RefCountedColumnFamilyHandle, db::Db};
 
 #[derive(Default, Debug)]
 pub struct DefaultCfOnlyBuilder {
@@ -154,7 +151,7 @@ impl OpenOptions {
     pub fn open(&self, path: impl AsRef<Path>) -> Result<Db> {
         let mut s = Status::default();
         let mut comparator = vec![];
-        let mut env = None;
+        let env;
         let mut handles = Vec::with_capacity(0);
         let mut is_titan = false;
         let ptr = unsafe {

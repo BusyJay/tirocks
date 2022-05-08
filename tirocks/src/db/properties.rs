@@ -1,6 +1,5 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use libc::c_void;
 use tirocks_sys::r;
 
 use crate::{
@@ -8,12 +7,11 @@ use crate::{
         table::builtin::OwnedTablePropertiesCollection, IntProperty, MapProperty, Property,
         PropertyMap,
     },
-    util::{check_status, range_to_rocks},
+    util::{self, check_status, range_to_rocks},
     RawDb, Result, Status,
 };
 
 use super::cf::RawColumnFamilyHandle;
-use std::ffi::CStr;
 
 impl RawDb {
     /// DB implementations can export properties about their state via this method. If "prop"
@@ -23,14 +21,11 @@ impl RawDb {
     pub fn property(&self, cf: &RawColumnFamilyHandle, prop: &impl Property) -> Option<Vec<u8>> {
         let key = prop.key();
         unsafe {
-            let ptr = tirocks_sys::crocksdb_property_value_cf(self.as_ptr(), cf.get(), r(key));
-            if !ptr.is_null() {
-                let res = Some(CStr::from_ptr(ptr).to_bytes().to_vec());
-                libc::free(ptr as *mut c_void);
-                res
-            } else {
-                None
-            }
+            let mut content = None;
+            let mut handle = |v: &[u8]| content = Some(v.to_vec());
+            let (ctx, fp) = util::wrap_string_receiver(&mut handle);
+            tirocks_sys::crocksdb_property_value_cf(self.as_ptr(), cf.get(), r(key), ctx, Some(fp));
+            content
         }
     }
 

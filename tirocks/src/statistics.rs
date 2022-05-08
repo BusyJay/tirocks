@@ -120,15 +120,15 @@ impl Statistics {
 impl Display for Statistics {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut res = None;
+        let mut res = Ok(());
         let mut receiver = |buf: &[u8]| {
-            res = Some(write!(f, "{}", String::from_utf8_lossy(buf)));
+            res = write!(f, "{}", String::from_utf8_lossy(buf));
         };
         unsafe {
             let (ctx, fp) = util::wrap_string_receiver(&mut receiver);
             tirocks_sys::crocksdb_statistics_get_string(self.ptr, ctx, Some(fp));
         }
-        res.unwrap()
+        res
     }
 }
 

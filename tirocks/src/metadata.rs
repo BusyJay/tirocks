@@ -10,11 +10,7 @@ use tirocks_sys::{
     rocksdb_LiveFileMetaData, rocksdb_SstFileMetaData, s,
 };
 
-use crate::{
-    db::RawColumnFamilyHandle,
-    util::{check_status, range_to_rocks},
-    RawDb, Result, Status,
-};
+use crate::RawDb;
 
 pub type SizeApproximationOptions = tirocks_sys::rocksdb_SizeApproximationOptions;
 

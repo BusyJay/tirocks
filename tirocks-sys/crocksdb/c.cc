@@ -698,12 +698,6 @@ struct crocksdb_file_system_inspector_t {
   std::shared_ptr<FileSystemInspector> rep;
 };
 
-static char* CopyString(const std::string& str) {
-  char* result = reinterpret_cast<char*>(malloc(sizeof(char) * str.size()));
-  memcpy(result, str.data(), sizeof(char) * str.size());
-  return result;
-}
-
 DB* crocksdb_open(const Options* options, Slice name, Status* s) {
   DB* db;
   *s = DB::Open(*options, name.ToString(), &db);
@@ -907,28 +901,17 @@ DB* crocksdb_open_for_read_only_column_families(
   return db;
 }
 
-char** crocksdb_list_column_families(const DBOptions* options, Slice name,
-                                     size_t* lencfs, Status* s) {
+void crocksdb_list_column_families(const DBOptions* options, Slice name,
+                                   void* ctx, bytes_receiver_cb fp, Status* s) {
   std::vector<std::string> fams;
   *s = DB::ListColumnFamilies(*options, name.ToString(), &fams);
   if (!s->ok()) {
-    return nullptr;
+    return;
   }
 
-  *lencfs = fams.size();
-  char** column_families =
-      static_cast<char**>(malloc(sizeof(char*) * fams.size()));
   for (size_t i = 0; i < fams.size(); i++) {
-    column_families[i] = strdup(fams[i].c_str());
+    fp(ctx, fams[i]);
   }
-  return column_families;
-}
-
-void crocksdb_list_column_families_destroy(char** list, size_t len) {
-  for (size_t i = 0; i < len; ++i) {
-    free(list[i]);
-  }
-  free(list);
 }
 
 ColumnFamilyHandle* crocksdb_create_column_family(
@@ -1023,66 +1006,52 @@ void crocksdb_write(DB* db, const WriteOptions* options, WriteBatch* batch,
   *s = db->Write(*options, batch);
 }
 
-char* crocksdb_get(DB* db, const ReadOptions* options, Slice key,
-                   size_t* vallen, Status* s) {
+void crocksdb_get(DB* db, const ReadOptions* options, Slice key, void* ctx,
+                  bytes_receiver_cb fp, Status* s) {
   std::string tmp;
   *s = db->Get(*options, key, &tmp);
   if (s->ok()) {
-    *vallen = tmp.size();
-    return CopyString(tmp);
+    fp(ctx, tmp);
   }
-  return nullptr;
 }
 
-char* crocksdb_get_cf(DB* db, const ReadOptions* options,
-                      ColumnFamilyHandle* column_family, Slice key,
-                      size_t* vallen, Status* s) {
+void crocksdb_get_cf(DB* db, const ReadOptions* options,
+                     ColumnFamilyHandle* column_family, Slice key, void* ctx,
+                     bytes_receiver_cb fp, Status* s) {
   std::string tmp;
   *s = db->Get(*options, column_family, key, &tmp);
   if (s->ok()) {
-    *vallen = tmp.size();
-    return CopyString(tmp);
+    fp(ctx, tmp);
   }
-  return nullptr;
 }
 
 void crocksdb_multi_get(DB* db, const ReadOptions* options, size_t num_keys,
-                        const char* const* keys_list,
-                        const size_t* keys_list_sizes, char** values_list,
-                        size_t* values_list_sizes, Status* status_list) {
-  std::vector<Slice> keys(num_keys);
-  for (size_t i = 0; i < num_keys; i++) {
-    keys[i] = Slice(keys_list[i], keys_list_sizes[i]);
-  }
+                        const Slice* keys_list, void* ctx, bytes_receiver_cb fp,
+                        Status* status_list) {
+  std::vector<Slice> keys(keys_list, keys_list + num_keys);
   std::vector<std::string> values(num_keys);
   std::vector<Status> statuses = db->MultiGet(*options, keys, &values);
   for (size_t i = 0; i < num_keys; i++) {
     status_list[i] = statuses[i];
     if (status_list[i].ok()) {
-      values_list[i] = CopyString(values[i]);
-      values_list_sizes[i] = values[i].size();
+      fp(ctx, values[i]);
     }
   }
 }
 
 void crocksdb_multi_get_cf(DB* db, const ReadOptions* options,
                            ColumnFamilyHandle** column_families,
-                           size_t num_keys, const char* const* keys_list,
-                           const size_t* keys_list_sizes, char** values_list,
-                           size_t* values_list_sizes, Status* status_list) {
-  std::vector<Slice> keys(num_keys);
-  std::vector<ColumnFamilyHandle*> cfs(num_keys);
-  for (size_t i = 0; i < num_keys; i++) {
-    keys[i] = Slice(keys_list[i], keys_list_sizes[i]);
-    cfs[i] = column_families[i];
-  }
+                           size_t num_keys, const Slice* keys_list, void* ctx,
+                           bytes_receiver_cb fp, Status* status_list) {
+  std::vector<Slice> keys(keys_list, keys_list + num_keys);
+  std::vector<ColumnFamilyHandle*> cfs(column_families,
+                                       column_families + num_keys);
   std::vector<std::string> values(num_keys);
   std::vector<Status> statuses = db->MultiGet(*options, cfs, keys, &values);
   for (size_t i = 0; i < num_keys; i++) {
     status_list[i] = statuses[i];
     if (status_list[i].ok()) {
-      values_list[i] = CopyString(values[i]);
-      values_list_sizes[i] = values[i].size();
+      fp(ctx, values[i]);
     }
   }
 }
@@ -1099,12 +1068,10 @@ Iterator* crocksdb_create_iterator_cf(DB* db, const ReadOptions* options,
 void crocksdb_create_iterators(DB* db, const ReadOptions* opts,
                                ColumnFamilyHandle** column_families,
                                Iterator** iterators, size_t size, Status* s) {
-  std::vector<ColumnFamilyHandle*> column_families_vec(size);
-  for (size_t i = 0; i < size; i++) {
-    column_families_vec.push_back(column_families[i]);
-  }
+  std::vector<ColumnFamilyHandle*> column_families_vec(column_families,
+                                                       column_families + size);
 
-  std::vector<Iterator*> res;
+  std::vector<Iterator*> res(size);
   *s = db->NewIterators(*opts, column_families_vec, &res);
   if (!s->ok()) {
     for (size_t i = 0; i < res.size(); i++) {
@@ -1167,24 +1134,20 @@ bool crocksdb_map_property_int_value(crocksdb_map_property_t* info,
   }
 }
 
-char* crocksdb_property_value(DB* db, Slice propname) {
+void crocksdb_property_value(DB* db, Slice propname, void* ctx,
+                             bytes_receiver_cb fp) {
   std::string tmp;
   if (db->GetProperty(propname, &tmp)) {
-    // We use strdup() since we expect human readable output.
-    return strdup(tmp.c_str());
-  } else {
-    return nullptr;
+    fp(ctx, tmp);
   }
 }
 
-char* crocksdb_property_value_cf(DB* db, ColumnFamilyHandle* column_family,
-                                 Slice propname) {
+void crocksdb_property_value_cf(DB* db, ColumnFamilyHandle* column_family,
+                                Slice propname, void* ctx,
+                                bytes_receiver_cb fp) {
   std::string tmp;
   if (db->GetProperty(column_family, Slice(propname), &tmp)) {
-    // We use strdup() since we expect human readable output.
-    return strdup(tmp.c_str());
-  } else {
-    return nullptr;
+    fp(ctx, tmp);
   }
 }
 
@@ -1258,10 +1221,8 @@ void crocksdb_flush_cf(DB* db, const FlushOptions* options,
 void crocksdb_flush_cfs(DB* db, const FlushOptions* options,
                         ColumnFamilyHandle* const* column_families,
                         int num_handles, Status* s) {
-  std::vector<rocksdb::ColumnFamilyHandle*> handles(num_handles);
-  for (int i = 0; i < num_handles; i++) {
-    handles[i] = column_families[i];
-  }
+  std::vector<rocksdb::ColumnFamilyHandle*> handles(
+      column_families, column_families + num_handles);
   *s = db->Flush(*options, handles);
 }
 
@@ -2829,7 +2790,7 @@ void crocksdb_statistics_reset(crocksdb_statistics_t* s) {
 void crocksdb_statistics_destroy(crocksdb_statistics_t* ptr) { delete ptr; }
 
 void crocksdb_statistics_get_string(crocksdb_statistics_t* ptr, void* ctx,
-                                    void (*fp)(void*, Slice)) {
+                                    bytes_receiver_cb fp) {
   rocksdb::Statistics* statistics = ptr->statistics.get();
   std::string s = statistics->ToString();
   fp(ctx, s);
@@ -2849,7 +2810,7 @@ uint64_t crocksdb_statistics_get_and_reset_ticker_count(
 
 void crocksdb_statistics_get_histogram_string(crocksdb_statistics_t* ptr,
                                               uint32_t type, void* ctx,
-                                              void (*fp)(void*, Slice)) {
+                                              bytes_receiver_cb fp) {
   rocksdb::Statistics* statistics = ptr->statistics.get();
   std::string s = statistics->getHistogramString(type);
   fp(ctx, s);
@@ -3895,6 +3856,15 @@ void crocksdb_get_pinned_cf(DB* db, const ReadOptions* options,
   *s = db->Get(*options, column_family, key, val);
 }
 
+void crocksdb_multiget_pinned_cf(DB* db, const ReadOptions* options,
+                                 ColumnFamilyHandle* column_family,
+                                 const size_t num_keys, const Slice* keys,
+                                 PinnableSlice* values, Status* s,
+                                 bool input_sorted) {
+  db->MultiGet(*options, column_family, num_keys, keys, values, s,
+               input_sorted);
+}
+
 void crocksdb_pinnableslice_destroy(PinnableSlice* v) { delete v; }
 
 void crocksdb_pinnableslice_reset(PinnableSlice* v) { v->Reset(); }
@@ -4066,11 +4036,10 @@ void crocksdb_table_properties_get_compression_options(
   *val = props->compression_options;
 }
 
-char* crocksdb_table_properties_to_string(const TableProperties* props,
-                                          size_t* len) {
+void crocksdb_table_properties_to_string(const TableProperties* props,
+                                         void* ctx, bytes_receiver_cb fp) {
   auto s = props->ToString();
-  *len = s.size();
-  return strndup(s.data(), s.size());
+  fp(ctx, s);
 }
 
 const UserCollectedProperties* crocksdb_table_properties_get_user_properties(
@@ -5144,16 +5113,15 @@ void ctitandb_decode_blob_index(Slice value, ctitandb_blob_index_t* index,
   index->blob_size = bi.blob_handle.size;
 }
 
-void ctitandb_encode_blob_index(const ctitandb_blob_index_t* index,
-                                char** value, size_t* value_size) {
+void ctitandb_encode_blob_index(const ctitandb_blob_index_t* index, void* ctx,
+                                bytes_receiver_cb fp) {
   BlobIndex bi;
   bi.file_number = index->file_number;
   bi.blob_handle.offset = index->blob_offset;
   bi.blob_handle.size = index->blob_size;
   std::string result;
   bi.EncodeTo(&result);
-  *value = CopyString(result);
-  *value_size = result.size();
+  fp(ctx, result);
 }
 
 void ctitandb_options_set_disable_background_gc(TitanDBOptions* options,
@@ -5271,10 +5239,8 @@ Iterator* ctitandb_create_iterator_cf(DB* db,
 void ctitandb_create_iterators(DB* db, const TitanReadOptions* titan_options,
                                ColumnFamilyHandle** column_families,
                                Iterator** iterators, size_t size, Status* s) {
-  std::vector<ColumnFamilyHandle*> column_families_vec(size);
-  for (size_t i = 0; i < size; i++) {
-    column_families_vec.push_back(column_families[i]);
-  }
+  std::vector<ColumnFamilyHandle*> column_families_vec(column_families,
+                                                       column_families + size);
 
   std::vector<Iterator*> res;
   *s = static_cast<TitanDB*>(db)->NewIterators(*titan_options,
