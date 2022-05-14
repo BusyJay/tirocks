@@ -6,7 +6,7 @@ use std::str;
 use std::sync::{Arc, Mutex};
 use tirocks_sys::{r, rocksdb_DB};
 
-use crate::metadata::{ColumnFamilyMetaData, SizeApproximationOptions};
+use crate::metadata::{CfMetaData, SizeApproximationOptions};
 use crate::option::{
     CfOptions, DbOptions, OwnedRawDbOptions, OwnedRawTitanDbOptions, PathToSlice, RawCfOptions,
     RawDbOptions, RawOptions, RawTitanOptions, ReadOptions, TitanCfOptions, WriteOptions,
@@ -353,7 +353,7 @@ impl RawDb {
     ///
     /// Existing data will be cleared first.
     #[inline]
-    pub fn cf_metadata(&self, cf: &RawColumnFamilyHandle, data: &mut ColumnFamilyMetaData) {
+    pub fn cf_metadata(&self, cf: &RawColumnFamilyHandle, data: &mut CfMetaData) {
         unsafe {
             tirocks_sys::crocksdb_get_column_family_meta_data(
                 self.as_ptr(),
@@ -383,7 +383,7 @@ impl RawDb {
             let mut s = Status::default();
             tirocks_sys::crocksdb_approximate_sizes_cf(
                 self.as_ptr(),
-                opt,
+                opt.as_ptr(),
                 cf.get(),
                 raw_ranges.as_ptr(),
                 raw_ranges.len() as i32,
@@ -472,6 +472,9 @@ impl RawDb {
     }
 }
 
+unsafe impl Sync for RawDb {}
+unsafe impl Send for RawDb {}
+
 #[derive(Debug)]
 pub struct Db {
     ptr: *mut rocksdb_DB,
@@ -484,11 +487,8 @@ pub struct Db {
 impl Drop for Db {
     #[inline]
     fn drop(&mut self) {
+        self.handles.clear();
         unsafe {
-            for h in &mut self.handles {
-                // TODO: may should log.
-                let _ = h.maybe_drop(self.ptr);
-            }
             tirocks_sys::crocksdb_destroy(self.ptr as _);
         }
     }
@@ -511,9 +511,12 @@ impl Db {
         }
     }
 
-    pub fn close(self) -> Status {
+    pub fn close(mut self) -> Status {
         let mut s = Status::default();
         unsafe {
+            // In RocksDB, it's OK to close db first, but TitanDB will destroy
+            // based db in close.
+            self.handles.clear();
             tirocks_sys::crocksdb_close(self.ptr, s.as_mut_ptr());
         }
         s
@@ -676,3 +679,6 @@ impl Deref for Db {
         unsafe { &*(self.ptr as *mut RawDb) }
     }
 }
+
+unsafe impl Sync for Db {}
+unsafe impl Send for Db {}

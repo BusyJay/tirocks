@@ -1,10 +1,13 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::path::Path;
-use tirocks_sys::r;
+use std::{path::Path, sync::Arc};
+use tirocks_sys::{r, rocksdb_ColumnFamilyHandle, rocksdb_DB};
 
 use crate::{
+    comparator::SysComparator,
+    env::Env,
     option::{CfOptions, DbOptions, Options, PathToSlice, TitanCfOptions, TitanDbOptions},
+    util::check_status,
     Result, Status,
 };
 
@@ -18,19 +21,32 @@ pub struct DefaultCfOnlyBuilder {
 }
 
 impl DefaultCfOnlyBuilder {
-    pub fn set_option(&mut self, opt: Options) -> &mut Self {
+    #[inline]
+    pub fn set_options(&mut self, opt: Options) -> &mut Self {
         self.opt = opt;
         self
     }
 
+    #[inline]
     pub fn set_ttl(&mut self, ttl: i32) -> &mut Self {
         self.ttl = Some(ttl);
         self
     }
 
+    #[inline]
     pub fn set_read_only(&mut self, error_if_log_exists: bool) -> &mut Self {
         self.error_if_log_exists = Some(error_if_log_exists);
         self
+    }
+
+    #[inline]
+    pub fn options_mut(&mut self) -> &mut Options {
+        &mut self.opt
+    }
+
+    #[inline]
+    pub fn options(&self) -> &Options {
+        &self.opt
     }
 }
 
@@ -104,157 +120,153 @@ impl MultiCfTitanBuilder {
     }
 }
 
-#[derive(Debug)]
-enum OptionSet {
-    DefaultCfOnly(DefaultCfOnlyBuilder),
-    MultiCf(MultiCfBuilder),
-    MultiCfTitan(MultiCfTitanBuilder),
-}
+pub trait OpenOptions {
+    // Open the db and check if it's titan.
+    unsafe fn open_raw(
+        &self,
+        comparator: &mut Vec<Arc<SysComparator>>,
+        env: &mut Option<Arc<Env>>,
+        handles: &mut Vec<*mut rocksdb_ColumnFamilyHandle>,
+        path: &Path,
+    ) -> Result<(*mut rocksdb_DB, bool)>;
 
-impl From<DefaultCfOnlyBuilder> for OpenOptions {
-    fn from(builder: DefaultCfOnlyBuilder) -> Self {
-        OpenOptions {
-            opt_set: OptionSet::DefaultCfOnly(builder),
-        }
-    }
-}
-
-impl From<MultiCfBuilder> for OpenOptions {
-    fn from(builder: MultiCfBuilder) -> Self {
-        OpenOptions {
-            opt_set: OptionSet::MultiCf(builder),
-        }
-    }
-}
-
-impl From<MultiCfTitanBuilder> for OpenOptions {
-    fn from(builder: MultiCfTitanBuilder) -> Self {
-        OpenOptions {
-            opt_set: OptionSet::MultiCfTitan(builder),
-        }
-    }
-}
-
-pub struct OpenOptions {
-    opt_set: OptionSet,
-}
-
-impl Default for OpenOptions {
-    fn default() -> Self {
-        OpenOptions {
-            opt_set: OptionSet::DefaultCfOnly(DefaultCfOnlyBuilder::default()),
-        }
-    }
-}
-
-impl OpenOptions {
-    pub fn open(&self, path: impl AsRef<Path>) -> Result<Db> {
-        let mut s = Status::default();
+    fn open(&self, path: &Path) -> Result<Db> {
         let mut comparator = vec![];
-        let env;
+        let mut env = None;
         let mut handles = Vec::with_capacity(0);
-        let mut is_titan = false;
-        let ptr = unsafe {
-            let p = path.as_ref().path_to_slice();
-            match &self.opt_set {
-                OptionSet::DefaultCfOnly(builder) => {
-                    env = builder.opt.env().cloned();
-                    builder.opt.comparator().map(|c| comparator.push(c.clone()));
-                    if let Some(ttl) = builder.ttl {
-                        tirocks_sys::crocksdb_open_with_ttl(
-                            builder.opt.get(),
-                            p,
-                            ttl,
-                            builder.error_if_log_exists.is_some(),
-                            s.as_mut_ptr(),
-                        )
-                    } else if let Some(error_if_log_exists) = builder.error_if_log_exists {
-                        tirocks_sys::crocksdb_open_for_read_only(
-                            builder.opt.get(),
-                            p,
-                            error_if_log_exists,
-                            s.as_mut_ptr(),
-                        )
-                    } else {
-                        tirocks_sys::crocksdb_open(builder.opt.get(), p, s.as_mut_ptr())
-                    }
-                }
-                OptionSet::MultiCf(builder) => {
-                    env = builder.db.env().cloned();
-                    let mut names = Vec::with_capacity(builder.cfs.len());
-                    let mut opts = Vec::with_capacity(builder.cfs.len());
-                    for (name, opt) in &builder.cfs {
-                        names.push(r(name.as_bytes()));
-                        opts.push(opt.as_ptr());
-                        opt.comparator().map(|c| comparator.push(c.clone()));
-                    }
-                    handles = Vec::with_capacity(builder.cfs.len());
-                    if !builder.ttl.is_empty() {
-                        tirocks_sys::crocksdb_open_column_families_with_ttl(
-                            builder.db.get(),
-                            p,
-                            builder.cfs.len() as i32,
-                            names.as_ptr(),
-                            opts.as_ptr(),
-                            builder.ttl.as_ptr(),
-                            builder.error_if_log_exists.is_some(),
-                            handles.as_mut_ptr(),
-                            s.as_mut_ptr(),
-                        )
-                    } else if let Some(error_if_log_file_exist) = builder.error_if_log_exists {
-                        tirocks_sys::crocksdb_open_for_read_only_column_families(
-                            builder.db.get(),
-                            p,
-                            builder.cfs.len() as i32,
-                            names.as_ptr(),
-                            opts.as_ptr(),
-                            handles.as_mut_ptr(),
-                            error_if_log_file_exist,
-                            s.as_mut_ptr(),
-                        )
-                    } else {
-                        tirocks_sys::crocksdb_open_column_families(
-                            builder.db.get(),
-                            p,
-                            builder.cfs.len() as i32,
-                            names.as_ptr(),
-                            opts.as_ptr(),
-                            handles.as_mut_ptr(),
-                            s.as_mut_ptr(),
-                        )
-                    }
-                }
-                OptionSet::MultiCfTitan(builder) => {
-                    env = builder.db.env().cloned();
-                    let mut names = Vec::with_capacity(builder.cfs.len());
-                    let mut opts = Vec::with_capacity(builder.cfs.len());
-                    handles = Vec::with_capacity(builder.cfs.len());
-                    for (name, opt) in &builder.cfs {
-                        names.push(r(name.as_bytes()));
-                        opts.push(opt.as_ptr());
-                        opt.comparator().map(|c| comparator.push(c.clone()));
-                    }
-                    is_titan = true;
-                    tirocks_sys::ctitandb_open_column_families(
-                        p,
-                        builder.db.get(),
-                        builder.cfs.len() as i32,
-                        names.as_ptr(),
-                        opts.as_ptr(),
-                        handles.as_mut_ptr(),
-                        s.as_mut_ptr(),
-                    )
-                }
-            }
-        };
-        if s.ok() {
-            let handles = handles
-                .into_iter()
-                .map(|p| unsafe { RefCountedColumnFamilyHandle::from_ptr(p) })
-                .collect();
-            Ok(Db::new(ptr, env, comparator, handles, is_titan))
+        let (ptr, is_titan) =
+            unsafe { self.open_raw(&mut comparator, &mut env, &mut handles, path) }?;
+        let handles = handles
+            .into_iter()
+            .map(|p| unsafe { RefCountedColumnFamilyHandle::from_ptr(p) })
+            .collect();
+        Ok(Db::new(ptr, env, comparator, handles, is_titan))
+    }
+}
+
+impl OpenOptions for DefaultCfOnlyBuilder {
+    unsafe fn open_raw(
+        &self,
+        comparator: &mut Vec<Arc<SysComparator>>,
+        env: &mut Option<Arc<Env>>,
+        handles: &mut Vec<*mut rocksdb_ColumnFamilyHandle>,
+        path: &Path,
+    ) -> Result<(*mut rocksdb_DB, bool)> {
+        *env = self.opt.env().cloned();
+        let mut s = Status::default();
+        let p = path.path_to_slice();
+        self.opt.comparator().map(|c| comparator.push(c.clone()));
+        let ptr = if let Some(ttl) = self.ttl {
+            tirocks_sys::crocksdb_open_with_ttl(
+                self.opt.get(),
+                p,
+                ttl,
+                self.error_if_log_exists.is_some(),
+                s.as_mut_ptr(),
+            )
+        } else if let Some(error_if_log_exists) = self.error_if_log_exists {
+            tirocks_sys::crocksdb_open_for_read_only(
+                self.opt.get(),
+                p,
+                error_if_log_exists,
+                s.as_mut_ptr(),
+            )
         } else {
-            Err(s)
+            tirocks_sys::crocksdb_open(self.opt.get(), p, s.as_mut_ptr())
+        };
+        check_status!(s)?;
+        handles.push(tirocks_sys::crocksdb_get_default_column_family(ptr));
+        Ok((ptr, false))
+    }
+}
+
+impl OpenOptions for MultiCfBuilder {
+    unsafe fn open_raw(
+        &self,
+        comparator: &mut Vec<Arc<SysComparator>>,
+        env: &mut Option<Arc<Env>>,
+        handles: &mut Vec<*mut rocksdb_ColumnFamilyHandle>,
+        path: &Path,
+    ) -> Result<(*mut rocksdb_DB, bool)> {
+        *env = self.db.env().cloned();
+        let mut names = Vec::with_capacity(self.cfs.len());
+        let mut opts = Vec::with_capacity(self.cfs.len());
+        for (name, opt) in &self.cfs {
+            names.push(r(name.as_bytes()));
+            opts.push(opt.as_ptr());
+            opt.comparator().map(|c| comparator.push(c.clone()));
         }
+        handles.reserve_exact(self.cfs.len());
+        let mut s = Status::default();
+        let p = path.path_to_slice();
+        let ptr = if !self.ttl.is_empty() {
+            tirocks_sys::crocksdb_open_column_families_with_ttl(
+                self.db.get(),
+                p,
+                self.cfs.len() as i32,
+                names.as_ptr(),
+                opts.as_ptr(),
+                self.ttl.as_ptr(),
+                self.error_if_log_exists.is_some(),
+                handles.as_mut_ptr(),
+                s.as_mut_ptr(),
+            )
+        } else if let Some(error_if_log_file_exist) = self.error_if_log_exists {
+            tirocks_sys::crocksdb_open_for_read_only_column_families(
+                self.db.get(),
+                p,
+                self.cfs.len() as i32,
+                names.as_ptr(),
+                opts.as_ptr(),
+                handles.as_mut_ptr(),
+                error_if_log_file_exist,
+                s.as_mut_ptr(),
+            )
+        } else {
+            tirocks_sys::crocksdb_open_column_families(
+                self.db.get(),
+                p,
+                self.cfs.len() as i32,
+                names.as_ptr(),
+                opts.as_ptr(),
+                handles.as_mut_ptr(),
+                s.as_mut_ptr(),
+            )
+        };
+        check_status!(s)?;
+        Ok((ptr, false))
+    }
+}
+
+impl OpenOptions for MultiCfTitanBuilder {
+    unsafe fn open_raw(
+        &self,
+        comparator: &mut Vec<Arc<SysComparator>>,
+        env: &mut Option<Arc<Env>>,
+        handles: &mut Vec<*mut rocksdb_ColumnFamilyHandle>,
+        path: &Path,
+    ) -> Result<(*mut rocksdb_DB, bool)> {
+        *env = self.db.env().cloned();
+        let mut names = Vec::with_capacity(self.cfs.len());
+        let mut opts = Vec::with_capacity(self.cfs.len());
+        handles.reserve_exact(self.cfs.len());
+        for (name, opt) in &self.cfs {
+            names.push(r(name.as_bytes()));
+            opts.push(opt.as_ptr());
+            opt.comparator().map(|c| comparator.push(c.clone()));
+        }
+        let mut s = Status::default();
+        let p = path.path_to_slice();
+        let ptr = tirocks_sys::ctitandb_open_column_families(
+            p,
+            self.db.get(),
+            self.cfs.len() as i32,
+            names.as_ptr(),
+            opts.as_ptr(),
+            handles.as_mut_ptr(),
+            s.as_mut_ptr(),
+        );
+        check_status!(s)?;
+        Ok((ptr, true))
     }
 }

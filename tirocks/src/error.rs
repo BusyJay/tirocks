@@ -7,6 +7,7 @@ use std::str::Utf8Error;
 use tirocks_sys::rocksdb_Status;
 
 /// A safe wrapper around rocksdb::Status.
+#[derive(PartialEq)]
 #[repr(transparent)]
 pub struct Status(rocksdb_Status);
 

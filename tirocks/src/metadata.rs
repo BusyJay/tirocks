@@ -1,18 +1,69 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
 use std::{
+    mem::MaybeUninit,
     ops::Index,
     str::{self, Utf8Error},
 };
 
 use tirocks_sys::{
     crocksdb_livefiles_t, r, rocksdb_ColumnFamilyMetaData, rocksdb_LevelMetaData,
-    rocksdb_LiveFileMetaData, rocksdb_SstFileMetaData, s,
+    rocksdb_LiveFileMetaData, rocksdb_SizeApproximationOptions, rocksdb_SstFileMetaData, s,
 };
 
 use crate::RawDb;
 
-pub type SizeApproximationOptions = tirocks_sys::rocksdb_SizeApproximationOptions;
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct SizeApproximationOptions(rocksdb_SizeApproximationOptions);
+
+impl SizeApproximationOptions {
+    /// Defines whether the returned size should include the recently written
+    /// data in the mem-tables. If set to false, include_files must be true.
+    #[inline]
+    pub fn set_include_memtables(&mut self, include: bool) -> &mut Self {
+        self.0.include_memtabtles = include;
+        self
+    }
+
+    /// Check [`set_include_memtables`]
+    #[inline]
+    pub fn include_memtabtles(&self) -> bool {
+        self.0.include_memtabtles
+    }
+
+    /// Defines whether the returned size should include data serialized to disk.
+    /// If set to false, include_memtabtles must be true.
+    #[inline]
+    pub fn set_include_files(&mut self, include: bool) -> &mut Self {
+        self.0.include_files = include;
+        self
+    }
+
+    /// Check [`set_include_files`]
+    #[inline]
+    pub fn include_files(&self) -> bool {
+        self.0.include_files
+    }
+
+    #[inline]
+    pub(crate) fn as_ptr(&self) -> *const rocksdb_SizeApproximationOptions {
+        self as *const _ as _
+    }
+}
+
+impl Default for SizeApproximationOptions {
+    #[inline]
+    fn default() -> Self {
+        unsafe {
+            let mut opt = MaybeUninit::uninit();
+            tirocks_sys::crocksdb_sizeapproximationoptions_init(
+                opt.as_mut_ptr() as *mut rocksdb_SizeApproximationOptions
+            );
+            opt.assume_init()
+        }
+    }
+}
 
 pub struct LiveFileMetaData(rocksdb_LiveFileMetaData);
 
@@ -180,14 +231,19 @@ impl LevelMetaData {
             &*(ptr as *const SstFileMetaData)
         }
     }
+
+    #[inline]
+    pub fn files(&self) -> impl ExactSizeIterator<Item = &SstFileMetaData> {
+        (0..self.file_count()).map(|p| self.file(p))
+    }
 }
 
 #[repr(transparent)]
-pub struct ColumnFamilyMetaData {
+pub struct CfMetaData {
     ptr: *mut rocksdb_ColumnFamilyMetaData,
 }
 
-impl Default for ColumnFamilyMetaData {
+impl Default for CfMetaData {
     #[inline]
     fn default() -> Self {
         unsafe {
@@ -197,14 +253,14 @@ impl Default for ColumnFamilyMetaData {
     }
 }
 
-impl Drop for ColumnFamilyMetaData {
+impl Drop for CfMetaData {
     #[inline]
     fn drop(&mut self) {
         unsafe { tirocks_sys::crocksdb_column_family_meta_data_destroy(self.ptr) }
     }
 }
 
-impl ColumnFamilyMetaData {
+impl CfMetaData {
     /// The number of level.
     #[inline]
     pub fn level_count(&self) -> usize {
@@ -218,6 +274,11 @@ impl ColumnFamilyMetaData {
             let ptr = tirocks_sys::crocksdb_column_family_meta_data_level_data(self.ptr, i);
             &*(ptr as *const LevelMetaData)
         }
+    }
+
+    #[inline]
+    pub fn levels(&self) -> impl ExactSizeIterator<Item = &LevelMetaData> {
+        (0..self.level_count()).map(|p| self.level(p))
     }
 
     #[inline]

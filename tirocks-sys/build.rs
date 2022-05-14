@@ -199,6 +199,7 @@ fn configure_common_rocksdb_args(cfg: &mut Config, name: &str) {
 }
 
 fn figure_link_lib(dst: &Path, name: &str) {
+    println!("cargo:rerun-if-changed={}", name);
     if cfg!(target_os = "windows") {
         let profile = match &*env::var("PROFILE").unwrap_or_else(|_| "debug".to_owned()) {
             "bench" | "release" => "Release",
@@ -289,6 +290,8 @@ fn main() {
     build_titan(&mut build);
     build_rocksdb(&mut build);
 
+    println!("cargo:rerun-if-changed=crocksdb/crocksdb/c.h");
+    println!("cargo:rerun-if-changed=crocksdb/c.cc");
     build.cpp(true).file("crocksdb/c.cc");
     if !cfg!(target_os = "windows") {
         build.flag("-std=c++11");

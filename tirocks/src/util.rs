@@ -1,5 +1,7 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
+use std::{marker::PhantomData, ffi::CStr};
+
 use libc::c_void;
 use tirocks_sys::{r, rocksdb_Range, rocksdb_Slice, s};
 
@@ -124,4 +126,59 @@ pub type BytesReceiver = unsafe extern "C" fn(*mut c_void, rocksdb_Slice);
 
 pub fn wrap_string_receiver<T: FnMut(&[u8])>(receiver: &mut T) -> (*mut c_void, BytesReceiver) {
     (receiver as *mut T as *mut c_void, bytes_receiver::<T>)
+}
+
+/// A common factory for all types that creates types using `Default` trait.
+pub struct DefaultFactory<F> {
+    item: PhantomData<F>,
+}
+
+impl<F> DefaultFactory<F> {
+    #[inline]
+    pub(crate) fn c_name(&self) -> &CStr {
+        unsafe { CStr::from_bytes_with_nul_unchecked(b"DefaultFactory\0") }
+    }
+
+    #[inline]
+    pub(crate) fn name(&self) -> &str {
+        "DefaultFactory"
+    }
+}
+
+impl<F> Default for DefaultFactory<F> {
+    #[inline]
+    fn default() -> Self {
+        Self { item: PhantomData }
+    }
+}
+
+unsafe impl<F> Send for DefaultFactory<F> {}
+unsafe impl<F> Sync for DefaultFactory<F> {}
+
+/// A common factory for items that can be cloned.
+pub struct CloneFactory<F> {
+    item: F,
+}
+
+impl<F> CloneFactory<F> {
+    #[inline]
+    pub fn new(item: F) -> Self {
+        CloneFactory { item }
+    }
+
+    #[inline]
+    pub(crate) fn c_name(&self) -> &CStr {
+        unsafe { CStr::from_bytes_with_nul_unchecked(b"CloneFactory\0") }
+    }
+
+    #[inline]
+    pub(crate) fn name(&self) -> &str {
+        "CloneFactory"
+    }
+}
+
+impl<F: Clone> CloneFactory<F> {
+    pub(crate) fn clone(&self) -> F {
+        self.item.clone()
+    }
 }

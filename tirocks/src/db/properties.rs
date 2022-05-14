@@ -1,5 +1,7 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
+use std::string::FromUtf8Error;
+
 use tirocks_sys::r;
 
 use crate::{
@@ -18,14 +20,21 @@ impl RawDb {
     /// is a valid property understood by this DB implementation (see struct inherits `Property`
     /// trait for valid options), returns true. Otherwise, returns false.
     #[inline]
-    pub fn property(&self, cf: &RawColumnFamilyHandle, prop: &impl Property) -> Option<Vec<u8>> {
+    pub fn property(
+        &self,
+        cf: &RawColumnFamilyHandle,
+        prop: &impl Property,
+    ) -> std::result::Result<Option<String>, FromUtf8Error> {
         let key = prop.key();
         unsafe {
             let mut content = None;
             let mut handle = |v: &[u8]| content = Some(v.to_vec());
             let (ctx, fp) = util::wrap_string_receiver(&mut handle);
             tirocks_sys::crocksdb_property_value_cf(self.as_ptr(), cf.get(), r(key), ctx, Some(fp));
-            content
+            match content {
+                Some(c) => String::from_utf8(c).map(Some),
+                None => Ok(None),
+            }
         }
     }
 

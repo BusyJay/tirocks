@@ -34,17 +34,17 @@ pub trait HistogramType {
     fn r#type(&self) -> u32;
 }
 
-pub type Histogram = rocksdb_Histograms;
-pub type TitanHistogram = rocksdb_titandb_HistogramType;
+pub type Histograms = rocksdb_Histograms;
+pub type TitanHistograms = rocksdb_titandb_HistogramType;
 
-impl HistogramType for Histogram {
+impl HistogramType for Histograms {
     #[inline]
     fn r#type(&self) -> u32 {
         *self as u32
     }
 }
 
-impl HistogramType for TitanHistogram {
+impl HistogramType for TitanHistograms {
     #[inline]
     fn r#type(&self) -> u32 {
         *self as u32
@@ -68,7 +68,7 @@ impl Default for Statistics {
 
 impl Statistics {
     #[inline]
-    pub fn take_ticker_count(&self, ticker_type: impl TickerType) -> u64 {
+    pub fn take_ticker(&self, ticker_type: impl TickerType) -> u64 {
         unsafe {
             tirocks_sys::crocksdb_statistics_get_and_reset_ticker_count(
                 self.ptr,

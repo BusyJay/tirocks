@@ -2,6 +2,8 @@
 
 pub mod filter_policy;
 
+use std::mem::MaybeUninit;
+
 use tirocks_sys::rocksdb_BlockBasedTableOptions;
 
 use crate::cache::SysCache;
@@ -176,6 +178,18 @@ impl Drop for BlockBasedTableOptions {
     fn drop(&mut self) {
         unsafe {
             tirocks_sys::crocksdb_block_based_options_destroy(self.ptr);
+        }
+    }
+}
+
+impl Default for BlockBasedTableOptions {
+    #[inline]
+    fn default() -> Self {
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_block_based_options_create();
+            BlockBasedTableOptions {
+                ptr
+            }
         }
     }
 }

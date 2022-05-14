@@ -172,6 +172,22 @@ impl<'a> RawIterator<'a> {
     }
 }
 
+impl<'a> std::iter::Iterator for RawIterator<'a> {
+    type Item = (Vec<u8>, Vec<u8>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.valid() {
+            let kv = Some((self.key().to_vec(), self.value().to_vec()));
+            RawIterator::next(self);
+            return kv;
+        }
+        None
+    }
+}
+
+unsafe impl<'a> Send for RawIterator<'a> {}
+unsafe impl<'a> Sync for RawIterator<'a> {}
+
 pub struct Iterator<'a, I: Iterable + 'a> {
     iter: ManuallyDrop<RawIterator<'a>>,
     _i: I,
@@ -233,5 +249,12 @@ unsafe impl Iterable for Db {
                 tirocks_sys::ctitandb_create_iterator_cf(self.as_ptr(), opt.get(), cf.get())
             }
         }
+    }
+}
+
+unsafe impl<D: Deref<Target=Db>> Iterable for D {
+    #[inline]
+    fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawColumnFamilyHandle) -> *mut rocksdb_Iterator {
+        (**self).raw_iter(opt, cf)
     }
 }

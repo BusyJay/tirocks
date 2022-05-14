@@ -121,12 +121,12 @@ impl RawOptions {
     }
 
     #[inline]
-    pub fn as_cf_options(&self) -> &RawCfOptions {
+    pub fn cf_options(&self) -> &RawCfOptions {
         unsafe { RawCfOptions::from_ptr(tirocks_sys::crocksdb_options_get_cfoptions(self.ptr)) }
     }
 
     #[inline]
-    pub fn as_cf_options_mut(&mut self) -> &mut RawCfOptions {
+    pub fn cf_options_mut(&mut self) -> &mut RawCfOptions {
         unsafe { RawCfOptions::from_ptr_mut(tirocks_sys::crocksdb_options_get_cfoptions(self.ptr)) }
     }
 
@@ -202,7 +202,7 @@ impl Options {
     #[inline]
     pub fn set_comparator(&mut self, c: Arc<SysComparator>) -> &mut Self {
         unsafe {
-            self.as_cf_options_mut().set_comparator(&c);
+            self.cf_options_mut().set_comparator(&c);
         }
         self.comparator = Some(c);
         self
@@ -238,28 +238,28 @@ pub struct RawTitanOptions {
 
 impl RawTitanOptions {
     #[inline]
-    pub fn as_db_options(&self) -> &RawTitanDbOptions {
+    pub fn db_options(&self) -> &RawTitanDbOptions {
         unsafe {
             RawTitanDbOptions::from_ptr(tirocks_sys::ctitandb_options_get_dboptions(self.ptr))
         }
     }
 
     #[inline]
-    pub fn as_db_options_mut(&mut self) -> &mut RawTitanDbOptions {
+    pub fn db_options_mut(&mut self) -> &mut RawTitanDbOptions {
         unsafe {
             RawTitanDbOptions::from_ptr_mut(tirocks_sys::ctitandb_options_get_dboptions(self.ptr))
         }
     }
 
     #[inline]
-    pub fn as_cf_options(&self) -> &RawTitanCfOptions {
+    pub fn cf_options(&self) -> &RawTitanCfOptions {
         unsafe {
             RawTitanCfOptions::from_ptr(tirocks_sys::ctitandb_options_get_cfoptions(self.ptr))
         }
     }
 
     #[inline]
-    pub fn as_cf_options_mut(&mut self) -> &mut RawTitanCfOptions {
+    pub fn cf_options_mut(&mut self) -> &mut RawTitanCfOptions {
         unsafe {
             RawTitanCfOptions::from_ptr_mut(tirocks_sys::ctitandb_options_get_cfoptions(self.ptr))
         }
@@ -320,7 +320,7 @@ impl TitanOptions {
     #[inline]
     pub fn set_env(&mut self, env: Arc<Env>) -> &mut Self {
         unsafe {
-            self.as_db_options_mut().set_env(&env);
+            self.db_options_mut().set_env(&env);
         }
         self.env = Some(env);
         self
@@ -330,7 +330,7 @@ impl TitanOptions {
     #[inline]
     pub fn set_comparator(&mut self, c: Arc<SysComparator>) -> &mut Self {
         unsafe {
-            self.as_cf_options_mut().set_comparator(&c);
+            self.cf_options_mut().set_comparator(&c);
         }
         self.comparator = Some(c);
         self

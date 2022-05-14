@@ -17,3 +17,7 @@ paste = "1.0"
 
 [dev-dependencies]
 tempfile = "3.0"
+
+[[test]]
+name = "tests"
+path = "tests/tests/mod.rs"

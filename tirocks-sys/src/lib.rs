@@ -169,6 +169,13 @@ impl rocksdb_Status {
     }
 }
 
+impl PartialEq for rocksdb_Status {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.code_ == other.code_
+    }
+}
+
 impl Drop for rocksdb_Status {
     #[inline]
     fn drop(&mut self) {
@@ -182,8 +189,10 @@ mod tests {
 
     #[test]
     fn test_smoke() {
-        assert_eq!(b"rocksdb.cfstats-no-file-histogram", unsafe {
-            s(super::crocksdb_property_name_cf_stats_no_file_histogram)
+        assert_eq!(b"rocksdb.num-files-at-level", unsafe {
+            let mut buf = r(&[]);
+            super::crocksdb_property_name_num_files_at_level_prefix(&mut buf);
+            s(buf)
         });
     }
 
@@ -203,6 +212,7 @@ mod tests {
             let msg = status.message().unwrap().unwrap();
             assert!(msg.contains("does not exist"), "{}", msg);
 
+            status.clear_state();
             crocksdb_options_set_create_if_missing(db_opt, true);
             let s = crocksdb_open(opt, r(path.as_bytes()), &mut status);
             assert!(status.ok(), "{:?}", status.message());

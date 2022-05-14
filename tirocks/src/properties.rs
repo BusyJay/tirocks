@@ -22,7 +22,11 @@ macro_rules! define {
         impl Property for $name {
             #[inline]
             fn key(&self) -> &[u8] {
-                unsafe { s(tirocks_sys::$value) }
+                unsafe {
+                    let mut buf = r(&[]);
+                    tirocks_sys::$value(&mut buf);
+                    s(buf)
+                }
             }
         }
     };
@@ -43,7 +47,11 @@ pub struct PropNumFilesAtLevel {
 
 impl PropNumFilesAtLevel {
     pub fn new(level: usize) -> Self {
-        let prefix = unsafe { s(tirocks_sys::crocksdb_property_name_num_files_at_level_prefix) };
+        let prefix = unsafe {
+            let mut buf = r(&[]);
+            tirocks_sys::crocksdb_property_name_num_files_at_level_prefix(&mut buf);
+            s(buf)
+        };
         let mut key = Vec::with_capacity(prefix.len() + 1);
         key.extend_from_slice(prefix);
         write!(key, "{}", level).unwrap();
@@ -58,8 +66,6 @@ impl Property for PropNumFilesAtLevel {
     }
 }
 
-impl IntProperty for PropNumFilesAtLevel {}
-
 /// The compression ratio of data at specified level. Here, compression ratio is defined
 /// as uncompressed data size / compressed file size. Returns "-1.0" if no open files.
 pub struct PropCompressionRatioAtLevel {
@@ -68,8 +74,11 @@ pub struct PropCompressionRatioAtLevel {
 
 impl PropCompressionRatioAtLevel {
     pub fn new(level: usize) -> Self {
-        let prefix =
-            unsafe { s(tirocks_sys::crocksdb_property_name_compression_ratio_at_level_prefix) };
+        let prefix = unsafe {
+            let mut buf = r(&[]);
+            tirocks_sys::crocksdb_property_name_compression_ratio_at_level_prefix(&mut buf);
+            s(buf)
+        };
         let mut key = Vec::with_capacity(prefix.len() + 1);
         key.extend_from_slice(prefix);
         write!(key, "{}", level).unwrap();
@@ -96,12 +105,12 @@ define! {
 }
 
 define! {
+    map
     /// Combined with [`PropCfStatsNoFileHistogram`] and [`PropCfFileHistogram`].
     PropCfStats, crocksdb_property_name_cf_stats
 }
 
 define! {
-    map
     /// A multi-line string with general columm family stats per-level over db's lifetime
     /// ("L<n>"), aggregated over db's lifetime ("Sum"), and aggregated over the interval
     /// since the last retrieval ("Int").
@@ -327,8 +336,11 @@ pub struct PropAggregatedTablePropertiesAtLevel {
 
 impl PropAggregatedTablePropertiesAtLevel {
     pub fn new(level: usize) -> Self {
-        let prefix =
-            unsafe { s(tirocks_sys::crocksdb_property_name_aggregated_table_properties_at_level) };
+        let prefix = unsafe {
+            let mut buf = r(&[]);
+            tirocks_sys::crocksdb_property_name_aggregated_table_properties_at_level(&mut buf);
+            s(buf)
+        };
         let mut key = Vec::with_capacity(prefix.len() + 1);
         key.extend_from_slice(prefix);
         write!(key, "{}", level).unwrap();

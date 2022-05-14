@@ -16,7 +16,7 @@ pub trait SliceTransform: Send + Sync {
     /// Extract a prefix from a specified key. This method is called when
     /// a key is inserted into the db, and the returned slice is used to
     /// create a bloom filter.
-    fn transform(&self, key: &[u8]) -> &[u8];
+    fn transform<'a>(&self, key: &'a [u8]) -> &'a [u8];
 
     /// Determine whether the specified key is compatible with the logic
     /// specified in the Transform method. This method is invoked for every

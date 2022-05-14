@@ -6,7 +6,7 @@ use std::{
 };
 
 use libc::c_void;
-use tirocks_sys::{rocksdb_Snapshot, rocksdb_titandb_TitanReadOptions};
+use tirocks_sys::{rocksdb_Snapshot, rocksdb_titandb_TitanReadOptions, s};
 
 use crate::table_filter::{self, TableFilter};
 
@@ -107,6 +107,16 @@ impl ReadOptions {
         let store = self.slice_store.as_mut().unwrap();
         self.raw._base.iterate_upper_bound = store.iterate_upper_bound.set_data(upper_bound.into());
         self
+    }
+
+    /// Check [`set_iterate_upper_bound`].
+    #[inline]
+    pub fn iterate_upper_bound(&self) -> Option<&[u8]> {
+        if !self.raw._base.iterate_upper_bound.is_null() {
+            Some(unsafe { s(*self.raw._base.iterate_upper_bound) })
+        } else {
+            None
+        }
     }
 
     /// RocksDB does auto-readahead for iterators on noticing more than two reads
@@ -299,3 +309,14 @@ impl ReadOptions {
         &self.raw
     }
 }
+
+impl Drop for ReadOptions {
+    fn drop(&mut self) {
+        unsafe {
+            tirocks_sys::ctitandb_readoptions_destroy(&mut self.raw);
+        }
+    }
+}
+
+unsafe impl Send for ReadOptions {}
+unsafe impl Sync for ReadOptions {}

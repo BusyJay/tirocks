@@ -1,6 +1,6 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::{ffi::CStr, ptr, slice};
+use std::{ffi::CStr, ptr, slice, marker::PhantomData};
 
 use libc::{c_char, c_void};
 use tirocks_sys::{
@@ -8,7 +8,7 @@ use tirocks_sys::{
     rocksdb_CompactionFilter_Context, rocksdb_CompactionFilter_Decision, rocksdb_Slice, s,
 };
 
-use crate::properties::{table::builtin::TableProperties, table::user::SequenceNumber};
+use crate::{properties::{table::builtin::TableProperties, table::user::SequenceNumber}, DefaultFactory, CloneFactory};
 
 pub type ValueType = tirocks_sys::rocksdb_CompactionFilter_ValueType;
 pub type TableFileCreationReason = tirocks_sys::rocksdb_TableFileCreationReason;
@@ -214,6 +214,34 @@ pub trait CompactionFilterFactory: Send + Sync {
 
     /// Returns a name that identifies this `CompactionFilter` factory.
     fn name(&self) -> &CStr;
+}
+
+impl<F: Default + CompactionFilter> CompactionFilterFactory for DefaultFactory<F> {
+    type Filter = F;
+
+    #[inline]
+    fn create_compaction_filter(&self, _: &Context) -> Self::Filter {
+        F::default()
+    }
+
+    #[inline]
+    fn name(&self) -> &CStr {
+        self.c_name()
+    }
+}
+
+impl<F: Clone + CompactionFilter + Send + Sync> CompactionFilterFactory for CloneFactory<F> {
+    type Filter = F;
+
+    #[inline]
+    fn create_compaction_filter(&self, _: &Context) -> Self::Filter {
+        self.clone()
+    }
+
+    #[inline]
+    fn name(&self) -> &CStr {
+        self.c_name()
+    }
 }
 
 extern "C" fn factory_name<T: CompactionFilterFactory>(factory: *mut c_void) -> *const c_char {
