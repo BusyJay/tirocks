@@ -1,12 +1,12 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
 use std::sync::{atomic::*, Arc};
-use std::time::Duration;
 use std::thread;
+use std::time::Duration;
 
-use tirocks::OpenOptions;
 use tirocks::db::DefaultCfOnlyBuilder;
-use tirocks::env::logger::{Logger, LogLevel, SysInfoLogger};
+use tirocks::env::logger::{LogLevel, Logger, SysInfoLogger};
+use tirocks::OpenOptions;
 
 #[derive(Default, Clone)]
 struct TestDrop {
@@ -40,7 +40,12 @@ fn test_logger() {
     let drop_called = logger.drop.called.clone();
     let print = logger.print.clone();
     let log = SysInfoLogger::new(logger);
-    builder.options_mut().db_options_mut().set_info_log(&log).set_create_if_missing(true).set_info_log_level(LogLevel::DEBUG_LEVEL);
+    builder
+        .options_mut()
+        .db_options_mut()
+        .set_info_log(&log)
+        .set_create_if_missing(true)
+        .set_info_log_level(LogLevel::DEBUG_LEVEL);
     let db = builder.open(path.path()).unwrap();
     thread::sleep(Duration::from_secs(2));
     assert_ne!(print.load(Ordering::SeqCst), 0);
@@ -49,6 +54,6 @@ fn test_logger() {
     assert_eq!(0, drop_called.load(Ordering::SeqCst));
     drop(builder);
     assert_eq!(0, drop_called.load(Ordering::SeqCst));
-    db.close();
+    db.close().unwrap();
     assert_eq!(1, drop_called.load(Ordering::SeqCst));
 }

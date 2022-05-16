@@ -252,7 +252,7 @@ unsafe impl Iterable for Db {
     }
 }
 
-unsafe impl<D: Deref<Target=Db>> Iterable for D {
+unsafe impl<D: Deref<Target = Db>> Iterable for D {
     #[inline]
     fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawColumnFamilyHandle) -> *mut rocksdb_Iterator {
         (**self).raw_iter(opt, cf)

@@ -1,6 +1,11 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use tirocks::{option::{CompressionType, WriteOptions, FlushOptions, ReadOptions}, Options, db::DefaultCfOnlyBuilder, OpenOptions, Statistics, statistics::{Tickers, Histograms}};
+use tirocks::{
+    db::DefaultCfOnlyBuilder,
+    option::{CompressionType, FlushOptions, ReadOptions, WriteOptions},
+    statistics::{Histograms, Tickers},
+    OpenOptions, Options, Statistics,
+};
 
 #[test]
 // Make sure all compression types are supported.
@@ -19,7 +24,10 @@ fn test_compression() {
         opts.db_options_mut().set_create_if_missing(true);
         opts.cf_options_mut().set_compression(compression_type);
         // DB open will fail if compression type is not supported.
-        DefaultCfOnlyBuilder::default().set_options(opts).open(path.path()).unwrap();
+        DefaultCfOnlyBuilder::default()
+            .set_options(opts)
+            .open(path.path())
+            .unwrap();
     }
 }
 
@@ -28,16 +36,21 @@ fn test_db_statistics() {
     let path = super::tempdir_with_prefix("_rust_rocksdb_statistics");
     let mut builder = DefaultCfOnlyBuilder::default();
     let stats = Statistics::default();
-    builder.options_mut().db_options_mut().set_create_if_missing(true).set_statistics(&stats);
+    builder
+        .options_mut()
+        .db_options_mut()
+        .set_create_if_missing(true)
+        .set_statistics(&stats);
     let db = builder.open(path.path()).unwrap();
-    
+
     let wopts = WriteOptions::default();
     let cf = db.default_cf();
 
     db.put(&wopts, cf, b"k0", b"a").unwrap();
     db.put(&wopts, cf, b"k1", b"b").unwrap();
     db.put(&wopts, cf, b"k2", b"c").unwrap();
-    db.flush(FlushOptions::default().set_wait(true), cf).unwrap(); // flush memtable to sst file.
+    db.flush(FlushOptions::default().set_wait(true), cf)
+        .unwrap(); // flush memtable to sst file.
 
     let mut read_opts = ReadOptions::default();
     assert_eq!(db.get(&mut read_opts, cf, b"k0"), Ok(Some(b"a".to_vec())));

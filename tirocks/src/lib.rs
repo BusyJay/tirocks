@@ -13,6 +13,7 @@ mod error;
 mod iterator;
 mod listener;
 pub mod mem_table;
+pub mod merge_operator;
 pub mod metadata;
 pub mod option;
 pub mod perf_context;

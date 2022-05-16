@@ -10,7 +10,8 @@ use std::{
 
 use crate::{
     cache::SysCache, compaction_filter::SysCompactionFilterFactory, comparator::SysComparator,
-    mem_table::SysMemTableRepFactory, properties::table::user::SysTablePropertiesCollectorFactory,
+    mem_table::SysMemTableRepFactory, merge_operator::SysMergeOperator,
+    properties::table::user::SysTablePropertiesCollectorFactory,
     slice_transform::SysSliceTransform, sst_partitioner::SysSstParitionerFactory,
     table::SysTableFactory, util::simple_access,
 };
@@ -618,20 +619,18 @@ impl RawCfOptions {
         self
     }
 
-    // REQUIRES: The client must provide a merge operator if Merge operation
-    // needs to be accessed. Calling Merge on a DB without a merge operator
-    // would result in Status::NotSupported. The client must ensure that the
-    // merge operator supplied here has the same name and *exactly* the same
-    // semantics as the merge operator provided to previous open calls on
-    // the same DB. The only exception is reserved for upgrade, where a DB
-    // previously without a merge operator is introduced to Merge operation
-    // for the first time. It's necessary to specify a merge operator when
-    // opening the DB in this case.
-    // Default: nullptr
-    // TODO: support merge
-    //merge_operator: &SysMergeOperator [ .get() ]
-
     simple_access! {
+        /// REQUIRES: The client must provide a merge operator if Merge operation
+        /// needs to be accessed. Calling Merge on a DB without a merge operator
+        /// would result in Status::NotSupported. The client must ensure that the
+        /// merge operator supplied here has the same name and *exactly* the same
+        /// semantics as the merge operator provided to previous open calls on
+        /// the same DB. The only exception is reserved for upgrade, where a DB
+        /// previously without a merge operator is introduced to Merge operation
+        /// for the first time. It's necessary to specify a merge operator when
+        /// opening the DB in this case.
+        merge_operator: &SysMergeOperator [ .get() ]
+
         /// This is a factory that provides `CompactionFilter` objects which allow
         /// an application to modify/delete a key-value during table file creation.
         ///

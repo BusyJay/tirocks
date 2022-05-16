@@ -50,7 +50,7 @@ impl DefaultCfOnlyBuilder {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct MultiCfBuilder {
     db: DbOptions,
     cfs: Vec<(String, CfOptions)>,
@@ -136,10 +136,17 @@ pub trait OpenOptions {
         let mut handles = Vec::with_capacity(0);
         let (ptr, is_titan) =
             unsafe { self.open_raw(&mut comparator, &mut env, &mut handles, path) }?;
-        let handles = handles
+        let handles = if handles.is_empty() {
+            vec![unsafe {
+                let ptr = tirocks_sys::crocksdb_get_default_column_family(ptr);
+                RefCountedColumnFamilyHandle::from_ptr(ptr, false)
+            }]
+        } else {
+            handles
             .into_iter()
-            .map(|p| unsafe { RefCountedColumnFamilyHandle::from_ptr(p) })
-            .collect();
+            .map(|p| unsafe { RefCountedColumnFamilyHandle::from_ptr(p, true) })
+            .collect()
+        };
         Ok(Db::new(ptr, env, comparator, handles, is_titan))
     }
 }
@@ -175,7 +182,6 @@ impl OpenOptions for DefaultCfOnlyBuilder {
             tirocks_sys::crocksdb_open(self.opt.get(), p, s.as_mut_ptr())
         };
         check_status!(s)?;
-        handles.push(tirocks_sys::crocksdb_get_default_column_family(ptr));
         Ok((ptr, false))
     }
 }
@@ -234,6 +240,7 @@ impl OpenOptions for MultiCfBuilder {
             )
         };
         check_status!(s)?;
+        handles.set_len(self.cfs.len());
         Ok((ptr, false))
     }
 }
@@ -267,6 +274,7 @@ impl OpenOptions for MultiCfTitanBuilder {
             s.as_mut_ptr(),
         );
         check_status!(s)?;
+        handles.set_len(self.cfs.len());
         Ok((ptr, true))
     }
 }

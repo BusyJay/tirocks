@@ -4,7 +4,7 @@ use std::{
     mem::{self, ManuallyDrop},
     ops::{Deref, DerefMut},
     path::Path,
-    ptr::{NonNull, self},
+    ptr::{self, NonNull},
     sync::Arc,
     time::Duration,
 };

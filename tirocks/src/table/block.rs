@@ -187,9 +187,7 @@ impl Default for BlockBasedTableOptions {
     fn default() -> Self {
         unsafe {
             let ptr = tirocks_sys::crocksdb_block_based_options_create();
-            BlockBasedTableOptions {
-                ptr
-            }
+            BlockBasedTableOptions { ptr }
         }
     }
 }

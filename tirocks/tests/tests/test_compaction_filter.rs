@@ -1,8 +1,19 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::{sync::{Arc, atomic::{AtomicBool, Ordering}, Mutex}, ffi::CStr};
+use std::{
+    ffi::CStr,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
+};
 
-use tirocks::{compaction_filter::{CompactionFilter, Decision, SysCompactionFilterFactory}, CloneFactory, db::DefaultCfOnlyBuilder, Options, OpenOptions, option::{WriteOptions, ReadOptions, CompactRangeOptions}};
+use tirocks::{
+    compaction_filter::{CompactionFilter, Decision, SysCompactionFilterFactory},
+    db::DefaultCfOnlyBuilder,
+    option::{CompactRangeOptions, ReadOptions, WriteOptions},
+    CloneFactory, OpenOptions, Options,
+};
 
 #[derive(Default, Clone)]
 struct Filter {
@@ -38,7 +49,6 @@ impl Drop for Filter {
     }
 }
 
-
 #[test]
 fn test_compaction_filter() {
     let path = super::tempdir_with_prefix("compactionfilter");
@@ -68,11 +78,11 @@ fn test_compaction_filter() {
     }
 
     let compact_opt = CompactRangeOptions::default();
-    db.compact_range(&compact_opt, default_cf, Some(b"key1"), Some(b"key3")).unwrap();
+    db.compact_range(&compact_opt, default_cf, Some(b"key1"), Some(b"key3"))
+        .unwrap();
     for (k, _) in &samples {
         assert_eq!(db.get(&read_opt, default_cf, k), Ok(None));
     }
     assert_eq!(*filter.filtered_kvs.lock().unwrap(), samples);
     assert!(filter.drop_called.load(Ordering::Relaxed));
 }
-

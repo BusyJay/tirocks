@@ -1,6 +1,6 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::{marker::PhantomData, ffi::CStr};
+use std::{borrow::Cow, ffi::CStr, marker::PhantomData, mem};
 
 use libc::c_void;
 use tirocks_sys::{r, rocksdb_Range, rocksdb_Slice, s};
@@ -180,5 +180,25 @@ impl<F> CloneFactory<F> {
 impl<F: Clone> CloneFactory<F> {
     pub(crate) fn clone(&self) -> F {
         self.item.clone()
+    }
+}
+
+#[inline]
+pub fn rocks_slice_to_array(arr: &[rocksdb_Slice]) -> Cow<[&[u8]]> {
+    if tirocks_sys::rocks_slice_same_as_rust() {
+        Cow::Borrowed(unsafe { mem::transmute(arr) })
+    } else {
+        let arr = arr.into_iter().map(|v| unsafe { s(*v) }).collect();
+        Cow::Owned(arr)
+    }
+}
+
+#[inline]
+pub fn array_to_rocks_slice<'a>(arr: &'a [&[u8]]) -> Cow<'a, [rocksdb_Slice]> {
+    if tirocks_sys::rocks_slice_same_as_rust() {
+        Cow::Borrowed(unsafe { mem::transmute(arr) })
+    } else {
+        let arr = arr.into_iter().map(|v| unsafe { r(*v) }).collect();
+        Cow::Owned(arr)
     }
 }

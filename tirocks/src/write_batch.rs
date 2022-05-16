@@ -4,7 +4,11 @@ use std::{marker::PhantomData, mem};
 
 use tirocks_sys::{r, rocksdb_WriteBatch, rocksdb_WriteBatch_Iterator, s};
 
-use crate::{db::RawColumnFamilyHandle, util::check_status, Result, Status};
+use crate::{
+    db::RawColumnFamilyHandle,
+    util::{self, check_status},
+    Result, Status,
+};
 
 /// WriteBatch holds a collection of updates to apply atomically to a DB.
 ///
@@ -102,31 +106,17 @@ impl WriteBatch {
     ) -> Result<()> {
         unsafe {
             let mut s = Status::default();
-            if tirocks_sys::rocks_slice_same_as_rust() {
-                let keys: &[_] = mem::transmute(keys);
-                let values: &[_] = mem::transmute(values);
-                tirocks_sys::crocksdb_writebatch_putv_cf(
-                    self.ptr,
-                    cf.get(),
-                    keys.len() as i32,
-                    keys.as_ptr(),
-                    values.len() as i32,
-                    values.as_ptr(),
-                    s.as_mut_ptr(),
-                )
-            } else {
-                let keys: Vec<_> = keys.into_iter().map(|k| r(k)).collect();
-                let values: Vec<_> = values.into_iter().map(|v| r(v)).collect();
-                tirocks_sys::crocksdb_writebatch_putv_cf(
-                    self.ptr,
-                    cf.get(),
-                    keys.len() as i32,
-                    keys.as_ptr(),
-                    values.len() as i32,
-                    values.as_ptr(),
-                    s.as_mut_ptr(),
-                )
-            }
+            let keys = util::array_to_rocks_slice(keys);
+            let values = util::array_to_rocks_slice(values);
+            tirocks_sys::crocksdb_writebatch_putv_cf(
+                self.ptr,
+                cf.get(),
+                keys.len() as i32,
+                keys.as_ptr(),
+                values.len() as i32,
+                values.as_ptr(),
+                s.as_mut_ptr(),
+            );
             check_status!(s)
         }
     }
@@ -136,29 +126,16 @@ impl WriteBatch {
     pub fn put_default_vectored(&mut self, keys: &[&[u8]], values: &[&[u8]]) -> Result<()> {
         unsafe {
             let mut s = Status::default();
-            if tirocks_sys::rocks_slice_same_as_rust() {
-                let keys: &[_] = mem::transmute(keys);
-                let values: &[_] = mem::transmute(values);
-                tirocks_sys::crocksdb_writebatch_putv(
-                    self.ptr,
-                    keys.len() as i32,
-                    keys.as_ptr(),
-                    values.len() as i32,
-                    values.as_ptr(),
-                    s.as_mut_ptr(),
-                )
-            } else {
-                let keys: Vec<_> = keys.into_iter().map(|k| r(k)).collect();
-                let values: Vec<_> = values.into_iter().map(|v| r(v)).collect();
-                tirocks_sys::crocksdb_writebatch_putv(
-                    self.ptr,
-                    keys.len() as i32,
-                    keys.as_ptr(),
-                    values.len() as i32,
-                    values.as_ptr(),
-                    s.as_mut_ptr(),
-                )
-            }
+            let keys = util::array_to_rocks_slice(keys);
+            let values = util::array_to_rocks_slice(values);
+            tirocks_sys::crocksdb_writebatch_putv(
+                self.ptr,
+                keys.len() as i32,
+                keys.as_ptr(),
+                values.len() as i32,
+                values.as_ptr(),
+                s.as_mut_ptr(),
+            );
             check_status!(s)
         }
     }
@@ -187,25 +164,14 @@ impl WriteBatch {
     pub fn delete_vectored(&mut self, cf: &RawColumnFamilyHandle, keys: &[&[u8]]) -> Result<()> {
         unsafe {
             let mut s = Status::default();
-            if tirocks_sys::rocks_slice_same_as_rust() {
-                let keys: &[_] = mem::transmute(keys);
-                tirocks_sys::crocksdb_writebatch_deletev_cf(
-                    self.ptr,
-                    cf.get(),
-                    keys.len() as i32,
-                    keys.as_ptr(),
-                    s.as_mut_ptr(),
-                )
-            } else {
-                let keys: Vec<_> = keys.into_iter().map(|k| r(k)).collect();
-                tirocks_sys::crocksdb_writebatch_deletev_cf(
-                    self.ptr,
-                    cf.get(),
-                    keys.len() as i32,
-                    keys.as_ptr(),
-                    s.as_mut_ptr(),
-                )
-            }
+            let keys = util::array_to_rocks_slice(keys);
+            tirocks_sys::crocksdb_writebatch_deletev_cf(
+                self.ptr,
+                cf.get(),
+                keys.len() as i32,
+                keys.as_ptr(),
+                s.as_mut_ptr(),
+            );
             check_status!(s)
         }
     }
@@ -214,23 +180,13 @@ impl WriteBatch {
     pub fn delete_default_vectored(&mut self, keys: &[&[u8]]) -> Result<()> {
         unsafe {
             let mut s = Status::default();
-            if tirocks_sys::rocks_slice_same_as_rust() {
-                let keys: &[_] = mem::transmute(keys);
-                tirocks_sys::crocksdb_writebatch_deletev(
-                    self.ptr,
-                    keys.len() as i32,
-                    keys.as_ptr(),
-                    s.as_mut_ptr(),
-                )
-            } else {
-                let keys: Vec<_> = keys.into_iter().map(|k| r(k)).collect();
-                tirocks_sys::crocksdb_writebatch_deletev(
-                    self.ptr,
-                    keys.len() as i32,
-                    keys.as_ptr(),
-                    s.as_mut_ptr(),
-                )
-            }
+            let keys = util::array_to_rocks_slice(keys);
+            tirocks_sys::crocksdb_writebatch_deletev(
+                self.ptr,
+                keys.len() as i32,
+                keys.as_ptr(),
+                s.as_mut_ptr(),
+            );
             check_status!(s)
         }
     }
@@ -268,25 +224,14 @@ impl WriteBatch {
     ) -> Result<()> {
         unsafe {
             let mut s = Status::default();
-            if tirocks_sys::rocks_slice_same_as_rust() {
-                let keys: &[_] = mem::transmute(keys);
-                tirocks_sys::crocksdb_writebatch_single_deletev_cf(
-                    self.ptr,
-                    cf.get(),
-                    keys.len() as i32,
-                    keys.as_ptr(),
-                    s.as_mut_ptr(),
-                )
-            } else {
-                let keys: Vec<_> = keys.into_iter().map(|k| r(k)).collect();
-                tirocks_sys::crocksdb_writebatch_single_deletev_cf(
-                    self.ptr,
-                    cf.get(),
-                    keys.len() as i32,
-                    keys.as_ptr(),
-                    s.as_mut_ptr(),
-                )
-            }
+            let keys = util::array_to_rocks_slice(keys);
+            tirocks_sys::crocksdb_writebatch_single_deletev_cf(
+                self.ptr,
+                cf.get(),
+                keys.len() as i32,
+                keys.as_ptr(),
+                s.as_mut_ptr(),
+            );
             check_status!(s)
         }
     }
@@ -295,23 +240,13 @@ impl WriteBatch {
     pub fn delete_single_default_vectored(&mut self, keys: &[&[u8]]) -> Result<()> {
         unsafe {
             let mut s = Status::default();
-            if tirocks_sys::rocks_slice_same_as_rust() {
-                let keys: &[_] = mem::transmute(keys);
-                tirocks_sys::crocksdb_writebatch_single_deletev(
-                    self.ptr,
-                    keys.len() as i32,
-                    keys.as_ptr(),
-                    s.as_mut_ptr(),
-                )
-            } else {
-                let keys: Vec<_> = keys.into_iter().map(|k| r(k)).collect();
-                tirocks_sys::crocksdb_writebatch_single_deletev(
-                    self.ptr,
-                    keys.len() as i32,
-                    keys.as_ptr(),
-                    s.as_mut_ptr(),
-                )
-            }
+            let keys = util::array_to_rocks_slice(keys);
+            tirocks_sys::crocksdb_writebatch_single_deletev(
+                self.ptr,
+                keys.len() as i32,
+                keys.as_ptr(),
+                s.as_mut_ptr(),
+            );
             check_status!(s)
         }
     }
@@ -361,31 +296,17 @@ impl WriteBatch {
     ) -> Result<()> {
         unsafe {
             let mut s = Status::default();
-            if tirocks_sys::rocks_slice_same_as_rust() {
-                let begin_keys: &[_] = mem::transmute(begin_keys);
-                let end_keys: &[_] = mem::transmute(end_keys);
-                tirocks_sys::crocksdb_writebatch_delete_rangev_cf(
-                    self.ptr,
-                    cf.get(),
-                    begin_keys.len() as i32,
-                    begin_keys.as_ptr(),
-                    end_keys.len() as i32,
-                    end_keys.as_ptr(),
-                    s.as_mut_ptr(),
-                )
-            } else {
-                let begin_keys: Vec<_> = begin_keys.into_iter().map(|k| r(k)).collect();
-                let end_keys: Vec<_> = end_keys.into_iter().map(|k| r(k)).collect();
-                tirocks_sys::crocksdb_writebatch_delete_rangev_cf(
-                    self.ptr,
-                    cf.get(),
-                    begin_keys.len() as i32,
-                    begin_keys.as_ptr(),
-                    end_keys.len() as i32,
-                    end_keys.as_ptr(),
-                    s.as_mut_ptr(),
-                )
-            }
+            let begin_keys = util::array_to_rocks_slice(begin_keys);
+            let end_keys = util::array_to_rocks_slice(end_keys);
+            tirocks_sys::crocksdb_writebatch_delete_rangev_cf(
+                self.ptr,
+                cf.get(),
+                begin_keys.len() as i32,
+                begin_keys.as_ptr(),
+                end_keys.len() as i32,
+                end_keys.as_ptr(),
+                s.as_mut_ptr(),
+            );
             check_status!(s)
         }
     }
@@ -398,29 +319,16 @@ impl WriteBatch {
     ) -> Result<()> {
         unsafe {
             let mut s = Status::default();
-            if tirocks_sys::rocks_slice_same_as_rust() {
-                let begin_keys: &[_] = mem::transmute(begin_keys);
-                let end_keys: &[_] = mem::transmute(end_keys);
-                tirocks_sys::crocksdb_writebatch_delete_rangev(
-                    self.ptr,
-                    begin_keys.len() as i32,
-                    begin_keys.as_ptr(),
-                    end_keys.len() as i32,
-                    end_keys.as_ptr(),
-                    s.as_mut_ptr(),
-                )
-            } else {
-                let begin_keys: Vec<_> = begin_keys.into_iter().map(|k| r(k)).collect();
-                let end_keys: Vec<_> = end_keys.into_iter().map(|k| r(k)).collect();
-                tirocks_sys::crocksdb_writebatch_delete_rangev(
-                    self.ptr,
-                    begin_keys.len() as i32,
-                    begin_keys.as_ptr(),
-                    end_keys.len() as i32,
-                    end_keys.as_ptr(),
-                    s.as_mut_ptr(),
-                )
-            }
+            let begin_keys = util::array_to_rocks_slice(begin_keys);
+            let end_keys = util::array_to_rocks_slice(end_keys);
+            tirocks_sys::crocksdb_writebatch_delete_rangev(
+                self.ptr,
+                begin_keys.len() as i32,
+                begin_keys.as_ptr(),
+                end_keys.len() as i32,
+                end_keys.as_ptr(),
+                s.as_mut_ptr(),
+            );
             check_status!(s)
         }
     }

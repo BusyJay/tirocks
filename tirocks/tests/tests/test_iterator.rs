@@ -1,19 +1,23 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
 use std::ffi::CStr;
-use std::sync::mpsc::{self, SyncSender, Sender};
+use std::sync::mpsc::{self, Sender, SyncSender};
 use std::sync::*;
 use std::thread::{self, JoinHandle};
 
-use tirocks::option::{WriteOptions, ReadOptions, FlushOptions, CompactRangeOptions, BottommostLevelCompaction};
-use tirocks::properties::table::user::SequenceNumber;
-use tirocks::table::SysTableFactory;
-use tirocks::table::block::BlockBasedTableOptions;
-use tirocks::table::block::filter_policy::SysFilterPolicy;
-use tirocks::{RawIterator, OpenOptions, Iterator, Snapshot, Iterable, CloneFactory};
-use tirocks::compaction_filter::{CompactionFilter, Decision, ValueType, SysCompactionFilterFactory};
+use tirocks::compaction_filter::{
+    CompactionFilter, Decision, SysCompactionFilterFactory, ValueType,
+};
 use tirocks::db::DefaultCfOnlyBuilder;
+use tirocks::option::{
+    BottommostLevelCompaction, CompactRangeOptions, FlushOptions, ReadOptions, WriteOptions,
+};
+use tirocks::properties::table::user::SequenceNumber;
 use tirocks::slice_transform::{SliceTransform, SysSliceTransform};
+use tirocks::table::block::filter_policy::SysFilterPolicy;
+use tirocks::table::block::BlockBasedTableOptions;
+use tirocks::table::SysTableFactory;
+use tirocks::{CloneFactory, Iterable, Iterator, OpenOptions, RawIterator, Snapshot};
 
 struct FixedPrefixTransform {
     pub prefix_len: usize,
@@ -21,9 +25,7 @@ struct FixedPrefixTransform {
 
 impl SliceTransform for FixedPrefixTransform {
     fn name(&self) -> &CStr {
-        unsafe {
-            CStr::from_bytes_with_nul_unchecked(b"fixed prefix\0")
-        }
+        unsafe { CStr::from_bytes_with_nul_unchecked(b"fixed prefix\0") }
     }
 
     fn transform<'a>(&self, key: &'a [u8]) -> &'a [u8] {
@@ -41,9 +43,7 @@ struct FixedSuffixTransform {
 
 impl SliceTransform for FixedSuffixTransform {
     fn name(&self) -> &CStr {
-        unsafe {
-            CStr::from_bytes_with_nul_unchecked(b"fixed suffix\0")
-        }
+        unsafe { CStr::from_bytes_with_nul_unchecked(b"fixed suffix\0") }
     }
 
     fn transform<'a>(&self, key: &'a [u8]) -> &'a [u8] {
@@ -91,7 +91,10 @@ pub fn test_iterator() {
     let v3 = b"v3333";
     let v4 = b"v4444";
     let mut builder = DefaultCfOnlyBuilder::default();
-    builder.options_mut().db_options_mut().set_create_if_missing(true);
+    builder
+        .options_mut()
+        .db_options_mut()
+        .set_create_if_missing(true);
     let db = builder.open(path.path()).unwrap();
     let write_opts = WriteOptions::default();
     let cf = db.default_cf();
@@ -164,14 +167,14 @@ pub fn test_iterator() {
     assert_eq!(prev_collect(&mut iter), expected);
 
     let cases: Vec<(&[u8], bool)> = vec![
-    (b"k0", true), 
-    (b"k1", true), 
-    (b"k11", true), 
-    (b"k5", false),
-    (b"k0", true), 
-    (b"k1", true), 
-    (b"k11", true), 
-    (b"k5", false)
+        (b"k0", true),
+        (b"k1", true),
+        (b"k11", true),
+        (b"k5", false),
+        (b"k0", true),
+        (b"k1", true),
+        (b"k11", true),
+        (b"k5", false),
     ];
     for (key, valid) in cases {
         iter.seek(key);
@@ -188,7 +191,9 @@ pub fn test_iterator() {
     assert!(!iter.valid());
 }
 
-fn make_checker<D: Iterable + Send + 'static>(mut iter: Iterator<'static, D>) -> (Sender<()>, JoinHandle<()>) {
+fn make_checker<D: Iterable + Send + 'static>(
+    mut iter: Iterator<'static, D>,
+) -> (Sender<()>, JoinHandle<()>) {
     let (tx, rx) = mpsc::channel();
     let j = thread::spawn(move || {
         rx.recv().unwrap();
@@ -203,9 +208,12 @@ fn make_checker<D: Iterable + Send + 'static>(mut iter: Iterator<'static, D>) ->
 #[test]
 fn test_send_iterator() {
     let path = super::tempdir_with_prefix("_rust_rocksdb_iteratortest_send");
-    
+
     let mut builder = DefaultCfOnlyBuilder::default();
-    builder.options_mut().db_options_mut().set_create_if_missing(true);
+    builder
+        .options_mut()
+        .db_options_mut()
+        .set_create_if_missing(true);
     let db = Arc::new(builder.open(path.path()).unwrap());
     let write_opt = WriteOptions::default();
     let cf = db.default_cf();
@@ -221,14 +229,17 @@ fn test_send_iterator() {
 
     let db = Arc::new(builder.open(path.path()).unwrap());
     let cf = db.default_cf();
-    db.flush(FlushOptions::default().set_wait(true), cf).unwrap();
+    db.flush(FlushOptions::default().set_wait(true), cf)
+        .unwrap();
 
     let snap = Snapshot::new(db.clone());
     let opts = ReadOptions::default();
     let iter = Iterator::new(db.clone(), opts, cf);
     db.put(&write_opt, cf, b"k1", b"v2").unwrap();
-    db.flush(FlushOptions::default().set_wait(true), cf).unwrap();
-    db.compact_range(&CompactRangeOptions::default(), cf, None, None).unwrap();
+    db.flush(FlushOptions::default().set_wait(true), cf)
+        .unwrap();
+    db.compact_range(&CompactRangeOptions::default(), cf, None, None)
+        .unwrap();
 
     let (tx, handle) = make_checker(iter);
     // iterator still holds the sst file, so it should be able to read the old value.
@@ -242,8 +253,11 @@ fn test_send_iterator() {
 fn test_seek_for_prev() {
     let path = super::tempdir_with_prefix("_rust_rocksdb_seek_for_prev");
     let mut builder = DefaultCfOnlyBuilder::default();
-    builder.options_mut().db_options_mut().set_create_if_missing(true);
-    
+    builder
+        .options_mut()
+        .db_options_mut()
+        .set_create_if_missing(true);
+
     let db = builder.open(path.path()).unwrap();
     let cf = db.default_cf();
     let write_opts = WriteOptions::default();
@@ -296,8 +310,11 @@ fn test_seek_for_prev() {
 fn read_with_upper_bound() {
     let path = super::tempdir_with_prefix("_rust_rocksdb_read_with_upper_bound_test");
     let mut builder = DefaultCfOnlyBuilder::default();
-    builder.options_mut().db_options_mut().set_create_if_missing(true);
-    
+    builder
+        .options_mut()
+        .db_options_mut()
+        .set_create_if_missing(true);
+
     let db = builder.open(path.path()).unwrap();
     let write_opts = WriteOptions::default();
     let cf = db.default_cf();
@@ -320,12 +337,21 @@ fn test_total_order_seek() {
     let path = super::tempdir_with_prefix("_rust_rocksdb_total_order_seek");
     let mut bbto = BlockBasedTableOptions::default();
     let policy = SysFilterPolicy::new_bloom_filter_policy(10, false);
-    bbto.set_filter_policy(&policy).set_whole_key_filtering(false);
+    bbto.set_filter_policy(&policy)
+        .set_whole_key_filtering(false);
     let mut builder = DefaultCfOnlyBuilder::default();
-    builder.options_mut().db_options_mut().set_create_if_missing(true);
+    builder
+        .options_mut()
+        .db_options_mut()
+        .set_create_if_missing(true);
     let factory = SysTableFactory::new_block_based(&bbto);
     let transform = SysSliceTransform::new(FixedPrefixTransform { prefix_len: 2 });
-    builder.options_mut().cf_options_mut().set_table_factory(&factory).set_prefix_extractor(&transform).set_memtable_prefix_bloom_size_ratio(0.1);
+    builder
+        .options_mut()
+        .cf_options_mut()
+        .set_table_factory(&factory)
+        .set_prefix_extractor(&transform)
+        .set_memtable_prefix_bloom_size_ratio(0.1);
 
     let keys = vec![
         b"k1-1", b"k1-2", b"k1-3", b"k2-1", b"k2-2", b"k2-3", b"k3-1", b"k3-2", b"k3-3",
@@ -339,12 +365,14 @@ fn test_total_order_seek() {
     db.put(&wopts, cf, b"k1-2", b"b").unwrap();
     db.put(&wopts, cf, b"k1-3", b"c").unwrap();
     db.put(&wopts, cf, b"k2-1", b"a").unwrap();
-    db.flush(FlushOptions::default().set_wait(true), cf).unwrap();
+    db.flush(FlushOptions::default().set_wait(true), cf)
+        .unwrap();
 
     // sst2
     db.put(&wopts, cf, b"k2-2", b"b").unwrap();
     db.put(&wopts, cf, b"k2-3", b"c").unwrap();
-    db.flush(FlushOptions::default().set_wait(true), cf).unwrap();
+    db.flush(FlushOptions::default().set_wait(true), cf)
+        .unwrap();
 
     // memtable
     db.put(&wopts, cf, b"k3-1", b"a").unwrap();
@@ -400,12 +428,20 @@ fn test_fixed_suffix_seek() {
     let path = super::tempdir_with_prefix("_rust_rocksdb_fixed_suffix_seek");
     let filter = SysFilterPolicy::new_bloom_filter_policy(10, false);
     let mut bbto = BlockBasedTableOptions::default();
-    bbto.set_filter_policy(&filter).set_whole_key_filtering(false);
+    bbto.set_filter_policy(&filter)
+        .set_whole_key_filtering(false);
     let mut builder = DefaultCfOnlyBuilder::default();
-    builder.options_mut().db_options_mut().set_create_if_missing(true);
+    builder
+        .options_mut()
+        .db_options_mut()
+        .set_create_if_missing(true);
     let table_factory = SysTableFactory::new_block_based(&bbto);
-    let transform = SysSliceTransform::new(FixedSuffixTransform { suffix_len: 2});
-    builder.options_mut().cf_options_mut().set_table_factory(&table_factory).set_prefix_extractor(&transform);
+    let transform = SysSliceTransform::new(FixedSuffixTransform { suffix_len: 2 });
+    builder
+        .options_mut()
+        .cf_options_mut()
+        .set_table_factory(&table_factory)
+        .set_prefix_extractor(&transform);
 
     let write_opts = WriteOptions::default();
     let db = builder.open(path.path()).unwrap();
@@ -413,7 +449,8 @@ fn test_fixed_suffix_seek() {
     db.put(&write_opts, cf, b"k-eghe-5", b"a").unwrap();
     db.put(&write_opts, cf, b"k-24yfae-6", b"a").unwrap();
     db.put(&write_opts, cf, b"k-h1fwd-7", b"a").unwrap();
-    db.flush(FlushOptions::default().set_wait(true), cf).unwrap();
+    db.flush(FlushOptions::default().set_wait(true), cf)
+        .unwrap();
 
     let mut read_opts = ReadOptions::default();
     let mut iter = db.iter(&mut read_opts, cf);
@@ -432,15 +469,28 @@ fn test_fixed_suffix_seek() {
 struct TestCompactionFilter(SyncSender<(i32, Vec<u8>, SequenceNumber, ValueType, Vec<u8>)>);
 
 impl CompactionFilter for TestCompactionFilter {
-    fn filter(&mut self, level: i32, key: &[u8], seqno: SequenceNumber, value_type: ValueType, existing_value: &[u8]) -> Decision {
-        self.0.send((level, key.to_vec(), seqno, value_type, existing_value.to_vec())).unwrap();
+    fn filter(
+        &mut self,
+        level: i32,
+        key: &[u8],
+        seqno: SequenceNumber,
+        value_type: ValueType,
+        existing_value: &[u8],
+    ) -> Decision {
+        self.0
+            .send((
+                level,
+                key.to_vec(),
+                seqno,
+                value_type,
+                existing_value.to_vec(),
+            ))
+            .unwrap();
         Decision::Keep
     }
 
     fn name(&mut self) -> &CStr {
-        unsafe {
-            CStr::from_bytes_with_nul_unchecked(b"TestCopactionFilter\0")
-        }
+        unsafe { CStr::from_bytes_with_nul_unchecked(b"TestCopactionFilter\0") }
     }
 }
 
@@ -451,9 +501,17 @@ fn test_iter_sequence_number() {
 
     let path = super::tempdir_with_prefix("_rust_rocksdb_sequence_number");
     let mut builder = DefaultCfOnlyBuilder::default();
-    builder.options_mut().db_options_mut().set_create_if_missing(true);
+    builder
+        .options_mut()
+        .db_options_mut()
+        .set_create_if_missing(true);
     let factory = SysCompactionFilterFactory::new(CloneFactory::new(filter));
-    builder.options_mut().cf_options_mut().set_disable_auto_compactions(true).set_num_levels(7).set_compaction_filter_factory(&factory);
+    builder
+        .options_mut()
+        .cf_options_mut()
+        .set_disable_auto_compactions(true)
+        .set_num_levels(7)
+        .set_compaction_filter_factory(&factory);
     let db = builder.open(path.path()).unwrap();
 
     let write_opt = WriteOptions::default();
@@ -482,9 +540,12 @@ fn test_iter_sequence_number() {
     assert_eq!(iter.sequence_number(), Some(4));
 
     let mut compact_opts = CompactRangeOptions::default();
-    compact_opts.set_bottommost_level_compaction(BottommostLevelCompaction::kForce).set_target_level(6);
+    compact_opts
+        .set_bottommost_level_compaction(BottommostLevelCompaction::kForce)
+        .set_target_level(6);
     let cf = db.default_cf();
-    db.compact_range(&compact_opts, cf, Some(b"a"), Some(b"z")).unwrap();
+    db.compact_range(&compact_opts, cf, Some(b"a"), Some(b"z"))
+        .unwrap();
 
     let (k, key, seqno, vt, v) = rx.recv().unwrap();
     assert_eq!(k, 0);

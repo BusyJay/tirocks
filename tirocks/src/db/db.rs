@@ -487,7 +487,7 @@ pub struct Db {
 impl Drop for Db {
     #[inline]
     fn drop(&mut self) {
-        self.handles.clear();
+        let _ = self.clear_handles();
         unsafe {
             tirocks_sys::crocksdb_destroy(self.ptr as _);
         }
@@ -511,15 +511,20 @@ impl Db {
         }
     }
 
-    pub fn close(mut self) -> Status {
+    fn clear_handles(&mut self) -> Result<()> {
+        for mut h in self.handles.drain(..) {
+            unsafe { h.maybe_drop(self.ptr)?; }
+        }
+        Ok(())
+    }
+
+    pub fn close(mut self) -> Result<()> {
         let mut s = Status::default();
         unsafe {
-            // In RocksDB, it's OK to close db first, but TitanDB will destroy
-            // based db in close.
-            self.handles.clear();
+            self.clear_handles()?;
             tirocks_sys::crocksdb_close(self.ptr, s.as_mut_ptr());
         }
-        s
+        check_status!(s)
     }
 
     pub fn list_column_families(db: DbOptions, path: impl AsRef<Path>) -> Result<Vec<String>> {
@@ -548,9 +553,9 @@ impl Db {
         Ok(names)
     }
 
-    pub fn create_column_family(&mut self, name: impl AsRef<str>, opt: CfOptions) -> Result<()> {
+    pub fn create_cf(&mut self, name: impl AsRef<str>, opt: CfOptions) -> Result<()> {
         if self.is_titan {
-            return self.create_column_family_titan(name, opt.into());
+            return self.create_cf_titan(name, opt.into());
         }
         let mut s = Status::default();
         let ptr = unsafe {
@@ -564,17 +569,17 @@ impl Db {
         check_status!(s)?;
         opt.comparator().map(|c| self.comparator.push(c.clone()));
         self.handles
-            .push(unsafe { RefCountedColumnFamilyHandle::from_ptr(ptr) });
+            .push(unsafe { RefCountedColumnFamilyHandle::from_ptr(ptr, true) });
         Ok(())
     }
 
-    pub fn create_column_family_titan(
+    pub fn create_cf_titan(
         &mut self,
         name: impl AsRef<str>,
         mut opt: TitanCfOptions,
     ) -> Result<()> {
         if !self.is_titan {
-            return self.create_column_family(name, opt.into());
+            return self.create_cf(name, opt.into());
         }
         let mut s = Status::default();
         let ptr = unsafe {
@@ -588,11 +593,11 @@ impl Db {
         check_status!(s)?;
         opt.comparator().map(|c| self.comparator.push(c.clone()));
         self.handles
-            .push(unsafe { RefCountedColumnFamilyHandle::from_ptr(ptr) });
+            .push(unsafe { RefCountedColumnFamilyHandle::from_ptr(ptr, true) });
         Ok(())
     }
 
-    pub fn destroy_column_family(&mut self, name: &str) -> Result<bool> {
+    pub fn destroy_cf(&mut self, name: &str) -> Result<bool> {
         if name == DEFAULT_CF_NAME {
             return Err(Status::with_invalid_argument(
                 "default cf can't be dropped.",
@@ -612,6 +617,10 @@ impl Db {
             let drop_res = h.maybe_drop(self.ptr);
             destroy_res.and(drop_res)
         }
+    }
+
+    pub fn cfs(&self) -> impl Iterator<Item = &RawColumnFamilyHandle> {
+        self.handles.iter().map(|c| &**c)
     }
 
     pub fn cf(&self, name: &str) -> Option<&RawColumnFamilyHandle> {

@@ -59,6 +59,7 @@
 #include "rocksdb/env.h"
 #include "rocksdb/iostats_context.h"
 #include "rocksdb/listener.h"
+#include "rocksdb/merge_operator.h"
 #include "rocksdb/options.h"
 #include "rocksdb/perf_context.h"
 #include "rocksdb/perf_flag.h"
@@ -1353,23 +1354,47 @@ crocksdb_filterpolicy_create_bloom_format(int bits_per_key,
 
 /* Merge Operator */
 
+typedef bool (*full_merge_cb)(void*, const MergeOperator::MergeOperationInput*,
+                              MergeOperator::MergeOperationOutput*);
+typedef bool (*partial_merge_cb)(void*, Slice, Slice, Slice, void*,
+                                 void (*append)(void*, Slice));
+typedef bool (*partial_merge_mult_cb)(void*, Slice, const Slice* ops, size_t,
+                                      void*, void (*append)(void*, Slice));
+typedef const char* (*name_cb)(void*);
+typedef bool (*allow_single_operand_cb)(void*);
+typedef bool (*should_merge_cb)(void*, const Slice* ops, size_t);
+
 extern C_ROCKSDB_LIBRARY_API crocksdb_mergeoperator_t*
-crocksdb_mergeoperator_create(
-    void* state, void (*destructor)(void*),
-    char* (*full_merge)(void*, const char* key, size_t key_length,
-                        const char* existing_value,
-                        size_t existing_value_length,
-                        const char* const* operands_list,
-                        const size_t* operands_list_length, int num_operands,
-                        unsigned char* success, size_t* new_value_length),
-    char* (*partial_merge)(void*, const char* key, size_t key_length,
-                           const char* const* operands_list,
-                           const size_t* operands_list_length, int num_operands,
-                           unsigned char* success, size_t* new_value_length),
-    void (*delete_value)(void*, const char* value, size_t value_length),
-    const char* (*name)(void*));
+crocksdb_mergeoperator_create(void* state, void (*destructor)(void*),
+                              full_merge_cb, partial_merge_cb,
+                              partial_merge_mult_cb, name_cb,
+                              allow_single_operand_cb, should_merge_cb);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_mergeoperator_destroy(
     crocksdb_mergeoperator_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_mergeoperationinput_key(
+    const MergeOperator::MergeOperationInput*, Slice*);
+extern C_ROCKSDB_LIBRARY_API MergeOperator::MergeValueType
+crocksdb_mergeoperationinput_value_type(
+    const MergeOperator::MergeOperationInput*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_mergeoperationinput_existing_value(
+    const MergeOperator::MergeOperationInput*, const Slice**);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_mergeoperationinput_operand_list(
+    const MergeOperator::MergeOperationInput*, const Slice**, size_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_mergeoperationoutput_set_new_value(
+    MergeOperator::MergeOperationOutput*, Slice);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_mergeoperationoutput_append_new_value(
+    MergeOperator::MergeOperationOutput*, Slice);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_mergeoperationoutput_set_existing_operand(
+    MergeOperator::MergeOperationOutput*,
+    const MergeOperator::MergeOperationInput*, size_t);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_mergeoperationoutput_set_existing_operand_to_value(
+    MergeOperator::MergeOperationOutput*,
+    const MergeOperator::MergeOperationInput*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_mergeoperationoutput_set_new_type(
+    MergeOperator::MergeOperationOutput*, MergeOperator::MergeValueType);
 
 /* Read options */
 extern C_ROCKSDB_LIBRARY_API void crocksdb_readoptions_set_table_filter(

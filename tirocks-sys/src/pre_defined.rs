@@ -25,3 +25,5 @@ pub enum rocksdb_ColumnFamilyMetaData {}
 pub enum rocksdb_WriteBatch {}
 pub enum rocksdb_PerfContext {}
 pub enum rocksdb_PerfFlags {}
+pub enum rocksdb_MergeOperator_MergeOperationInput {}
+pub enum rocksdb_MergeOperator_MergeOperationOutput {}

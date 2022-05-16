@@ -45,6 +45,7 @@ impl RawColumnFamilyHandle {
 #[derive(Debug)]
 struct Inner {
     ptr: *mut rocksdb_ColumnFamilyHandle,
+    managed: bool,
     ref_count: AtomicUsize,
 }
 
@@ -67,7 +68,7 @@ impl RefCountedColumnFamilyHandle {
         // TODO: thread sanitizer doesn't support fence.
         atomic::fence(Ordering::Acquire);
         let mut s = Status::default();
-        if !self.is_default_cf() {
+        if self.inner.as_ref().managed {
             tirocks_sys::crocksdb_column_family_handle_destroy(db, self.get(), s.as_mut_ptr());
         }
         drop(Box::from(self.inner.as_ptr()));
@@ -88,9 +89,11 @@ impl RefCountedColumnFamilyHandle {
     #[inline]
     pub(crate) unsafe fn from_ptr(
         ptr: *mut rocksdb_ColumnFamilyHandle,
+        managed: bool,
     ) -> RefCountedColumnFamilyHandle {
         let inner = Box::into_raw(Box::new(Inner {
             ptr,
+            managed,
             ref_count: AtomicUsize::new(1),
         }));
         RefCountedColumnFamilyHandle {

@@ -252,6 +252,13 @@ pub struct rocksdb_WriteStallInfo__bindgen_ty_1 {
     pub cur: rocksdb_WriteStallCondition,
     pub prev: rocksdb_WriteStallCondition,
 }
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_MergeOperator_MergeValueType {
+    kDeletion = 0,
+    kValue = 1,
+    kBlobIndex = 2,
+}
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_CompactionStopStyle {
@@ -3875,50 +3882,113 @@ extern "C" {
         use_block_based_builder: bool,
     ) -> *mut crocksdb_filterpolicy_t;
 }
+pub type full_merge_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        arg1: *mut libc::c_void,
+        arg2: *const rocksdb_MergeOperator_MergeOperationInput,
+        arg3: *mut rocksdb_MergeOperator_MergeOperationOutput,
+    ) -> bool,
+>;
+pub type partial_merge_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        arg1: *mut libc::c_void,
+        arg2: rocksdb_Slice,
+        arg3: rocksdb_Slice,
+        arg4: rocksdb_Slice,
+        arg5: *mut libc::c_void,
+        append: ::std::option::Option<
+            unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: rocksdb_Slice),
+        >,
+    ) -> bool,
+>;
+pub type partial_merge_mult_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        arg1: *mut libc::c_void,
+        arg2: rocksdb_Slice,
+        ops: *const rocksdb_Slice,
+        arg3: usize,
+        arg4: *mut libc::c_void,
+        append: ::std::option::Option<
+            unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: rocksdb_Slice),
+        >,
+    ) -> bool,
+>;
+pub type name_cb =
+    ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void) -> *const libc::c_char>;
+pub type allow_single_operand_cb =
+    ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void) -> bool>;
+pub type should_merge_cb = ::std::option::Option<
+    unsafe extern "C" fn(arg1: *mut libc::c_void, ops: *const rocksdb_Slice, arg2: usize) -> bool,
+>;
 extern "C" {
     pub fn crocksdb_mergeoperator_create(
         state: *mut libc::c_void,
         destructor: ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void)>,
-        full_merge: ::std::option::Option<
-            unsafe extern "C" fn(
-                arg1: *mut libc::c_void,
-                key: *const libc::c_char,
-                key_length: usize,
-                existing_value: *const libc::c_char,
-                existing_value_length: usize,
-                operands_list: *const *const libc::c_char,
-                operands_list_length: *const usize,
-                num_operands: libc::c_int,
-                success: *mut libc::c_uchar,
-                new_value_length: *mut usize,
-            ) -> *mut libc::c_char,
-        >,
-        partial_merge: ::std::option::Option<
-            unsafe extern "C" fn(
-                arg1: *mut libc::c_void,
-                key: *const libc::c_char,
-                key_length: usize,
-                operands_list: *const *const libc::c_char,
-                operands_list_length: *const usize,
-                num_operands: libc::c_int,
-                success: *mut libc::c_uchar,
-                new_value_length: *mut usize,
-            ) -> *mut libc::c_char,
-        >,
-        delete_value: ::std::option::Option<
-            unsafe extern "C" fn(
-                arg1: *mut libc::c_void,
-                value: *const libc::c_char,
-                value_length: usize,
-            ),
-        >,
-        name: ::std::option::Option<
-            unsafe extern "C" fn(arg1: *mut libc::c_void) -> *const libc::c_char,
-        >,
+        arg1: full_merge_cb,
+        arg2: partial_merge_cb,
+        arg3: partial_merge_mult_cb,
+        arg4: name_cb,
+        arg5: allow_single_operand_cb,
+        arg6: should_merge_cb,
     ) -> *mut crocksdb_mergeoperator_t;
 }
 extern "C" {
     pub fn crocksdb_mergeoperator_destroy(arg1: *mut crocksdb_mergeoperator_t);
+}
+extern "C" {
+    pub fn crocksdb_mergeoperationinput_key(
+        arg1: *const rocksdb_MergeOperator_MergeOperationInput,
+        arg2: *mut rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_mergeoperationinput_value_type(
+        arg1: *const rocksdb_MergeOperator_MergeOperationInput,
+    ) -> rocksdb_MergeOperator_MergeValueType;
+}
+extern "C" {
+    pub fn crocksdb_mergeoperationinput_existing_value(
+        arg1: *const rocksdb_MergeOperator_MergeOperationInput,
+        arg2: *mut *const rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_mergeoperationinput_operand_list(
+        arg1: *const rocksdb_MergeOperator_MergeOperationInput,
+        arg2: *mut *const rocksdb_Slice,
+        arg3: *mut usize,
+    );
+}
+extern "C" {
+    pub fn crocksdb_mergeoperationoutput_set_new_value(
+        arg1: *mut rocksdb_MergeOperator_MergeOperationOutput,
+        arg2: rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_mergeoperationoutput_append_new_value(
+        arg1: *mut rocksdb_MergeOperator_MergeOperationOutput,
+        arg2: rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_mergeoperationoutput_set_existing_operand(
+        arg1: *mut rocksdb_MergeOperator_MergeOperationOutput,
+        arg2: *const rocksdb_MergeOperator_MergeOperationInput,
+        arg3: usize,
+    );
+}
+extern "C" {
+    pub fn crocksdb_mergeoperationoutput_set_existing_operand_to_value(
+        arg1: *mut rocksdb_MergeOperator_MergeOperationOutput,
+        arg2: *const rocksdb_MergeOperator_MergeOperationInput,
+    );
+}
+extern "C" {
+    pub fn crocksdb_mergeoperationoutput_set_new_type(
+        arg1: *mut rocksdb_MergeOperator_MergeOperationOutput,
+        arg2: rocksdb_MergeOperator_MergeValueType,
+    );
 }
 extern "C" {
     pub fn crocksdb_readoptions_set_table_filter(

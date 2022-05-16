@@ -631,20 +631,19 @@ struct FilterPolicyWrapper : public FilterPolicy {
   }
 };
 
+void slice_collect(void* target, Slice s) {
+  ((std::string*)target)->append(s.data(), s.size());
+}
+
 struct CRocksDBMergeOperator : public MergeOperator {
   void* state_;
   void (*destructor_)(void*);
-  const char* (*name_)(void*);
-  char* (*full_merge_)(void*, const char* key, size_t key_length,
-                       const char* existing_value, size_t existing_value_length,
-                       const char* const* operands_list,
-                       const size_t* operands_list_length, int num_operands,
-                       unsigned char* success, size_t* new_value_length);
-  char* (*partial_merge_)(void*, const char* key, size_t key_length,
-                          const char* const* operands_list,
-                          const size_t* operands_list_length, int num_operands,
-                          unsigned char* success, size_t* new_value_length);
-  void (*delete_value_)(void*, const char* value, size_t value_length);
+  name_cb name_;
+  full_merge_cb full_merge_;
+  partial_merge_cb partial_merge_;
+  partial_merge_mult_cb partial_merge_mult_;
+  allow_single_operand_cb allow_single_operand_;
+  should_merge_cb should_merge_;
 
   virtual ~CRocksDBMergeOperator() { (*destructor_)(state_); }
 
@@ -652,66 +651,34 @@ struct CRocksDBMergeOperator : public MergeOperator {
 
   virtual bool FullMergeV2(const MergeOperationInput& merge_in,
                            MergeOperationOutput* merge_out) const override {
-    size_t n = merge_in.operand_list.size();
-    std::vector<const char*> operand_pointers(n);
-    std::vector<size_t> operand_sizes(n);
-    for (size_t i = 0; i < n; i++) {
-      Slice operand(merge_in.operand_list[i]);
-      operand_pointers[i] = operand.data();
-      operand_sizes[i] = operand.size();
-    }
-
-    const char* existing_value_data = nullptr;
-    size_t existing_value_len = 0;
-    if (merge_in.existing_value != nullptr) {
-      existing_value_data = merge_in.existing_value->data();
-      existing_value_len = merge_in.existing_value->size();
-    }
-
-    unsigned char success;
-    size_t new_value_len;
-    char* tmp_new_value = (*full_merge_)(
-        state_, merge_in.key.data(), merge_in.key.size(), existing_value_data,
-        existing_value_len, &operand_pointers[0], &operand_sizes[0],
-        static_cast<int>(n), &success, &new_value_len);
-    merge_out->new_value.assign(tmp_new_value, new_value_len);
-
-    if (delete_value_ != nullptr) {
-      (*delete_value_)(state_, tmp_new_value, new_value_len);
-    } else {
-      free(tmp_new_value);
-    }
-
-    return success;
+    return full_merge_(state_, &merge_in, merge_out);
   }
 
   virtual bool PartialMergeMulti(const Slice& key,
                                  const std::deque<Slice>& operand_list,
                                  std::string* new_value,
                                  Logger*) const override {
-    size_t operand_count = operand_list.size();
-    std::vector<const char*> operand_pointers(operand_count);
-    std::vector<size_t> operand_sizes(operand_count);
-    for (size_t i = 0; i < operand_count; ++i) {
-      Slice operand(operand_list[i]);
-      operand_pointers[i] = operand.data();
-      operand_sizes[i] = operand.size();
+    std::vector<Slice> operand_vec(operand_list.size());
+    for (size_t i = 0; i < operand_list.size(); i++) {
+      operand_vec.push_back(operand_list[i]);
     }
+    return partial_merge_mult_(state_, key, operand_vec.data(),
+                               operand_vec.size(), new_value, slice_collect);
+  }
 
-    unsigned char success;
-    size_t new_value_len;
-    char* tmp_new_value = (*partial_merge_)(
-        state_, key.data(), key.size(), &operand_pointers[0], &operand_sizes[0],
-        static_cast<int>(operand_count), &success, &new_value_len);
-    new_value->assign(tmp_new_value, new_value_len);
+  bool PartialMerge(const Slice& key, const Slice& left_op,
+                    const Slice& right_op, std::string* new_value,
+                    Logger* /*logger*/) const override {
+    return partial_merge_(state_, key, left_op, right_op, new_value,
+                          slice_collect);
+  }
 
-    if (delete_value_ != nullptr) {
-      (*delete_value_)(state_, tmp_new_value, new_value_len);
-    } else {
-      free(tmp_new_value);
-    }
+  bool AllowSingleOperand() const override {
+    return allow_single_operand_(state_);
+  }
 
-    return success;
+  bool ShouldMerge(const std::vector<Slice>& ops) const override {
+    return should_merge_(state_, ops.data(), ops.size());
   }
 };
 
@@ -2272,11 +2239,11 @@ void crocksdb_options_set_env(DBOptions* opt, Env* env) { opt->env = env; }
 crocksdb_logger_t* crocksdb_logger_create(void* rep, void (*destructor_)(void*),
                                           crocksdb_logger_logv_cb logv) {
   crocksdb_logger_t* logger = new crocksdb_logger_t;
-  crocksdb_logger_impl_t* li = new crocksdb_logger_impl_t;
+  auto li = std::make_shared<crocksdb_logger_impl_t>();
   li->rep = rep;
   li->destructor_ = destructor_;
   li->logv_internal_ = logv;
-  logger->rep = std::shared_ptr<Logger>(li);
+  logger->rep = li;
   return logger;
 }
 
@@ -3169,28 +3136,20 @@ crocksdb_filterpolicy_t* crocksdb_filterpolicy_create_bloom_format(
       NewBloomFilterPolicy(bits_per_key, use_block_based_builder));
   return result;
 }
-
 crocksdb_mergeoperator_t* crocksdb_mergeoperator_create(
-    void* state, void (*destructor)(void*),
-    char* (*full_merge)(void*, const char* key, size_t key_length,
-                        const char* existing_value,
-                        size_t existing_value_length,
-                        const char* const* operands_list,
-                        const size_t* operands_list_length, int num_operands,
-                        unsigned char* success, size_t* new_value_length),
-    char* (*partial_merge)(void*, const char* key, size_t key_length,
-                           const char* const* operands_list,
-                           const size_t* operands_list_length, int num_operands,
-                           unsigned char* success, size_t* new_value_length),
-    void (*delete_value)(void*, const char* value, size_t value_length),
-    const char* (*name)(void*)) {
+    void* state, void (*destructor)(void*), full_merge_cb full,
+    partial_merge_cb partial, partial_merge_mult_cb partial_mult, name_cb name,
+    allow_single_operand_cb allow_single, should_merge_cb should_merge) {
   auto result = std::make_shared<CRocksDBMergeOperator>();
   result->state_ = state;
   result->destructor_ = destructor;
-  result->full_merge_ = full_merge;
-  result->partial_merge_ = partial_merge;
-  result->delete_value_ = delete_value;
+  result->full_merge_ = full;
+  result->partial_merge_ = partial;
+  result->partial_merge_mult_ = partial_mult;
   result->name_ = name;
+  result->allow_single_operand_ = allow_single;
+  result->should_merge_ = should_merge;
+
   auto t = new crocksdb_mergeoperator_t;
   t->rep = result;
   return t;
@@ -3198,6 +3157,57 @@ crocksdb_mergeoperator_t* crocksdb_mergeoperator_create(
 
 void crocksdb_mergeoperator_destroy(crocksdb_mergeoperator_t* merge_operator) {
   delete merge_operator;
+}
+
+void crocksdb_mergeoperationinput_key(
+    const MergeOperator::MergeOperationInput* input, Slice* key) {
+  *key = input->key;
+}
+
+MergeOperator::MergeValueType crocksdb_mergeoperationinput_value_type(
+    const MergeOperator::MergeOperationInput* input) {
+  return input->value_type;
+}
+
+void crocksdb_mergeoperationinput_existing_value(
+    const MergeOperator::MergeOperationInput* input,
+    const Slice** existing_value) {
+  *existing_value = input->existing_value;
+}
+
+void crocksdb_mergeoperationinput_operand_list(
+    const MergeOperator::MergeOperationInput* input, const Slice** ops,
+    size_t* count) {
+  *ops = input->operand_list.data();
+  *count = input->operand_list.size();
+}
+
+void crocksdb_mergeoperationoutput_set_new_value(
+    MergeOperator::MergeOperationOutput* output, Slice new_value) {
+  output->new_value.assign(new_value.data(), new_value.size());
+}
+
+void crocksdb_mergeoperationoutput_append_new_value(
+    MergeOperator::MergeOperationOutput* output, Slice new_value) {
+  output->new_value.append(new_value.data(), new_value.size());
+}
+
+void crocksdb_mergeoperationoutput_set_existing_operand(
+    MergeOperator::MergeOperationOutput* output,
+    const MergeOperator::MergeOperationInput* input, size_t count) {
+  output->existing_operand = input->operand_list[count];
+}
+
+void crocksdb_mergeoperationoutput_set_existing_operand_to_value(
+    MergeOperator::MergeOperationOutput* output,
+    const MergeOperator::MergeOperationInput* input) {
+  output->existing_operand = *input->existing_value;
+}
+
+void crocksdb_mergeoperationoutput_set_new_type(
+    MergeOperator::MergeOperationOutput* output,
+    MergeOperator::MergeValueType ty) {
+  output->new_type = ty;
 }
 
 struct TableFilterCtx {
