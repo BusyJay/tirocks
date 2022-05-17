@@ -137,11 +137,6 @@ typedef struct crocksdb_table_properties_collector_t
     crocksdb_table_properties_collector_t;
 typedef struct crocksdb_table_properties_collector_factory_t
     crocksdb_table_properties_collector_factory_t;
-typedef struct crocksdb_flushjobinfo_t crocksdb_flushjobinfo_t;
-typedef struct crocksdb_compactionjobinfo_t crocksdb_compactionjobinfo_t;
-typedef struct crocksdb_subcompactionjobinfo_t crocksdb_subcompactionjobinfo_t;
-typedef struct crocksdb_externalfileingestioninfo_t
-    crocksdb_externalfileingestioninfo_t;
 typedef struct crocksdb_eventlistener_t crocksdb_eventlistener_t;
 typedef struct crocksdb_keyversions_t crocksdb_keyversions_t;
 typedef struct crocksdb_column_family_meta_data_t
@@ -150,7 +145,6 @@ typedef struct crocksdb_level_meta_data_t crocksdb_level_meta_data_t;
 typedef struct crocksdb_sst_file_meta_data_t crocksdb_sst_file_meta_data_t;
 typedef struct crocksdb_perf_context_t crocksdb_perf_context_t;
 typedef struct crocksdb_iostats_context_t crocksdb_iostats_context_t;
-typedef struct crocksdb_writestallinfo_t crocksdb_writestallinfo_t;
 typedef struct crocksdb_writestallcondition_t crocksdb_writestallcondition_t;
 // Following names are defined as static const std::string in DB::Properties.
 // bindgen can parse std string directly, but it can introduce a lot of
@@ -781,115 +775,106 @@ crocksdb_options_get_block_cache_capacity(crocksdb_options_t* opt);
 
 /* Flush job info */
 
-extern C_ROCKSDB_LIBRARY_API const char* crocksdb_flushjobinfo_cf_name(
-    const crocksdb_flushjobinfo_t*, size_t*);
-extern C_ROCKSDB_LIBRARY_API const char* crocksdb_flushjobinfo_file_path(
-    const crocksdb_flushjobinfo_t*, size_t*);
+extern C_ROCKSDB_LIBRARY_API int crocksdb_flushjobinfo_job_id(
+    const FlushJobInfo*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_flushjobinfo_cf_name(
+    const FlushJobInfo*, Slice*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_flushjobinfo_file_path(
+    const FlushJobInfo*, Slice*);
 extern C_ROCKSDB_LIBRARY_API const TableProperties*
-crocksdb_flushjobinfo_table_properties(const crocksdb_flushjobinfo_t*);
-extern C_ROCKSDB_LIBRARY_API unsigned char
-crocksdb_flushjobinfo_triggered_writes_slowdown(const crocksdb_flushjobinfo_t*);
-extern C_ROCKSDB_LIBRARY_API unsigned char
-crocksdb_flushjobinfo_triggered_writes_stop(const crocksdb_flushjobinfo_t*);
+crocksdb_flushjobinfo_table_properties(const FlushJobInfo*);
+extern C_ROCKSDB_LIBRARY_API bool
+crocksdb_flushjobinfo_triggered_writes_slowdown(const FlushJobInfo*);
+extern C_ROCKSDB_LIBRARY_API bool crocksdb_flushjobinfo_triggered_writes_stop(
+    const FlushJobInfo*);
 
 /* Compaction job info */
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compactionjobinfo_status(
-    const crocksdb_compactionjobinfo_t* info, Status* s);
-extern C_ROCKSDB_LIBRARY_API const char* crocksdb_compactionjobinfo_cf_name(
-    const crocksdb_compactionjobinfo_t*, size_t*);
+    const CompactionJobInfo* info, Status* s);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_compactionjobinfo_cf_name(
+    const CompactionJobInfo*, Slice*);
 extern C_ROCKSDB_LIBRARY_API size_t
-crocksdb_compactionjobinfo_input_files_count(
-    const crocksdb_compactionjobinfo_t*);
-extern C_ROCKSDB_LIBRARY_API const char*
-crocksdb_compactionjobinfo_input_file_at(const crocksdb_compactionjobinfo_t*,
-                                         size_t pos, size_t*);
+crocksdb_compactionjobinfo_input_files_count(const CompactionJobInfo*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_compactionjobinfo_input_file_at(
+    const CompactionJobInfo*, size_t pos, Slice*);
 extern C_ROCKSDB_LIBRARY_API size_t
-crocksdb_compactionjobinfo_output_files_count(
-    const crocksdb_compactionjobinfo_t*);
-extern C_ROCKSDB_LIBRARY_API const char*
-crocksdb_compactionjobinfo_output_file_at(const crocksdb_compactionjobinfo_t*,
-                                          size_t pos, size_t*);
+crocksdb_compactionjobinfo_output_files_count(const CompactionJobInfo*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_compactionjobinfo_output_file_at(
+    const CompactionJobInfo*, size_t pos, Slice*);
 extern C_ROCKSDB_LIBRARY_API const TablePropertiesCollection*
-crocksdb_compactionjobinfo_table_properties(
-    const crocksdb_compactionjobinfo_t*);
+crocksdb_compactionjobinfo_table_properties(const CompactionJobInfo*);
 extern C_ROCKSDB_LIBRARY_API uint64_t
-crocksdb_compactionjobinfo_elapsed_micros(const crocksdb_compactionjobinfo_t*);
+crocksdb_compactionjobinfo_elapsed_micros(const CompactionJobInfo*);
 extern C_ROCKSDB_LIBRARY_API uint64_t
-crocksdb_compactionjobinfo_num_corrupt_keys(
-    const crocksdb_compactionjobinfo_t*);
+crocksdb_compactionjobinfo_num_corrupt_keys(const CompactionJobInfo*);
 extern C_ROCKSDB_LIBRARY_API int crocksdb_compactionjobinfo_base_input_level(
-    const crocksdb_compactionjobinfo_t*);
+    const CompactionJobInfo*);
 extern C_ROCKSDB_LIBRARY_API int crocksdb_compactionjobinfo_output_level(
-    const crocksdb_compactionjobinfo_t*);
+    const CompactionJobInfo*);
 extern C_ROCKSDB_LIBRARY_API uint64_t
-crocksdb_compactionjobinfo_input_records(const crocksdb_compactionjobinfo_t*);
+crocksdb_compactionjobinfo_input_records(const CompactionJobInfo*);
 extern C_ROCKSDB_LIBRARY_API uint64_t
-crocksdb_compactionjobinfo_output_records(const crocksdb_compactionjobinfo_t*);
+crocksdb_compactionjobinfo_output_records(const CompactionJobInfo*);
 extern C_ROCKSDB_LIBRARY_API uint64_t
-crocksdb_compactionjobinfo_total_input_bytes(
-    const crocksdb_compactionjobinfo_t*);
+crocksdb_compactionjobinfo_total_input_bytes(const CompactionJobInfo*);
 extern C_ROCKSDB_LIBRARY_API uint64_t
-crocksdb_compactionjobinfo_total_output_bytes(
-    const crocksdb_compactionjobinfo_t*);
-extern C_ROCKSDB_LIBRARY_API size_t crocksdb_compactionjobinfo_num_input_files(
-    const crocksdb_compactionjobinfo_t* info);
+crocksdb_compactionjobinfo_total_output_bytes(const CompactionJobInfo*);
+extern C_ROCKSDB_LIBRARY_API size_t
+crocksdb_compactionjobinfo_num_input_files(const CompactionJobInfo* info);
 extern C_ROCKSDB_LIBRARY_API size_t
 crocksdb_compactionjobinfo_num_input_files_at_output_level(
-    const crocksdb_compactionjobinfo_t* info);
+    const CompactionJobInfo* info);
+extern C_ROCKSDB_LIBRARY_API CompactionReason
+crocksdb_compactionjobinfo_compaction_reason(const CompactionJobInfo* info);
 
 /* Subcompaction job info */
 extern C_ROCKSDB_LIBRARY_API void crocksdb_subcompactionjobinfo_status(
-    const crocksdb_subcompactionjobinfo_t*, Status* s);
-extern C_ROCKSDB_LIBRARY_API const char* crocksdb_subcompactionjobinfo_cf_name(
-    const crocksdb_subcompactionjobinfo_t*, size_t*);
+    const SubcompactionJobInfo*, Status* s);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_subcompactionjobinfo_cf_name(
+    const SubcompactionJobInfo*, Slice*);
 extern C_ROCKSDB_LIBRARY_API uint64_t
-crocksdb_subcompactionjobinfo_thread_id(const crocksdb_subcompactionjobinfo_t*);
+crocksdb_subcompactionjobinfo_thread_id(const SubcompactionJobInfo*);
 extern C_ROCKSDB_LIBRARY_API int crocksdb_subcompactionjobinfo_base_input_level(
-    const crocksdb_subcompactionjobinfo_t*);
+    const SubcompactionJobInfo*);
 extern C_ROCKSDB_LIBRARY_API int crocksdb_subcompactionjobinfo_output_level(
-    const crocksdb_subcompactionjobinfo_t*);
+    const SubcompactionJobInfo*);
 
 /* External file ingestion info */
-extern C_ROCKSDB_LIBRARY_API const char*
-crocksdb_externalfileingestioninfo_cf_name(
-    const crocksdb_externalfileingestioninfo_t*, size_t*);
-extern C_ROCKSDB_LIBRARY_API const char*
+extern C_ROCKSDB_LIBRARY_API void crocksdb_externalfileingestioninfo_cf_name(
+    const ExternalFileIngestionInfo*, Slice*);
+extern C_ROCKSDB_LIBRARY_API void
 crocksdb_externalfileingestioninfo_internal_file_path(
-    const crocksdb_externalfileingestioninfo_t*, size_t*);
+    const ExternalFileIngestionInfo*, Slice*);
 extern C_ROCKSDB_LIBRARY_API const TableProperties*
 crocksdb_externalfileingestioninfo_table_properties(
-    const crocksdb_externalfileingestioninfo_t*);
-extern C_ROCKSDB_LIBRARY_API const int
+    const ExternalFileIngestionInfo*);
+extern C_ROCKSDB_LIBRARY_API int
 crocksdb_externalfileingestioninfo_picked_level(
-    const crocksdb_externalfileingestioninfo_t*);
+    const ExternalFileIngestionInfo*);
 
 /* External write stall info */
-extern C_ROCKSDB_LIBRARY_API const char* crocksdb_writestallinfo_cf_name(
-    const crocksdb_writestallinfo_t*, size_t*);
-extern C_ROCKSDB_LIBRARY_API const crocksdb_writestallcondition_t*
-crocksdb_writestallinfo_cur(const crocksdb_writestallinfo_t*);
-extern C_ROCKSDB_LIBRARY_API const crocksdb_writestallcondition_t*
-crocksdb_writestallinfo_prev(const crocksdb_writestallinfo_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writestallinfo_cf_name(
+    const WriteStallInfo*, Slice*);
+extern C_ROCKSDB_LIBRARY_API WriteStallCondition
+crocksdb_writestallinfo_cur(const WriteStallInfo*);
+extern C_ROCKSDB_LIBRARY_API WriteStallCondition
+crocksdb_writestallinfo_prev(const WriteStallInfo*);
 
 /* Event listener */
 
-typedef void (*on_flush_begin_cb)(void*, crocksdb_t*,
-                                  const crocksdb_flushjobinfo_t*);
-typedef void (*on_flush_completed_cb)(void*, crocksdb_t*,
-                                      const crocksdb_flushjobinfo_t*);
+typedef void (*on_flush_begin_cb)(void*, crocksdb_t*, const FlushJobInfo*);
+typedef void (*on_flush_completed_cb)(void*, crocksdb_t*, const FlushJobInfo*);
 typedef void (*on_compaction_begin_cb)(void*, crocksdb_t*,
-                                       const crocksdb_compactionjobinfo_t*);
+                                       const CompactionJobInfo*);
 typedef void (*on_compaction_completed_cb)(void*, crocksdb_t*,
-                                           const crocksdb_compactionjobinfo_t*);
-typedef void (*on_subcompaction_begin_cb)(
-    void*, const crocksdb_subcompactionjobinfo_t*);
-typedef void (*on_subcompaction_completed_cb)(
-    void*, const crocksdb_subcompactionjobinfo_t*);
-typedef void (*on_external_file_ingested_cb)(
-    void*, crocksdb_t*, const crocksdb_externalfileingestioninfo_t*);
+                                           const CompactionJobInfo*);
+typedef void (*on_subcompaction_begin_cb)(void*, const SubcompactionJobInfo*);
+typedef void (*on_subcompaction_completed_cb)(void*,
+                                              const SubcompactionJobInfo*);
+typedef void (*on_external_file_ingested_cb)(void*, crocksdb_t*,
+                                             const ExternalFileIngestionInfo*);
 typedef void (*on_background_error_cb)(void*, BackgroundErrorReason, Status* s);
-typedef void (*on_stall_conditions_changed_cb)(
-    void*, const crocksdb_writestallinfo_t*);
+typedef void (*on_stall_conditions_changed_cb)(void*, const WriteStallInfo*);
 typedef void (*crocksdb_logger_logv_cb)(void*, InfoLogLevel log_level,
                                         Slice msg);
 

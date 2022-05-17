@@ -16,6 +16,12 @@ mod bindings {
     pub enum rocksdb_TableProperties {}
     pub enum rocksdb_UserCollectedProperties {}
     pub enum rocksdb_TablePropertiesCollection {}
+    pub enum rocksdb_FlushJobInfo {}
+    pub enum rocksdb_CompactionJobInfo {}
+    pub enum rocksdb_CompactionJobStats {}
+    pub enum rocksdb_SubcompactionJobInfo {}
+    pub enum rocksdb_ExternalFileIngestionInfo {}
+    pub enum rocksdb_WriteStallInfo {}
 
     include!(env!("BINDING_PATH"));
 }

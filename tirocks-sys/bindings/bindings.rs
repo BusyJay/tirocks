@@ -139,11 +139,45 @@ pub enum rocksdb_EntryType {
 }
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_CompactionReason {
+    kUnknown = 0,
+    kLevelL0FilesNum = 1,
+    kLevelMaxLevelSize = 2,
+    kUniversalSizeAmplification = 3,
+    kUniversalSizeRatio = 4,
+    kUniversalSortedRunNum = 5,
+    kFIFOMaxSize = 6,
+    kFIFOReduceNumFiles = 7,
+    kFIFOTtl = 8,
+    kManualCompaction = 9,
+    kFilesMarkedForCompaction = 10,
+    kBottommostFiles = 11,
+    kTtl = 12,
+    kFlush = 13,
+    kExternalSstIngestion = 14,
+    kPeriodicCompaction = 15,
+    kNumOfReasons = 16,
+}
+#[repr(i32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_BackgroundErrorReason {
     kFlush = 0,
     kCompaction = 1,
     kWriteCallback = 2,
     kMemTable = 3,
+}
+#[repr(i32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_WriteStallCondition {
+    kNormal = 0,
+    kDelayed = 1,
+    kStopped = 2,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_WriteStallInfo__bindgen_ty_1 {
+    pub cur: rocksdb_WriteStallCondition,
+    pub prev: rocksdb_WriteStallCondition,
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -923,26 +957,6 @@ pub struct crocksdb_table_properties_collector_factory_t {
 }
 #[repr(C)]
 #[derive(Debug)]
-pub struct crocksdb_flushjobinfo_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_compactionjobinfo_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_subcompactionjobinfo_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_externalfileingestioninfo_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
 pub struct crocksdb_eventlistener_t {
     _unused: [u8; 0],
 }
@@ -974,11 +988,6 @@ pub struct crocksdb_perf_context_t {
 #[repr(C)]
 #[derive(Debug)]
 pub struct crocksdb_iostats_context_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct crocksdb_writestallinfo_t {
     _unused: [u8; 0],
 }
 #[repr(C)]
@@ -2263,227 +2272,229 @@ extern "C" {
     pub fn crocksdb_options_get_block_cache_capacity(opt: *mut crocksdb_options_t) -> usize;
 }
 extern "C" {
+    pub fn crocksdb_flushjobinfo_job_id(arg1: *const rocksdb_FlushJobInfo) -> libc::c_int;
+}
+extern "C" {
     pub fn crocksdb_flushjobinfo_cf_name(
-        arg1: *const crocksdb_flushjobinfo_t,
-        arg2: *mut usize,
-    ) -> *const libc::c_char;
+        arg1: *const rocksdb_FlushJobInfo,
+        arg2: *mut rocksdb_Slice,
+    );
 }
 extern "C" {
     pub fn crocksdb_flushjobinfo_file_path(
-        arg1: *const crocksdb_flushjobinfo_t,
-        arg2: *mut usize,
-    ) -> *const libc::c_char;
+        arg1: *const rocksdb_FlushJobInfo,
+        arg2: *mut rocksdb_Slice,
+    );
 }
 extern "C" {
     pub fn crocksdb_flushjobinfo_table_properties(
-        arg1: *const crocksdb_flushjobinfo_t,
+        arg1: *const rocksdb_FlushJobInfo,
     ) -> *const rocksdb_TableProperties;
 }
 extern "C" {
     pub fn crocksdb_flushjobinfo_triggered_writes_slowdown(
-        arg1: *const crocksdb_flushjobinfo_t,
-    ) -> libc::c_uchar;
+        arg1: *const rocksdb_FlushJobInfo,
+    ) -> bool;
 }
 extern "C" {
-    pub fn crocksdb_flushjobinfo_triggered_writes_stop(
-        arg1: *const crocksdb_flushjobinfo_t,
-    ) -> libc::c_uchar;
+    pub fn crocksdb_flushjobinfo_triggered_writes_stop(arg1: *const rocksdb_FlushJobInfo) -> bool;
 }
 extern "C" {
     pub fn crocksdb_compactionjobinfo_status(
-        info: *const crocksdb_compactionjobinfo_t,
+        info: *const rocksdb_CompactionJobInfo,
         s: *mut rocksdb_Status,
     );
 }
 extern "C" {
     pub fn crocksdb_compactionjobinfo_cf_name(
-        arg1: *const crocksdb_compactionjobinfo_t,
-        arg2: *mut usize,
-    ) -> *const libc::c_char;
+        arg1: *const rocksdb_CompactionJobInfo,
+        arg2: *mut rocksdb_Slice,
+    );
 }
 extern "C" {
     pub fn crocksdb_compactionjobinfo_input_files_count(
-        arg1: *const crocksdb_compactionjobinfo_t,
+        arg1: *const rocksdb_CompactionJobInfo,
     ) -> usize;
 }
 extern "C" {
     pub fn crocksdb_compactionjobinfo_input_file_at(
-        arg1: *const crocksdb_compactionjobinfo_t,
+        arg1: *const rocksdb_CompactionJobInfo,
         pos: usize,
-        arg2: *mut usize,
-    ) -> *const libc::c_char;
+        arg2: *mut rocksdb_Slice,
+    );
 }
 extern "C" {
     pub fn crocksdb_compactionjobinfo_output_files_count(
-        arg1: *const crocksdb_compactionjobinfo_t,
+        arg1: *const rocksdb_CompactionJobInfo,
     ) -> usize;
 }
 extern "C" {
     pub fn crocksdb_compactionjobinfo_output_file_at(
-        arg1: *const crocksdb_compactionjobinfo_t,
+        arg1: *const rocksdb_CompactionJobInfo,
         pos: usize,
-        arg2: *mut usize,
-    ) -> *const libc::c_char;
+        arg2: *mut rocksdb_Slice,
+    );
 }
 extern "C" {
     pub fn crocksdb_compactionjobinfo_table_properties(
-        arg1: *const crocksdb_compactionjobinfo_t,
+        arg1: *const rocksdb_CompactionJobInfo,
     ) -> *const rocksdb_TablePropertiesCollection;
 }
 extern "C" {
-    pub fn crocksdb_compactionjobinfo_elapsed_micros(
-        arg1: *const crocksdb_compactionjobinfo_t,
-    ) -> u64;
+    pub fn crocksdb_compactionjobinfo_elapsed_micros(arg1: *const rocksdb_CompactionJobInfo)
+        -> u64;
 }
 extern "C" {
     pub fn crocksdb_compactionjobinfo_num_corrupt_keys(
-        arg1: *const crocksdb_compactionjobinfo_t,
+        arg1: *const rocksdb_CompactionJobInfo,
     ) -> u64;
 }
 extern "C" {
     pub fn crocksdb_compactionjobinfo_base_input_level(
-        arg1: *const crocksdb_compactionjobinfo_t,
+        arg1: *const rocksdb_CompactionJobInfo,
     ) -> libc::c_int;
 }
 extern "C" {
     pub fn crocksdb_compactionjobinfo_output_level(
-        arg1: *const crocksdb_compactionjobinfo_t,
+        arg1: *const rocksdb_CompactionJobInfo,
     ) -> libc::c_int;
 }
 extern "C" {
-    pub fn crocksdb_compactionjobinfo_input_records(
-        arg1: *const crocksdb_compactionjobinfo_t,
-    ) -> u64;
+    pub fn crocksdb_compactionjobinfo_input_records(arg1: *const rocksdb_CompactionJobInfo) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_compactionjobinfo_output_records(
-        arg1: *const crocksdb_compactionjobinfo_t,
-    ) -> u64;
+    pub fn crocksdb_compactionjobinfo_output_records(arg1: *const rocksdb_CompactionJobInfo)
+        -> u64;
 }
 extern "C" {
     pub fn crocksdb_compactionjobinfo_total_input_bytes(
-        arg1: *const crocksdb_compactionjobinfo_t,
+        arg1: *const rocksdb_CompactionJobInfo,
     ) -> u64;
 }
 extern "C" {
     pub fn crocksdb_compactionjobinfo_total_output_bytes(
-        arg1: *const crocksdb_compactionjobinfo_t,
+        arg1: *const rocksdb_CompactionJobInfo,
     ) -> u64;
 }
 extern "C" {
     pub fn crocksdb_compactionjobinfo_num_input_files(
-        info: *const crocksdb_compactionjobinfo_t,
+        info: *const rocksdb_CompactionJobInfo,
     ) -> usize;
 }
 extern "C" {
     pub fn crocksdb_compactionjobinfo_num_input_files_at_output_level(
-        info: *const crocksdb_compactionjobinfo_t,
+        info: *const rocksdb_CompactionJobInfo,
     ) -> usize;
 }
 extern "C" {
+    pub fn crocksdb_compactionjobinfo_compaction_reason(
+        info: *const rocksdb_CompactionJobInfo,
+    ) -> rocksdb_CompactionReason;
+}
+extern "C" {
     pub fn crocksdb_subcompactionjobinfo_status(
-        arg1: *const crocksdb_subcompactionjobinfo_t,
+        arg1: *const rocksdb_SubcompactionJobInfo,
         s: *mut rocksdb_Status,
     );
 }
 extern "C" {
     pub fn crocksdb_subcompactionjobinfo_cf_name(
-        arg1: *const crocksdb_subcompactionjobinfo_t,
-        arg2: *mut usize,
-    ) -> *const libc::c_char;
+        arg1: *const rocksdb_SubcompactionJobInfo,
+        arg2: *mut rocksdb_Slice,
+    );
 }
 extern "C" {
     pub fn crocksdb_subcompactionjobinfo_thread_id(
-        arg1: *const crocksdb_subcompactionjobinfo_t,
+        arg1: *const rocksdb_SubcompactionJobInfo,
     ) -> u64;
 }
 extern "C" {
     pub fn crocksdb_subcompactionjobinfo_base_input_level(
-        arg1: *const crocksdb_subcompactionjobinfo_t,
+        arg1: *const rocksdb_SubcompactionJobInfo,
     ) -> libc::c_int;
 }
 extern "C" {
     pub fn crocksdb_subcompactionjobinfo_output_level(
-        arg1: *const crocksdb_subcompactionjobinfo_t,
+        arg1: *const rocksdb_SubcompactionJobInfo,
     ) -> libc::c_int;
 }
 extern "C" {
     pub fn crocksdb_externalfileingestioninfo_cf_name(
-        arg1: *const crocksdb_externalfileingestioninfo_t,
-        arg2: *mut usize,
-    ) -> *const libc::c_char;
+        arg1: *const rocksdb_ExternalFileIngestionInfo,
+        arg2: *mut rocksdb_Slice,
+    );
 }
 extern "C" {
     pub fn crocksdb_externalfileingestioninfo_internal_file_path(
-        arg1: *const crocksdb_externalfileingestioninfo_t,
-        arg2: *mut usize,
-    ) -> *const libc::c_char;
+        arg1: *const rocksdb_ExternalFileIngestionInfo,
+        arg2: *mut rocksdb_Slice,
+    );
 }
 extern "C" {
     pub fn crocksdb_externalfileingestioninfo_table_properties(
-        arg1: *const crocksdb_externalfileingestioninfo_t,
+        arg1: *const rocksdb_ExternalFileIngestionInfo,
     ) -> *const rocksdb_TableProperties;
 }
 extern "C" {
     pub fn crocksdb_externalfileingestioninfo_picked_level(
-        arg1: *const crocksdb_externalfileingestioninfo_t,
+        arg1: *const rocksdb_ExternalFileIngestionInfo,
     ) -> libc::c_int;
 }
 extern "C" {
     pub fn crocksdb_writestallinfo_cf_name(
-        arg1: *const crocksdb_writestallinfo_t,
-        arg2: *mut usize,
-    ) -> *const libc::c_char;
+        arg1: *const rocksdb_WriteStallInfo,
+        arg2: *mut rocksdb_Slice,
+    );
 }
 extern "C" {
     pub fn crocksdb_writestallinfo_cur(
-        arg1: *const crocksdb_writestallinfo_t,
-    ) -> *const crocksdb_writestallcondition_t;
+        arg1: *const rocksdb_WriteStallInfo,
+    ) -> rocksdb_WriteStallCondition;
 }
 extern "C" {
     pub fn crocksdb_writestallinfo_prev(
-        arg1: *const crocksdb_writestallinfo_t,
-    ) -> *const crocksdb_writestallcondition_t;
+        arg1: *const rocksdb_WriteStallInfo,
+    ) -> rocksdb_WriteStallCondition;
 }
 pub type on_flush_begin_cb = ::std::option::Option<
     unsafe extern "C" fn(
         arg1: *mut libc::c_void,
         arg2: *mut crocksdb_t,
-        arg3: *const crocksdb_flushjobinfo_t,
+        arg3: *const rocksdb_FlushJobInfo,
     ),
 >;
 pub type on_flush_completed_cb = ::std::option::Option<
     unsafe extern "C" fn(
         arg1: *mut libc::c_void,
         arg2: *mut crocksdb_t,
-        arg3: *const crocksdb_flushjobinfo_t,
+        arg3: *const rocksdb_FlushJobInfo,
     ),
 >;
 pub type on_compaction_begin_cb = ::std::option::Option<
     unsafe extern "C" fn(
         arg1: *mut libc::c_void,
         arg2: *mut crocksdb_t,
-        arg3: *const crocksdb_compactionjobinfo_t,
+        arg3: *const rocksdb_CompactionJobInfo,
     ),
 >;
 pub type on_compaction_completed_cb = ::std::option::Option<
     unsafe extern "C" fn(
         arg1: *mut libc::c_void,
         arg2: *mut crocksdb_t,
-        arg3: *const crocksdb_compactionjobinfo_t,
+        arg3: *const rocksdb_CompactionJobInfo,
     ),
 >;
 pub type on_subcompaction_begin_cb = ::std::option::Option<
-    unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: *const crocksdb_subcompactionjobinfo_t),
+    unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: *const rocksdb_SubcompactionJobInfo),
 >;
 pub type on_subcompaction_completed_cb = ::std::option::Option<
-    unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: *const crocksdb_subcompactionjobinfo_t),
+    unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: *const rocksdb_SubcompactionJobInfo),
 >;
 pub type on_external_file_ingested_cb = ::std::option::Option<
     unsafe extern "C" fn(
         arg1: *mut libc::c_void,
         arg2: *mut crocksdb_t,
-        arg3: *const crocksdb_externalfileingestioninfo_t,
+        arg3: *const rocksdb_ExternalFileIngestionInfo,
     ),
 >;
 pub type on_background_error_cb = ::std::option::Option<
@@ -2494,7 +2505,7 @@ pub type on_background_error_cb = ::std::option::Option<
     ),
 >;
 pub type on_stall_conditions_changed_cb = ::std::option::Option<
-    unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: *const crocksdb_writestallinfo_t),
+    unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: *const rocksdb_WriteStallInfo),
 >;
 pub type crocksdb_logger_logv_cb = ::std::option::Option<
     unsafe extern "C" fn(
