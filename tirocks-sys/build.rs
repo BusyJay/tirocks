@@ -22,6 +22,30 @@ fn bindgen_rocksdb(file_path: &Path) {
     if env::var("CARGO_CFG_TARGET_OS").map_or(false, |s| s == "windows") {
         builder = builder.clang_arg("-D _WIN32_WINNT=0x600");
     }
+    let pre_defined: Vec<_> = std::fs::read_to_string("src/pre_defined.rs")
+        .unwrap()
+        .lines()
+        .map(|l| {
+            let mut new_string = String::new();
+            let mut visited = false;
+            for part in (l[17..]).split_whitespace().next().unwrap().split('_') {
+                if visited {
+                    new_string.push('_');
+                } else {
+                    if !part.chars().next().unwrap().is_lowercase() {
+                        visited = true;
+                    }
+                    if !new_string.is_empty() {
+                        new_string.push_str("::");
+                    }
+                }
+                new_string.push_str(part);
+            }
+            new_string
+        })
+        .collect();
+    let filter_exp = format!("\\brocksdb::({})", pre_defined.join("|"));
+    println!("filtering {}", filter_exp);
     let builder = builder
         .header("crocksdb/crocksdb/c.h")
         .header("rocksdb/include/rocksdb/statistics.h")
@@ -43,12 +67,13 @@ fn bindgen_rocksdb(file_path: &Path) {
         .allowlist_type(r"\brocksdb::titandb::HistogramType")
         .opaque_type(r"\brocksdb::Env")
         // Just blocking the type will still include its dependencies.
-        .opaque_type(r"\brocksdb::(TableProperties|encryption::FileEncryptionInfo|titandb::TitanDBOptions|FlushJobInfo|UserCollectedProperties|TablePropertiesCollection|CompactionJobInfo|CompactionJobStats|SubcompactionJobInfo|ExternalFileIngestionInfo|WriteStallInfo)")
+        .opaque_type(&filter_exp)
         // Block all system headers
         .blocklist_file(r"^/.*")
+        .blocklist_item(r"\brocksdb::DB_Properties.*")
         .blocklist_type(r"\brocksdb::Env_FileAttributes")
         // `TableProperties` has different size on different platform.
-        .blocklist_type(r"\brocksdb::(TableProperties|encryption::FileEncryptionInfo|titandb::TitanDBOptions|FlushJobInfo|UserCollectedProperties|TablePropertiesCollection|CompactionJobInfo|CompactionJobStats|SubcompactionJobInfo|ExternalFileIngestionInfo|WriteStallInfo)")
+        .blocklist_type(&filter_exp)
         .with_codegen_config(
             bindgen::CodegenConfig::FUNCTIONS
                 | bindgen::CodegenConfig::VARS
@@ -174,6 +199,7 @@ fn configure_common_rocksdb_args(cfg: &mut Config, name: &str) {
 }
 
 fn figure_link_lib(dst: &Path, name: &str) {
+    println!("cargo:rerun-if-changed={}", name);
     if cfg!(target_os = "windows") {
         let profile = match &*env::var("PROFILE").unwrap_or_else(|_| "debug".to_owned()) {
             "bench" | "release" => "Release",
@@ -264,6 +290,8 @@ fn main() {
     build_titan(&mut build);
     build_rocksdb(&mut build);
 
+    println!("cargo:rerun-if-changed=crocksdb/crocksdb/c.h");
+    println!("cargo:rerun-if-changed=crocksdb/c.cc");
     build.cpp(true).file("crocksdb/c.cc");
     if !cfg!(target_os = "windows") {
         build.flag("-std=c++11");
