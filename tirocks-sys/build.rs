@@ -22,13 +22,19 @@ fn bindgen_rocksdb(file_path: &Path) {
     if env::var("CARGO_CFG_TARGET_OS").map_or(false, |s| s == "windows") {
         builder = builder.clang_arg("-D _WIN32_WINNT=0x600");
     }
+    let prefix = "pub enum rocksdb_";
     let pre_defined: Vec<_> = std::fs::read_to_string("src/pre_defined.rs")
         .unwrap()
         .lines()
         .map(|l| {
             let mut new_string = String::new();
             let mut visited = false;
-            for part in (l[17..]).split_whitespace().next().unwrap().split('_') {
+            for part in (l[prefix.len()..])
+                .split_whitespace()
+                .next()
+                .unwrap()
+                .split('_')
+            {
                 if visited {
                     new_string.push('_');
                 } else {
