@@ -4,7 +4,7 @@ use tirocks::{
     db::DefaultCfOnlyBuilder,
     option::{CompressionType, FlushOptions, ReadOptions, WriteOptions},
     statistics::{Histograms, Tickers},
-    OpenOptions, Options, Statistics,
+    OpenOptions, Statistics,
 };
 
 #[test]
@@ -20,14 +20,14 @@ fn test_compression() {
         CompressionType::kZSTD,
     ];
     for compression_type in compression_types {
-        let mut opts = Options::default();
-        opts.db_options_mut().set_create_if_missing(true);
-        opts.cf_options_mut().set_compression(compression_type);
+        let mut builder = DefaultCfOnlyBuilder::default();
+        builder
+            .set_create_if_missing(true)
+            .options_mut()
+            .cf_options_mut()
+            .set_compression(compression_type);
         // DB open will fail if compression type is not supported.
-        DefaultCfOnlyBuilder::default()
-            .set_options(opts)
-            .open(path.path())
-            .unwrap();
+        builder.open(path.path()).unwrap();
     }
 }
 

@@ -2,6 +2,7 @@
 
 pub mod block;
 pub mod plain;
+pub mod sst;
 
 use tirocks_sys::crocksdb_tablefactory_t;
 

@@ -9,8 +9,8 @@ use std::{
 use tirocks_sys::{r, rocksdb_Iterator, s};
 
 use crate::{
-    db::RawColumnFamilyHandle, option::ReadOptions, properties::table::user::SequenceNumber, Db,
-    RawDb, Status,
+    db::RawColumnFamilyHandle, option::ReadOptions, properties::table::user::SequenceNumber,
+    util::check_status, Db, RawDb, Result, Status,
 };
 
 pub unsafe trait Iterable {
@@ -33,7 +33,7 @@ impl<'a> Drop for RawIterator<'a> {
 }
 
 impl<'a> RawIterator<'a> {
-    unsafe fn from_ptr(ptr: *mut rocksdb_Iterator) -> Self {
+    pub(crate) unsafe fn from_ptr(ptr: *mut rocksdb_Iterator) -> Self {
         Self {
             ptr,
             _life: PhantomData,
@@ -151,11 +151,11 @@ impl<'a> RawIterator<'a> {
     /// If non-blocking IO is requested and this operation cannot be
     /// satisfied without doing some IO, then this returns Status::Incomplete().
     #[inline]
-    pub fn status(&self) -> Status {
+    pub fn check(&self) -> Result<()> {
         unsafe {
             let mut s = Status::default();
             tirocks_sys::crocksdb_iter_get_error(self.ptr, s.as_mut_ptr());
-            s
+            check_status!(s)
         }
     }
 

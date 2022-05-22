@@ -44,7 +44,7 @@ impl<'a> RawSnapshot<'a> {
     }
 }
 
-struct WithSnapOpt<'a> {
+pub struct WithSnapOpt<'a> {
     opt: &'a mut ReadOptions,
     old_snap: *const rocksdb_Snapshot,
 }
@@ -153,19 +153,23 @@ impl<'a, D: RawDbRef + 'a> Drop for Snapshot<'a, D> {
     #[inline]
     fn drop(&mut self) {
         let snap = unsafe { ManuallyDrop::take(&mut self.snap) };
-        self.db.visit(|d| d.release_snapshot(snap))
+        self.db.visit(|d| d.release_raw_snapshot(snap))
     }
 }
 
 impl RawDb {
-    pub fn snapshot(&self) -> RawSnapshot {
+    pub fn raw_snapshot(&self) -> RawSnapshot {
         unsafe {
             let ptr = tirocks_sys::crocksdb_create_snapshot(self.as_ptr());
             RawSnapshot::from_ptr(ptr)
         }
     }
 
-    pub fn release_snapshot(&self, snap: RawSnapshot) {
+    pub fn release_raw_snapshot(&self, snap: RawSnapshot) {
         unsafe { tirocks_sys::crocksdb_release_snapshot(self.as_ptr(), snap.get()) }
+    }
+
+    pub fn snapshot(&self) -> Snapshot<&RawDb> {
+        Snapshot::new(self)
     }
 }

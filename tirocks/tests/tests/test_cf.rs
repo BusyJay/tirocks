@@ -14,10 +14,7 @@ pub fn test_cf() {
 
     let mut builder = DefaultCfOnlyBuilder::default();
     builder
-        .options_mut()
-        .db_options_mut()
-        .set_create_if_missing(true);
-    builder
+        .set_create_if_missing(true)
         .options_mut()
         .cf_options_mut()
         .set_merge_operator(&SysMergeOperator::new(test_provided_merge));
@@ -33,7 +30,11 @@ pub fn test_cf() {
     let err = builder.open(path.path()).unwrap_err();
     assert_eq!(err.code(), Code::kInvalidArgument);
     let msg = err.message().unwrap().unwrap();
-    assert!(msg.starts_with("You have to open all column families."), "{}", msg);
+    assert!(
+        msg.starts_with("You have to open all column families."),
+        "{}",
+        msg
+    );
 
     // should properly open db when specifying all column families
     let mut builder = MultiCfBuilder::default();

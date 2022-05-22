@@ -2,9 +2,9 @@
 
 use std::ops::Deref;
 use std::path::Path;
-use std::str;
 use std::sync::{Arc, Mutex};
-use tirocks_sys::{r, rocksdb_DB};
+use std::{ptr, str};
+use tirocks_sys::{r, rocksdb_DB, rocksdb_RangePtr};
 
 use crate::metadata::{CfMetaData, SizeApproximationOptions};
 use crate::option::{
@@ -513,7 +513,9 @@ impl Db {
 
     fn clear_handles(&mut self) -> Result<()> {
         for mut h in self.handles.drain(..) {
-            unsafe { h.maybe_drop(self.ptr)?; }
+            unsafe {
+                h.maybe_drop(self.ptr)?;
+            }
         }
         Ok(())
     }
@@ -677,6 +679,74 @@ impl Db {
         cf: &'a RawColumnFamilyHandle,
     ) -> RawIterator<'a> {
         RawIterator::new(self, read, cf)
+    }
+
+    /// Delete files which are entirely in the given range
+    /// Could leave some keys in the range which are in files which are not
+    /// entirely in the range. Also leaves L0 files regardless of whether they're
+    /// in the range.
+    /// Snapshots before the delete might not see the data in the given range.
+    pub fn delete_files_in_range(
+        &self,
+        cf: &RawColumnFamilyHandle,
+        begin: Option<&[u8]>,
+        end: Option<&[u8]>,
+        include_end: bool,
+    ) -> Result<()> {
+        self.delete_files_in_ranges(cf, &[(begin, end)], include_end)
+    }
+
+    /// Delete files in multiple ranges at once
+    /// Delete files in a lot of ranges one at a time can be slow, use this API for
+    /// better performance in that case.
+    pub fn delete_files_in_ranges(
+        &self,
+        cf: &RawColumnFamilyHandle,
+        ranges: &[(Option<&[u8]>, Option<&[u8]>)],
+        include_end: bool,
+    ) -> Result<()> {
+        unsafe {
+            let (_rocks_ranges, range_ptrs) = util::range_to_range_ptr(ranges);
+            let mut s = Status::default();
+            let f = if !self.is_titan() {
+                tirocks_sys::crocksdb_delete_files_in_ranges_cf
+            } else {
+                tirocks_sys::ctitandb_delete_files_in_ranges_cf
+            };
+            f(
+                self.as_ptr(),
+                cf.get(),
+                range_ptrs.as_ptr(),
+                range_ptrs.len(),
+                include_end,
+                s.as_mut_ptr(),
+            );
+            check_status!(s)
+        }
+    }
+
+    pub fn delete_blob_files_in_ranges(
+        &self,
+        cf: &RawColumnFamilyHandle,
+        ranges: &[(Option<&[u8]>, Option<&[u8]>)],
+        include_end: bool,
+    ) -> Result<()> {
+        if !self.is_titan() {
+            return Ok(());
+        }
+        unsafe {
+            let (_rocks_ranges, range_ptrs) = util::range_to_range_ptr(ranges);
+            let mut s = Status::default();
+            tirocks_sys::ctitandb_delete_blob_files_in_ranges_cf(
+                self.as_ptr(),
+                cf.get(),
+                range_ptrs.as_ptr(),
+                range_ptrs.len(),
+                include_end,
+                s.as_mut_ptr(),
+            );
+            check_status!(s)
+        }
     }
 }
 

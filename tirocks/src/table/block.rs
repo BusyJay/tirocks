@@ -2,8 +2,6 @@
 
 pub mod filter_policy;
 
-use std::mem::MaybeUninit;
-
 use tirocks_sys::rocksdb_BlockBasedTableOptions;
 
 use crate::cache::SysCache;

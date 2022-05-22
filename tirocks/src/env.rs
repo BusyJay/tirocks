@@ -10,7 +10,7 @@ use crate::encryption::{KeyManager, SysKeyManager};
 use crate::error::ffi_call;
 use crate::{Code, Result, Status};
 use libc::c_char;
-use tirocks_sys::r;
+use tirocks_sys::{r, rocksdb_EnvOptions};
 
 pub use self::inspected::FileSystemInspector;
 pub use self::sequential_file::SequentialFile;
@@ -21,7 +21,7 @@ pub type Priority = tirocks_sys::rocksdb_Env_Priority;
 /// Options while opening a file to read/write
 // TODO: perhaps use the C struct directly
 pub struct EnvOptions {
-    ptr: *mut tirocks_sys::crocksdb_envoptions_t,
+    ptr: *mut rocksdb_EnvOptions,
 }
 
 impl Default for EnvOptions {
@@ -40,6 +40,12 @@ impl Drop for EnvOptions {
         unsafe {
             tirocks_sys::crocksdb_envoptions_destroy(self.ptr);
         }
+    }
+}
+
+impl EnvOptions {
+    pub(crate) fn as_ptr(&self) -> *mut rocksdb_EnvOptions {
+        self.ptr
     }
 }
 
@@ -142,7 +148,9 @@ impl Env {
         unsafe {
             let file_path = r(path.as_bytes());
             let file = ffi_call!(crocksdb_sequential_file_create(
-                self.ptr, file_path, opts.ptr
+                self.ptr,
+                file_path,
+                opts.as_ptr()
             ))?;
             Ok(SequentialFile::from_ptr(file))
         }

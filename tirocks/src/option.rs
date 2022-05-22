@@ -37,6 +37,17 @@ use crate::{comparator::SysComparator, env::Env};
 
 pub type CompressionType = rocksdb_CompressionType;
 
+/// Get all supported comressions.
+pub fn supported_compressions() -> Vec<CompressionType> {
+    unsafe {
+        let n = tirocks_sys::crocksdb_get_supported_compression_number();
+        let mut v = Vec::with_capacity(n);
+        tirocks_sys::crocksdb_get_supported_compression(v.as_mut_ptr(), n);
+        v.set_len(n);
+        v
+    }
+}
+
 /// An owned slice that can be used with the weird rocksdb Options
 /// API, which requires a pointer to slice to outlive the options.
 ///

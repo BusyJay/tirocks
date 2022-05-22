@@ -7,7 +7,7 @@ use tirocks::{
         BottommostLevelCompaction, CompactRangeOptions, FlushOptions, ReadOptions, WriteOptions,
     },
     properties::PropNumFilesAtLevel,
-    OpenOptions, Options,
+    OpenOptions,
 };
 
 use super::tempdir_with_prefix;
@@ -15,10 +15,8 @@ use super::tempdir_with_prefix;
 #[test]
 fn test_compact_range() {
     let path = tempdir_with_prefix("_rust_rocksdb_test_compact_range");
-    let mut opts = Options::default();
-    opts.db_options_mut().set_create_if_missing(true);
     let db = DefaultCfOnlyBuilder::default()
-        .set_options(opts)
+        .set_create_if_missing(true)
         .open(path.path())
         .unwrap();
     let samples = vec![
@@ -63,14 +61,13 @@ fn test_compact_range() {
 #[test]
 fn test_compact_range_change_level() {
     let path = tempdir_with_prefix("_rust_rocksdb_test_compact_range_change_level");
-    let mut opts = Options::default();
-    opts.db_options_mut().set_create_if_missing(true);
-    opts.cf_options_mut()
+    let mut builder = DefaultCfOnlyBuilder::default();
+    builder
+        .set_create_if_missing(true)
+        .options_mut()
+        .cf_options_mut()
         .set_level0_file_num_compaction_trigger(10);
-    let db = DefaultCfOnlyBuilder::default()
-        .set_options(opts)
-        .open(path.path())
-        .unwrap();
+    let db = builder.open(path.path()).unwrap();
     let samples = vec![
         (b"k1".to_vec(), b"value--------1".to_vec()),
         (b"k2".to_vec(), b"value--------2".to_vec()),
@@ -108,11 +105,9 @@ fn test_compact_range_change_level() {
 #[test]
 fn test_compact_range_bottommost_level_compaction() {
     let path = tempdir_with_prefix("test_compact_range_bottommost_level_compaction");
-    let mut opts = Options::default();
-    opts.db_options_mut().set_create_if_missing(true);
 
     let db = DefaultCfOnlyBuilder::default()
-        .set_options(opts)
+        .set_create_if_missing(true)
         .open(path.path())
         .unwrap();
     let default_cf = db.default_cf();

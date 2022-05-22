@@ -1,9 +1,9 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::{borrow::Cow, ffi::CStr, marker::PhantomData, mem};
+use std::{borrow::Cow, ffi::CStr, marker::PhantomData, mem, ptr};
 
 use libc::c_void;
-use tirocks_sys::{r, rocksdb_Range, rocksdb_Slice, s};
+use tirocks_sys::{r, rocksdb_Range, rocksdb_RangePtr, rocksdb_Slice, s};
 
 macro_rules! utf8_name {
     ($slice:expr, $ctx:expr, $status:expr) => {
@@ -138,11 +138,6 @@ impl<F> DefaultFactory<F> {
     pub(crate) fn c_name(&self) -> &CStr {
         unsafe { CStr::from_bytes_with_nul_unchecked(b"DefaultFactory\0") }
     }
-
-    #[inline]
-    pub(crate) fn name(&self) -> &str {
-        "DefaultFactory"
-    }
 }
 
 impl<F> Default for DefaultFactory<F> {
@@ -184,9 +179,9 @@ impl<F: Clone> CloneFactory<F> {
 }
 
 #[inline]
-pub fn rocks_slice_to_array(arr: &[rocksdb_Slice]) -> Cow<[&[u8]]> {
+pub unsafe fn rocks_slice_to_array(arr: &[rocksdb_Slice]) -> Cow<[&[u8]]> {
     if tirocks_sys::rocks_slice_same_as_rust() {
-        Cow::Borrowed(unsafe { mem::transmute(arr) })
+        Cow::Borrowed(mem::transmute(arr))
     } else {
         let arr = arr.into_iter().map(|v| unsafe { s(*v) }).collect();
         Cow::Owned(arr)
@@ -194,11 +189,32 @@ pub fn rocks_slice_to_array(arr: &[rocksdb_Slice]) -> Cow<[&[u8]]> {
 }
 
 #[inline]
-pub fn array_to_rocks_slice<'a>(arr: &'a [&[u8]]) -> Cow<'a, [rocksdb_Slice]> {
+pub unsafe fn array_to_rocks_slice<'a>(arr: &'a [&[u8]]) -> Cow<'a, [rocksdb_Slice]> {
     if tirocks_sys::rocks_slice_same_as_rust() {
-        Cow::Borrowed(unsafe { mem::transmute(arr) })
+        Cow::Borrowed(mem::transmute(arr))
     } else {
         let arr = arr.into_iter().map(|v| unsafe { r(*v) }).collect();
         Cow::Owned(arr)
     }
+}
+
+pub unsafe fn range_to_range_ptr(
+    ranges: &[(Option<&[u8]>, Option<&[u8]>)],
+) -> (
+    Vec<(Option<rocksdb_Slice>, Option<rocksdb_Slice>)>,
+    Vec<rocksdb_RangePtr>,
+) {
+    let rocks_ranges: Vec<_> = ranges
+        .iter()
+        .map(|pair| (pair.0.map(|k| r(k)), pair.1.map(|k| r(k))))
+        .collect();
+    // It may be optimized by `rocks_slice_same_as_rust`, but it seems too risky.
+    let range_ptrs: Vec<_> = rocks_ranges
+        .iter()
+        .map(|(begin, end)| rocksdb_RangePtr {
+            start: begin.as_ref().map_or_else(ptr::null, |k| k),
+            limit: end.as_ref().map_or_else(ptr::null, |k| k),
+        })
+        .collect();
+    (rocks_ranges, range_ptrs)
 }

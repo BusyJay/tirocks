@@ -12,7 +12,7 @@ use tirocks::{
     compaction_filter::{CompactionFilter, Decision, SysCompactionFilterFactory},
     db::DefaultCfOnlyBuilder,
     option::{CompactRangeOptions, ReadOptions, WriteOptions},
-    CloneFactory, OpenOptions, Options,
+    CloneFactory, OpenOptions,
 };
 
 #[derive(Default, Clone)]
@@ -56,12 +56,14 @@ fn test_compaction_filter() {
 
     // reregister with ignore_snapshots set to true
     let mut builder = DefaultCfOnlyBuilder::default();
-    let mut opt = Options::default();
     let factory = SysCompactionFilterFactory::new(CloneFactory::new(filter.clone()));
-    opt.cf_options_mut().set_compaction_filter_factory(&factory);
-    opt.db_options_mut().set_create_if_missing(true);
+    builder
+        .set_create_if_missing(true)
+        .options_mut()
+        .cf_options_mut()
+        .set_compaction_filter_factory(&factory);
 
-    let db = builder.set_options(opt).open(path.path()).unwrap();
+    let db = builder.open(path.path()).unwrap();
 
     let samples = vec![
         (b"key1".to_vec(), b"value1".to_vec()),

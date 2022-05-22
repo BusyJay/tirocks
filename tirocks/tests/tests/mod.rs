@@ -3,6 +3,8 @@
 mod test_cf;
 mod test_compact_range;
 mod test_compaction_filter;
+mod test_delete_files;
+mod test_delete_range;
 mod test_iterator;
 mod test_logger;
 mod test_misc;

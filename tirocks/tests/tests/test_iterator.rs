@@ -90,12 +90,10 @@ pub fn test_iterator() {
     let v2 = b"v2222";
     let v3 = b"v3333";
     let v4 = b"v4444";
-    let mut builder = DefaultCfOnlyBuilder::default();
-    builder
-        .options_mut()
-        .db_options_mut()
-        .set_create_if_missing(true);
-    let db = builder.open(path.path()).unwrap();
+    let db = DefaultCfOnlyBuilder::default()
+        .set_create_if_missing(true)
+        .open(path.path())
+        .unwrap();
     let write_opts = WriteOptions::default();
     let cf = db.default_cf();
     db.put(&write_opts, cf, k1, v1).unwrap();
@@ -210,11 +208,12 @@ fn test_send_iterator() {
     let path = super::tempdir_with_prefix("_rust_rocksdb_iteratortest_send");
 
     let mut builder = DefaultCfOnlyBuilder::default();
-    builder
-        .options_mut()
-        .db_options_mut()
-        .set_create_if_missing(true);
-    let db = Arc::new(builder.open(path.path()).unwrap());
+    let db = Arc::new(
+        builder
+            .set_create_if_missing(true)
+            .open(path.path())
+            .unwrap(),
+    );
     let write_opt = WriteOptions::default();
     let cf = db.default_cf();
     db.put(&write_opt, cf, b"k1", b"v1").unwrap();
@@ -252,13 +251,10 @@ fn test_send_iterator() {
 #[test]
 fn test_seek_for_prev() {
     let path = super::tempdir_with_prefix("_rust_rocksdb_seek_for_prev");
-    let mut builder = DefaultCfOnlyBuilder::default();
-    builder
-        .options_mut()
-        .db_options_mut()
-        .set_create_if_missing(true);
-
-    let db = builder.open(path.path()).unwrap();
+    let db = DefaultCfOnlyBuilder::default()
+        .set_create_if_missing(true)
+        .open(path.path())
+        .unwrap();
     let cf = db.default_cf();
     let write_opts = WriteOptions::default();
     db.put(&write_opts, cf, b"k1-0", b"a").unwrap();
@@ -309,13 +305,10 @@ fn test_seek_for_prev() {
 #[test]
 fn read_with_upper_bound() {
     let path = super::tempdir_with_prefix("_rust_rocksdb_read_with_upper_bound_test");
-    let mut builder = DefaultCfOnlyBuilder::default();
-    builder
-        .options_mut()
-        .db_options_mut()
-        .set_create_if_missing(true);
-
-    let db = builder.open(path.path()).unwrap();
+    let db = DefaultCfOnlyBuilder::default()
+        .set_create_if_missing(true)
+        .open(path.path())
+        .unwrap();
     let write_opts = WriteOptions::default();
     let cf = db.default_cf();
     db.put(&write_opts, cf, b"k1-0", b"a").unwrap();
@@ -340,13 +333,10 @@ fn test_total_order_seek() {
     bbto.set_filter_policy(&policy)
         .set_whole_key_filtering(false);
     let mut builder = DefaultCfOnlyBuilder::default();
-    builder
-        .options_mut()
-        .db_options_mut()
-        .set_create_if_missing(true);
     let factory = SysTableFactory::new_block_based(&bbto);
     let transform = SysSliceTransform::new(FixedPrefixTransform { prefix_len: 2 });
     builder
+        .set_create_if_missing(true)
         .options_mut()
         .cf_options_mut()
         .set_table_factory(&factory)
@@ -431,13 +421,10 @@ fn test_fixed_suffix_seek() {
     bbto.set_filter_policy(&filter)
         .set_whole_key_filtering(false);
     let mut builder = DefaultCfOnlyBuilder::default();
-    builder
-        .options_mut()
-        .db_options_mut()
-        .set_create_if_missing(true);
     let table_factory = SysTableFactory::new_block_based(&bbto);
     let transform = SysSliceTransform::new(FixedSuffixTransform { suffix_len: 2 });
     builder
+        .set_create_if_missing(true)
         .options_mut()
         .cf_options_mut()
         .set_table_factory(&table_factory)
@@ -501,12 +488,9 @@ fn test_iter_sequence_number() {
 
     let path = super::tempdir_with_prefix("_rust_rocksdb_sequence_number");
     let mut builder = DefaultCfOnlyBuilder::default();
-    builder
-        .options_mut()
-        .db_options_mut()
-        .set_create_if_missing(true);
     let factory = SysCompactionFilterFactory::new(CloneFactory::new(filter));
     builder
+        .set_create_if_missing(true)
         .options_mut()
         .cf_options_mut()
         .set_disable_auto_compactions(true)

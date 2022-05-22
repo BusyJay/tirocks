@@ -44,6 +44,15 @@ impl DefaultCfOnlyBuilder {
         &mut self.opt
     }
 
+    /// A shortcut for the common used `options_mut().db_options_mut().set_create_if_missing()`.
+    #[inline]
+    pub fn set_create_if_missing(&mut self, create: bool) -> &mut Self {
+        self.options_mut()
+            .db_options_mut()
+            .set_create_if_missing(create);
+        self
+    }
+
     #[inline]
     pub fn options(&self) -> &Options {
         &self.opt
@@ -97,6 +106,18 @@ impl MultiCfBuilder {
         self
     }
 
+    #[inline]
+    pub fn db_options_mut(&mut self) -> &mut DbOptions {
+        &mut self.db
+    }
+
+    /// A shortcut for the common used `db_options_mut().set_create_if_missing()`.
+    #[inline]
+    pub fn set_create_if_missing(&mut self, create: bool) -> &mut Self {
+        self.db.set_create_if_missing(create);
+        self
+    }
+
     pub fn set_read_only(&mut self, error_if_log_exists: bool) -> &mut Self {
         self.error_if_log_exists = Some(error_if_log_exists);
         self
@@ -116,6 +137,18 @@ impl MultiCfTitanBuilder {
 
     pub fn add_cf(&mut self, name: impl Into<String>, cf: TitanCfOptions) -> &mut Self {
         self.cfs.push((name.into(), cf));
+        self
+    }
+
+    #[inline]
+    pub fn db_options_mut(&mut self) -> &mut TitanDbOptions {
+        &mut self.db
+    }
+
+    /// A shortcut for the common used `db_options_mut().set_create_if_missing()`.
+    #[inline]
+    pub fn set_create_if_missing(&mut self, create: bool) -> &mut Self {
+        self.db.set_create_if_missing(create);
         self
     }
 }
@@ -143,9 +176,9 @@ pub trait OpenOptions {
             }]
         } else {
             handles
-            .into_iter()
-            .map(|p| unsafe { RefCountedColumnFamilyHandle::from_ptr(p, true) })
-            .collect()
+                .into_iter()
+                .map(|p| unsafe { RefCountedColumnFamilyHandle::from_ptr(p, true) })
+                .collect()
         };
         Ok(Db::new(ptr, env, comparator, handles, is_titan))
     }
@@ -156,7 +189,7 @@ impl OpenOptions for DefaultCfOnlyBuilder {
         &self,
         comparator: &mut Vec<Arc<SysComparator>>,
         env: &mut Option<Arc<Env>>,
-        handles: &mut Vec<*mut rocksdb_ColumnFamilyHandle>,
+        _handles: &mut Vec<*mut rocksdb_ColumnFamilyHandle>,
         path: &Path,
     ) -> Result<(*mut rocksdb_DB, bool)> {
         *env = self.opt.env().cloned();

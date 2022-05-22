@@ -2,7 +2,7 @@
 
 use std::{mem::ManuallyDrop, path::Path, ptr};
 
-use tirocks_sys::{r, rocksdb_Slice};
+use tirocks_sys::{r, rocksdb_RangePtr, rocksdb_Slice};
 
 use crate::{
     option::{
