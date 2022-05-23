@@ -4936,7 +4936,7 @@ extern "C" {
     pub fn crocksdb_set_external_sst_file_global_seq_no(
         db: *mut rocksdb_DB,
         column_family: *mut rocksdb_ColumnFamilyHandle,
-        file: *const libc::c_char,
+        file: rocksdb_Slice,
         seq_no: u64,
         s: *mut rocksdb_Status,
     ) -> u64;

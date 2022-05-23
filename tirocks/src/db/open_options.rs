@@ -6,7 +6,10 @@ use tirocks_sys::{r, rocksdb_ColumnFamilyHandle, rocksdb_DB};
 use crate::{
     comparator::SysComparator,
     env::Env,
-    option::{CfOptions, DbOptions, Options, PathToSlice, TitanCfOptions, TitanDbOptions},
+    option::{
+        CfOptions, DbOptions, Options, PathToSlice, RawCfOptions, RawDbOptions, TitanCfOptions,
+        TitanDbOptions,
+    },
     util::check_status,
     Result, Status,
 };
@@ -42,6 +45,18 @@ impl DefaultCfOnlyBuilder {
     #[inline]
     pub fn options_mut(&mut self) -> &mut Options {
         &mut self.opt
+    }
+
+    /// A shortcut for `options_mut().db_options_mut()`.
+    #[inline]
+    pub fn db_options_mut(&mut self) -> &mut RawDbOptions {
+        self.opt.db_options_mut()
+    }
+
+    /// A shortcut for `options_mut().cf_options_mut()`.
+    #[inline]
+    pub fn cf_options_mut(&mut self) -> &mut RawCfOptions {
+        self.opt.cf_options_mut()
     }
 
     /// A shortcut for the common used `options_mut().db_options_mut().set_create_if_missing()`.
@@ -118,6 +133,13 @@ impl MultiCfBuilder {
         self
     }
 
+    /// A shortcut for `db_options_mut().set_create_missing_column_families()`.
+    #[inline]
+    pub fn set_create_missing_column_families(&mut self, create: bool) -> &mut Self {
+        self.db.set_create_missing_column_families(create);
+        self
+    }
+
     pub fn set_read_only(&mut self, error_if_log_exists: bool) -> &mut Self {
         self.error_if_log_exists = Some(error_if_log_exists);
         self
@@ -149,6 +171,13 @@ impl MultiCfTitanBuilder {
     #[inline]
     pub fn set_create_if_missing(&mut self, create: bool) -> &mut Self {
         self.db.set_create_if_missing(create);
+        self
+    }
+
+    /// A shortcut for `db_options_mut().set_create_missing_column_families()`.
+    #[inline]
+    pub fn set_create_missing_column_families(&mut self, create: bool) -> &mut Self {
+        self.db.set_create_missing_column_families(create);
         self
     }
 }

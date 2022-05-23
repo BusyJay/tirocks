@@ -1,7 +1,8 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::{borrow::Cow, ffi::CStr, marker::PhantomData, mem, ptr};
+use std::{borrow::Cow, ffi::CStr, marker::PhantomData, mem, path::Path, ptr};
 
+use crate::{option::PathToSlice, Result, Status};
 use libc::c_void;
 use tirocks_sys::{r, rocksdb_Range, rocksdb_RangePtr, rocksdb_Slice, s};
 
@@ -96,6 +97,8 @@ macro_rules! check_status {
 }
 
 pub(crate) use check_status;
+
+use crate::{db::RawColumnFamilyHandle, RawDb};
 
 pub unsafe fn split_pairs(
     pairs: &[(impl AsRef<[u8]>, impl AsRef<[u8]>)],
@@ -217,4 +220,27 @@ pub unsafe fn range_to_range_ptr(
         })
         .collect();
     (rocks_ranges, range_ptrs)
+}
+
+// This function is dangerous because it uses rocksdb's non-public API
+// to find the offset of external sst file's `global seq no` and modify it.
+#[inline]
+pub fn set_external_sst_file_global_sequence_number(
+    db: &RawDb,
+    cf: &RawColumnFamilyHandle,
+    file: &Path,
+    seq_no: u64,
+) -> Result<u64> {
+    unsafe {
+        let mut s = Status::default();
+        let pre_seq_no = tirocks_sys::crocksdb_set_external_sst_file_global_seq_no(
+            db.as_ptr(),
+            cf.get(),
+            file.path_to_slice(),
+            seq_no,
+            s.as_mut_ptr(),
+        );
+        check_status!(s)?;
+        Ok(pre_seq_no)
+    }
 }

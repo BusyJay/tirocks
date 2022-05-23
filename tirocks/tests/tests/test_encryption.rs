@@ -2,7 +2,12 @@
 
 use std::sync::Arc;
 
-use tirocks::{env::Env, db::DefaultCfOnlyBuilder, OpenOptions, option::{WriteOptions, ReadOptions, FlushOptions}};
+use tirocks::{
+    db::DefaultCfOnlyBuilder,
+    env::Env,
+    option::{FlushOptions, ReadOptions, WriteOptions},
+    OpenOptions,
+};
 
 use super::tempdir_with_prefix;
 
@@ -15,12 +20,12 @@ fn test_ctr_encrypted_env() {
     for ciphertext in test_cipher_texts {
         let base_env = Env::with_mem(Env::default());
         test_ctr_encrypted_env_impl(Arc::new(
-            Env::with_ctr_encrypted(base_env, ciphertext).unwrap()
+            Env::with_ctr_encrypted(base_env, ciphertext).unwrap(),
         ));
     }
     for ciphertext in test_cipher_texts {
         test_ctr_encrypted_env_impl(Arc::new(
-            Env::with_ctr_encrypted(Env::default(), ciphertext).unwrap()
+            Env::with_ctr_encrypted(Env::default(), ciphertext).unwrap(),
         ));
     }
 }
@@ -28,7 +33,10 @@ fn test_ctr_encrypted_env() {
 fn test_ctr_encrypted_env_impl(encrypted_env: Arc<Env>) {
     let path = tempdir_with_prefix("_rust_rocksdb_cryption_env");
     let mut builder = DefaultCfOnlyBuilder::default();
-    builder.set_create_if_missing(true).options_mut().set_env(encrypted_env);
+    builder
+        .set_create_if_missing(true)
+        .options_mut()
+        .set_env(encrypted_env);
     let db = builder.open(path.path()).unwrap();
     let write_opt = WriteOptions::default();
     let read_opt = ReadOptions::default();
@@ -48,7 +56,8 @@ fn test_ctr_encrypted_env_impl(encrypted_env: Arc<Env>) {
     }
 
     // flush to sst fil
-    db.flush(FlushOptions::default().set_wait(true), cf).unwrap();
+    db.flush(FlushOptions::default().set_wait(true), cf)
+        .unwrap();
 
     // check value in db
     for (k, v) in &samples {
@@ -57,7 +66,7 @@ fn test_ctr_encrypted_env_impl(encrypted_env: Arc<Env>) {
 
     // close db and open again.
     drop(db);
-    
+
     let db = builder.open(path.path()).unwrap();
     let cf = db.default_cf();
 

@@ -11,7 +11,7 @@ use tirocks::{
         WriteOptions,
     },
     slice_transform::{SliceTransform, SysSliceTransform},
-    table::sst::SstFileWriter,
+    table::sst::{ExternalSstFileInfo, SstFileWriter},
     CfOptions, Db, OpenOptions, WriteBatch,
 };
 
@@ -29,13 +29,12 @@ fn gen_sst(opt: &RawOptions, cf: Option<&RawColumnFamilyHandle>, path: &Path) {
     writer.finish(None).unwrap();
 }
 
-fn gen_sst_from_db(opt: &RawOptions, cf: Option<&RawColumnFamilyHandle>, path: &Path, db: &Db) {
+pub fn gen_sst_from_db(opt: &RawOptions, cf: &RawColumnFamilyHandle, path: &Path, db: &Db) {
     let _ = fs::remove_file(path);
     let env_opt = EnvOptions::default();
-    let mut writer = SstFileWriter::new(&env_opt, opt, cf);
+    let mut writer = SstFileWriter::new(&env_opt, opt, Some(cf));
     writer.open(path).unwrap();
     let mut read_opt = ReadOptions::default();
-    let cf = db.default_cf();
     let mut iter = db.iter(&mut read_opt, cf);
     iter.seek_to_first();
     while iter.valid() {
@@ -43,7 +42,18 @@ fn gen_sst_from_db(opt: &RawOptions, cf: Option<&RawColumnFamilyHandle>, path: &
         iter.next();
     }
     iter.check().unwrap();
-    writer.finish(None).unwrap();
+    let mut info = ExternalSstFileInfo::default();
+    writer.finish(Some(&mut info)).unwrap();
+    iter.seek_to_first();
+    assert!(iter.valid());
+    assert_eq!(iter.key(), info.smallest_key());
+    iter.seek_to_last();
+    assert!(iter.valid());
+    assert_eq!(iter.key(), info.largest_key());
+    assert_eq!(info.sequence_number(), 0);
+    assert_eq!(info.file_path().map(Path::new), Ok(path));
+    assert_ne!(info.file_size(), 0);
+    assert_ne!(info.num_entries(), 0);
 }
 
 fn gen_crc32_from_db(db: &Db) -> u32 {
@@ -106,7 +116,7 @@ fn test_delete_range_case_1() {
     let ingest_opt = IngestExternalFileOptions::default();
 
     let default_options = db.cf_options(cf);
-    gen_sst_from_db(&default_options, Some(cf), &test_sstfile, &db);
+    gen_sst_from_db(&default_options, cf, &test_sstfile, &db);
 
     db.delete_range(&write_opt, cf, b"key1", b"key5").unwrap();
     check_kv(
@@ -165,7 +175,7 @@ fn test_delete_range_case_2() {
     let ingest_opt = IngestExternalFileOptions::default();
 
     let default_options = db.cf_options(cf);
-    gen_sst_from_db(&default_options, Some(cf), &test_sstfile, &db);
+    gen_sst_from_db(&default_options, cf, &test_sstfile, &db);
 
     db.delete_range(&write_opt, cf, b"key1", b"key5").unwrap();
     check_kv(
@@ -203,10 +213,7 @@ fn test_delete_range_case_2() {
 fn test_delete_range_case_3() {
     let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_case_3");
     let mut builder = DefaultCfOnlyBuilder::default();
-    builder
-        .options_mut()
-        .db_options_mut()
-        .set_create_if_missing(true);
+    builder.set_create_if_missing(true);
     let db = builder.open(path.path()).unwrap();
     let samples_a = vec![
         (b"key1", b"value1"),
@@ -253,7 +260,7 @@ fn test_delete_range_case_3() {
     let ingest_opt = IngestExternalFileOptions::default();
 
     let default_options = db2.cf_options(cf2);
-    gen_sst_from_db(&default_options, Some(cf2), &test_sstfile, &db2);
+    gen_sst_from_db(&default_options, cf2, &test_sstfile, &db2);
 
     db.ingest_external_file(&ingest_opt, cf, &[test_sstfile])
         .unwrap();
@@ -326,7 +333,7 @@ fn test_delete_range_case_4() {
     let ingest_opt = IngestExternalFileOptions::default();
 
     let default_options = db2.cf_options(cf2);
-    gen_sst_from_db(&default_options, Some(cf2), &test_sstfile, &db2);
+    gen_sst_from_db(&default_options, cf2, &test_sstfile, &db2);
 
     db.ingest_external_file(&ingest_opt, cf, &[test_sstfile])
         .unwrap();
@@ -399,7 +406,7 @@ fn test_delete_range_case_5() {
     let ingest_opt = IngestExternalFileOptions::default();
 
     let default_options = db2.cf_options(cf2);
-    gen_sst_from_db(&default_options, Some(cf2), &test_sstfile, &db2);
+    gen_sst_from_db(&default_options, cf2, &test_sstfile, &db2);
 
     db.ingest_external_file(&ingest_opt, cf, &[test_sstfile])
         .unwrap();
@@ -471,7 +478,7 @@ fn test_delete_range_case_6() {
     let ingest_opt = IngestExternalFileOptions::default();
 
     let default_options = db2.cf_options(cf2);
-    gen_sst_from_db(&default_options, Some(cf2), &test_sstfile, &db2);
+    gen_sst_from_db(&default_options, cf2, &test_sstfile, &db2);
 
     db.ingest_external_file(&ingest_opt, cf, &[test_sstfile])
         .unwrap();
@@ -549,7 +556,7 @@ fn test_delete_range_compact() {
     let ingest_opt = IngestExternalFileOptions::default();
 
     let default_options = db2.cf_options(cf2);
-    gen_sst_from_db(&default_options, Some(cf2), &test_sstfile, &db2);
+    gen_sst_from_db(&default_options, cf2, &test_sstfile, &db2);
 
     db.ingest_external_file(&ingest_opt, cf, &[test_sstfile])
         .unwrap();
@@ -605,7 +612,6 @@ fn build_db_with_suffix_transform(path: &Path) -> Db {
     let mut builder = DefaultCfOnlyBuilder::default();
     builder
         .set_create_if_missing(true)
-        .options_mut()
         .cf_options_mut()
         .set_prefix_extractor(&transform)
         // Create prefix bloom filter for memtable.
@@ -638,7 +644,7 @@ fn test_delete_range_prefix_bloom_case_1() {
     let ingest_opt = IngestExternalFileOptions::default();
 
     let default_options = db.cf_options(cf);
-    gen_sst_from_db(&default_options, Some(cf), &test_sstfile, &db);
+    gen_sst_from_db(&default_options, cf, &test_sstfile, &db);
 
     db.delete_range(&write_opt, cf, b"keya11111", b"keye55555")
         .unwrap();
@@ -695,7 +701,7 @@ fn test_delete_range_prefix_bloom_case_2() {
     let ingest_opt = IngestExternalFileOptions::default();
 
     let default_options = db.cf_options(cf);
-    gen_sst_from_db(&default_options, Some(cf), &test_sstfile, &db);
+    gen_sst_from_db(&default_options, cf, &test_sstfile, &db);
 
     db.delete_range(&write_opt, cf, b"keya11111", b"keye55555")
         .unwrap();
@@ -780,7 +786,7 @@ fn test_delete_range_prefix_bloom_case_3() {
     let ingest_opt = IngestExternalFileOptions::default();
 
     let default_options = db2.cf_options(cf2);
-    gen_sst_from_db(&default_options, Some(cf2), &test_sstfile, &db2);
+    gen_sst_from_db(&default_options, cf2, &test_sstfile, &db2);
 
     db.ingest_external_file(&ingest_opt, cf, &[test_sstfile])
         .unwrap();
@@ -850,7 +856,7 @@ fn test_delete_range_prefix_bloom_case_4() {
     let ingest_opt = IngestExternalFileOptions::default();
 
     let default_options = db2.cf_options(cf2);
-    gen_sst_from_db(&default_options, Some(cf2), &test_sstfile, &db2);
+    gen_sst_from_db(&default_options, cf2, &test_sstfile, &db2);
 
     db.ingest_external_file(&ingest_opt, cf, &[test_sstfile])
         .unwrap();
@@ -921,7 +927,7 @@ fn test_delete_range_prefix_bloom_case_5() {
     let ingest_opt = IngestExternalFileOptions::default();
 
     let default_options = db2.cf_options(cf2);
-    gen_sst_from_db(&default_options, Some(cf2), &test_sstfile, &db2);
+    gen_sst_from_db(&default_options, cf2, &test_sstfile, &db2);
 
     db.ingest_external_file(&ingest_opt, cf, &[test_sstfile])
         .unwrap();
@@ -993,7 +999,7 @@ fn test_delete_range_prefix_bloom_case_6() {
     let ingest_opt = IngestExternalFileOptions::default();
 
     let default_options = db2.cf_options(cf2);
-    gen_sst_from_db(&default_options, Some(cf2), &test_sstfile, &db2);
+    gen_sst_from_db(&default_options, cf2, &test_sstfile, &db2);
 
     db.ingest_external_file(&ingest_opt, cf, &[test_sstfile])
         .unwrap();
@@ -1075,7 +1081,7 @@ fn test_delete_range_prefix_bloom_compact_case() {
     let ingest_opt = IngestExternalFileOptions::default();
 
     let default_options = db2.cf_options(cf2);
-    gen_sst_from_db(&default_options, Some(cf2), &test_sstfile, &db2);
+    gen_sst_from_db(&default_options, cf2, &test_sstfile, &db2);
 
     db.ingest_external_file(&ingest_opt, cf, &[test_sstfile])
         .unwrap();

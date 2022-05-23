@@ -4433,12 +4433,12 @@ struct ExternalSstFileModifier {
 // !!! this function is dangerous because it uses rocksdb's non-public API !!!
 // find the offset of external sst file's `global seq no` and modify it.
 uint64_t crocksdb_set_external_sst_file_global_seq_no(
-    DB* db, ColumnFamilyHandle* column_family, const char* file,
-    uint64_t seq_no, Status* s) {
+    DB* db, ColumnFamilyHandle* column_family, Slice file, uint64_t seq_no,
+    Status* s) {
   auto env = db->GetEnv();
   EnvOptions env_options(db->GetDBOptions());
   ExternalSstFileModifier modifier(env, env_options, column_family);
-  *s = modifier.Open(std::string(file));
+  *s = modifier.Open(file.ToString());
   if (s->ok()) {
     uint64_t pre_seq_no;
     *s = modifier.SetGlobalSeqNo(seq_no, &pre_seq_no);

@@ -23,7 +23,6 @@ fn test_compression() {
         let mut builder = DefaultCfOnlyBuilder::default();
         builder
             .set_create_if_missing(true)
-            .options_mut()
             .cf_options_mut()
             .set_compression(compression_type);
         // DB open will fail if compression type is not supported.
@@ -37,7 +36,6 @@ fn test_db_statistics() {
     let mut builder = DefaultCfOnlyBuilder::default();
     let stats = Statistics::default();
     builder
-        .options_mut()
         .db_options_mut()
         .set_create_if_missing(true)
         .set_statistics(&stats);

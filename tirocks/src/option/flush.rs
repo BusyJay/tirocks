@@ -284,6 +284,12 @@ impl IngestExternalFileOptions {
         self
     }
 
+    /// See [`set_write_global_sequence_number`].
+    #[inline]
+    pub fn write_global_sequence_number(&self) -> bool {
+        self.raw.write_global_seqno
+    }
+
     /// Set to true if you would like to verify the checksums of each block of the
     /// external SST file before ingestion.
     /// Warning: setting this to true causes slowdown in file ingestion because

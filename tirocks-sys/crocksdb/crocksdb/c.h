@@ -1874,7 +1874,7 @@ extern C_ROCKSDB_LIBRARY_API int crocksdb_keyversions_type(
 extern C_ROCKSDB_LIBRARY_API uint64_t
 crocksdb_set_external_sst_file_global_seq_no(DB* db,
                                              ColumnFamilyHandle* column_family,
-                                             const char* file, uint64_t seq_no,
+                                             Slice file, uint64_t seq_no,
                                              Status* s);
 
 /* ColumnFamilyMetaData */

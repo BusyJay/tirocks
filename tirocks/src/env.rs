@@ -4,13 +4,16 @@ mod inspected;
 pub mod logger;
 mod sequential_file;
 
+use std::path::Path;
+
 use self::inspected::SysFileSystemInspector;
 #[cfg(feature = "encryption")]
 use crate::encryption::{KeyManager, SysKeyManager};
 use crate::error::ffi_call;
+use crate::option::PathToSlice;
 use crate::{Code, Result, Status};
 use libc::c_char;
-use tirocks_sys::{r, rocksdb_EnvOptions};
+use tirocks_sys::rocksdb_EnvOptions;
 
 pub use self::inspected::FileSystemInspector;
 pub use self::sequential_file::SequentialFile;
@@ -144,9 +147,13 @@ impl Env {
     /// Create a brand new sequentially-readable file with the specified name.
     /// On failure returns non-OK.  If the file does not exist, returns a non-OK status.
     #[inline]
-    pub fn new_sequential_file(&self, path: &str, opts: EnvOptions) -> Result<SequentialFile> {
+    pub fn new_sequential_file(
+        &self,
+        path: impl AsRef<Path>,
+        opts: EnvOptions,
+    ) -> Result<SequentialFile> {
         unsafe {
-            let file_path = r(path.as_bytes());
+            let file_path = path.path_to_slice();
             let file = ffi_call!(crocksdb_sequential_file_create(
                 self.ptr,
                 file_path,
@@ -162,18 +169,18 @@ impl Env {
     ///                  whether this file exists, or if the path is invalid.
     ///         IOError if an IO Error was encountered
     #[inline]
-    pub fn file_exists(&self, path: &str) -> Result<()> {
+    pub fn file_exists(&self, path: impl AsRef<Path>) -> Result<()> {
         unsafe {
-            let file_path = r(path.as_bytes());
+            let file_path = path.path_to_slice();
             ffi_call!(crocksdb_env_file_exists(self.ptr, file_path))
         }
     }
 
     /// Delete the named file.
     #[inline]
-    pub fn delete_file(&self, path: &str) -> Result<()> {
+    pub fn delete_file(&self, path: impl AsRef<Path>) -> Result<()> {
         unsafe {
-            let file_path = r(path.as_bytes());
+            let file_path = path.path_to_slice();
             ffi_call!(crocksdb_env_delete_file(self.ptr, file_path))
         }
     }

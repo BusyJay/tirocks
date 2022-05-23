@@ -64,7 +64,6 @@ fn test_compact_range_change_level() {
     let mut builder = DefaultCfOnlyBuilder::default();
     builder
         .set_create_if_missing(true)
-        .options_mut()
         .cf_options_mut()
         .set_level0_file_num_compaction_trigger(10);
     let db = builder.open(path.path()).unwrap();

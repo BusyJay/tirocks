@@ -337,7 +337,6 @@ fn test_total_order_seek() {
     let transform = SysSliceTransform::new(FixedPrefixTransform { prefix_len: 2 });
     builder
         .set_create_if_missing(true)
-        .options_mut()
         .cf_options_mut()
         .set_table_factory(&factory)
         .set_prefix_extractor(&transform)
@@ -425,7 +424,6 @@ fn test_fixed_suffix_seek() {
     let transform = SysSliceTransform::new(FixedSuffixTransform { suffix_len: 2 });
     builder
         .set_create_if_missing(true)
-        .options_mut()
         .cf_options_mut()
         .set_table_factory(&table_factory)
         .set_prefix_extractor(&transform);
@@ -491,7 +489,6 @@ fn test_iter_sequence_number() {
     let factory = SysCompactionFilterFactory::new(CloneFactory::new(filter));
     builder
         .set_create_if_missing(true)
-        .options_mut()
         .cf_options_mut()
         .set_disable_auto_compactions(true)
         .set_num_levels(7)

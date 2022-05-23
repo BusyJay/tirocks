@@ -16,7 +16,6 @@ fn initial_data(path: &Path) -> Db {
     builder
         .set_create_if_missing(true)
         // We will control the compaction manually.
-        .options_mut()
         .cf_options_mut()
         .set_disable_auto_compactions(true);
     let db = builder.open(path).unwrap();
@@ -113,7 +112,6 @@ fn test_delete_files_in_range_with_delete_range() {
     let mut builder = DefaultCfOnlyBuilder::default();
     builder
         .set_create_if_missing(true)
-        .options_mut()
         .cf_options_mut()
         .set_target_file_size_base(sst_size)
         .set_level0_file_num_compaction_trigger(10);

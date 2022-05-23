@@ -59,7 +59,6 @@ fn test_compaction_filter() {
     let factory = SysCompactionFilterFactory::new(CloneFactory::new(filter.clone()));
     builder
         .set_create_if_missing(true)
-        .options_mut()
         .cf_options_mut()
         .set_compaction_filter_factory(&factory);
 

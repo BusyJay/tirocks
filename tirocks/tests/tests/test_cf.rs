@@ -15,7 +15,6 @@ pub fn test_cf() {
     let mut builder = DefaultCfOnlyBuilder::default();
     builder
         .set_create_if_missing(true)
-        .options_mut()
         .cf_options_mut()
         .set_merge_operator(&SysMergeOperator::new(test_provided_merge));
 
@@ -61,7 +60,7 @@ pub fn test_cf() {
     db.destroy_cf("cf1").unwrap();
 }
 
-fn test_provided_merge(
+pub fn test_provided_merge(
     _: &[u8],
     existing_val: Option<&[u8]>,
     operands: &[&[u8]],

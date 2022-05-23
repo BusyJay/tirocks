@@ -41,7 +41,6 @@ fn test_logger() {
     let print = logger.print.clone();
     let log = SysInfoLogger::new(logger);
     builder
-        .options_mut()
         .db_options_mut()
         .set_info_log(&log)
         .set_create_if_missing(true)

@@ -7,6 +7,8 @@ mod test_delete_files;
 mod test_delete_range;
 #[cfg(feature = "encryption")]
 mod test_encryption;
+mod test_event_listener;
+mod test_ingest_external_file;
 mod test_iterator;
 mod test_logger;
 mod test_misc;
