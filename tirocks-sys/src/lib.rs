@@ -12,23 +12,42 @@ extern crate bzip2_sys;
 mod bindings {
     // We don't want these types be generated as they have different sizes on different platforms
     // so we declare them manually.
-    pub enum rocksdb_encryption_FileEncryptionInfo {}
-    pub enum rocksdb_TableProperties {}
-    pub enum rocksdb_UserCollectedProperties {}
-    pub enum rocksdb_TablePropertiesCollection {}
-    pub enum rocksdb_FlushJobInfo {}
-    pub enum rocksdb_CompactionJobInfo {}
-    pub enum rocksdb_CompactionJobStats {}
-    pub enum rocksdb_SubcompactionJobInfo {}
-    pub enum rocksdb_ExternalFileIngestionInfo {}
-    pub enum rocksdb_WriteStallInfo {}
+
+    include!("pre_defined.rs");
 
     include!(env!("BINDING_PATH"));
 }
 
-use std::{ffi::CStr, str::Utf8Error};
+use std::{ffi::CStr, mem, str::Utf8Error};
 
 pub use bindings::*;
+
+/// Check if it's safe to convert transmute from `&[u8]` to `rocksdb_Slice`.
+///
+/// Following code should be optimized away in release build.
+pub fn rocks_slice_same_as_rust() -> bool {
+    // Type is important.
+    let rst: &[u8] = &[1, 2];
+    unsafe {
+        let rocks = r(rst);
+        let size = mem::size_of_val(&rst);
+        if mem::size_of_val(&rocks) != mem::size_of_val(&rst) || size != 16 {
+            return false;
+        }
+        if mem::align_of_val(&rocks) != mem::align_of_val(&rst) {
+            return false;
+        }
+        let rst_ptr = &rst as *const _ as *const u8;
+        let rocks_ptr = &rocks as *const _ as *const u8;
+        // libc::memcpy doesn't trigger optimization correctly.
+        for i in 0..16 {
+            if *rst_ptr.offset(i) != *rocks_ptr.offset(i) {
+                return false;
+            }
+        }
+        true
+    }
+}
 
 /// Convert a rust slice to rocksdb slice.
 ///
@@ -150,6 +169,13 @@ impl rocksdb_Status {
     }
 }
 
+impl PartialEq for rocksdb_Status {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.code_ == other.code_
+    }
+}
+
 impl Drop for rocksdb_Status {
     #[inline]
     fn drop(&mut self) {
@@ -159,17 +185,14 @@ impl Drop for rocksdb_Status {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        crocksdb_close, crocksdb_open, crocksdb_options_create, crocksdb_options_destroy,
-        crocksdb_options_set_create_if_missing, r, rocksdb_Status, rocksdb_Status_Code,
-    };
-
-    use super::s;
+    use super::*;
 
     #[test]
     fn test_smoke() {
-        assert_eq!(b"rocksdb.cfstats-no-file-histogram", unsafe {
-            s(super::crocksdb_property_name_cf_stats_no_file_histogram)
+        assert_eq!(b"rocksdb.num-files-at-level", unsafe {
+            let mut buf = r(&[]);
+            super::crocksdb_property_name_num_files_at_level_prefix(&mut buf);
+            s(buf)
         });
     }
 
@@ -179,7 +202,8 @@ mod tests {
         let path = td.path().to_str().unwrap();
         unsafe {
             let opt = crocksdb_options_create();
-            crocksdb_options_set_create_if_missing(opt, 0);
+            let db_opt = crocksdb_options_get_dboptions(opt);
+            crocksdb_options_set_create_if_missing(db_opt, false);
             let mut status = rocksdb_Status::with_code(rocksdb_Status_Code::kOk);
             let s = crocksdb_open(opt, r(path.as_bytes()), &mut status);
             assert!(!status.ok());
@@ -188,10 +212,13 @@ mod tests {
             let msg = status.message().unwrap().unwrap();
             assert!(msg.contains("does not exist"), "{}", msg);
 
-            crocksdb_options_set_create_if_missing(opt, 1);
+            status.clear_state();
+            crocksdb_options_set_create_if_missing(db_opt, true);
             let s = crocksdb_open(opt, r(path.as_bytes()), &mut status);
             assert!(status.ok(), "{:?}", status.message());
-            crocksdb_close(s);
+            crocksdb_close(s, &mut status);
+            assert!(status.ok(), "{:?}", status.message());
+            crocksdb_destroy(s);
             crocksdb_options_destroy(opt);
         }
     }
