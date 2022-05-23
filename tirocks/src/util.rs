@@ -1,5 +1,8 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
+// For now the macro is only used by encryption.
+#![cfg_attr(not(feature = "encryption"), allow(unused))]
+
 use std::{borrow::Cow, ffi::CStr, marker::PhantomData, mem, path::Path, ptr};
 
 use crate::{option::PathToSlice, Result, Status};
