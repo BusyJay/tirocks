@@ -5,7 +5,10 @@ use std::{
     mem::MaybeUninit,
 };
 
-use tirocks_sys::rocksdb_titandb_TitanReadOptions;
+use libc::c_void;
+use tirocks_sys::{rocksdb_Snapshot, rocksdb_titandb_TitanReadOptions, s};
+
+use crate::table_filter::{self, TableFilter};
 
 use super::OwnedSlice;
 
@@ -53,6 +56,23 @@ impl ReadOptions {
         }
     }
 
+    /// If "snapshot" is set, read as of the supplied snapshot
+    /// (which must belong to the DB that is being read and which must
+    /// not have been released).  If "snapshot" is nullptr, use an implicit
+    /// snapshot of the state at the beginning of this read operation.
+    ///
+    /// If set, caller should guarantee the snapshot outlives the read operation.
+    #[inline]
+    pub(crate) unsafe fn set_snapshot(&mut self, snapshot: *const rocksdb_Snapshot) -> &mut Self {
+        self.raw._base.snapshot = snapshot;
+        self
+    }
+
+    #[inline]
+    pub(crate) fn snapshot(&self) -> *const rocksdb_Snapshot {
+        self.raw._base.snapshot
+    }
+
     /// Sets the smallest key at which the backward iterator can return an
     /// entry. Once the bound is passed, Valid() will be false. It is inclusive
     /// ie the bound value is a valid entry.
@@ -87,6 +107,16 @@ impl ReadOptions {
         let store = self.slice_store.as_mut().unwrap();
         self.raw._base.iterate_upper_bound = store.iterate_upper_bound.set_data(upper_bound.into());
         self
+    }
+
+    /// Check [`set_iterate_upper_bound`].
+    #[inline]
+    pub fn iterate_upper_bound(&self) -> Option<&[u8]> {
+        if !self.raw._base.iterate_upper_bound.is_null() {
+            Some(unsafe { s(*self.raw._base.iterate_upper_bound) })
+        } else {
+            None
+        }
     }
 
     /// RocksDB does auto-readahead for iterators on noticing more than two reads
@@ -216,6 +246,26 @@ impl ReadOptions {
         self
     }
 
+    /// A callback to determine whether relevant keys for this scan exist in a
+    /// given table based on the table's properties. The callback is passed the
+    /// properties of each table during iteration. If the callback returns false,
+    /// the table will not be scanned. This option only affects Iterators and has
+    /// no impact on point lookups.
+    /// Default: empty (every table will be scanned)
+    #[inline]
+    pub fn set_table_filter<T: TableFilter>(&mut self, f: T) -> &mut Self {
+        unsafe {
+            let filter = Box::into_raw(Box::new(f));
+            tirocks_sys::crocksdb_readoptions_set_table_filter(
+                &mut self.raw._base,
+                filter as *mut c_void,
+                Some(table_filter::filter::<T>),
+                Some(table_filter::destroy::<T>),
+            )
+        }
+        self
+    }
+
     /// Needed to support differential snapshots. Has 2 effects:
     /// 1) Iterator will skip all internal keys with seq < iter_start_seqnum
     /// 2) if this param > 0 iterator will return INTERNAL keys instead of
@@ -253,4 +303,20 @@ impl ReadOptions {
         self
     }
     // TODO: support table filter.
+
+    #[inline]
+    pub(crate) fn get_ptr(&self) -> *const rocksdb_titandb_TitanReadOptions {
+        &self.raw
+    }
 }
+
+impl Drop for ReadOptions {
+    fn drop(&mut self) {
+        unsafe {
+            tirocks_sys::ctitandb_readoptions_destroy(&mut self.raw);
+        }
+    }
+}
+
+unsafe impl Send for ReadOptions {}
+unsafe impl Sync for ReadOptions {}

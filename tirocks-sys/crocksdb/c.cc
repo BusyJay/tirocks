@@ -285,20 +285,8 @@ struct crocksdb_statistics_t {
 struct crocksdb_livefiles_t {
   std::vector<LiveFileMetaData> rep;
 };
-struct crocksdb_envoptions_t {
-  EnvOptions rep;
-};
 struct crocksdb_sequential_file_t {
   SequentialFile* rep;
-};
-struct crocksdb_sstfilereader_t {
-  SstFileReader* rep;
-};
-struct crocksdb_sstfilewriter_t {
-  SstFileWriter* rep;
-};
-struct crocksdb_externalsstfileinfo_t {
-  ExternalSstFileInfo rep;
 };
 struct crocksdb_ratelimiter_t {
   std::shared_ptr<RateLimiter> rep;
@@ -3360,18 +3348,15 @@ void crocksdb_env_destroy(Env* env) {
   }
 }
 
-crocksdb_envoptions_t* crocksdb_envoptions_create() {
-  crocksdb_envoptions_t* opt = new crocksdb_envoptions_t;
-  return opt;
-}
+EnvOptions* crocksdb_envoptions_create() { return new EnvOptions; }
 
-void crocksdb_envoptions_destroy(crocksdb_envoptions_t* opt) { delete opt; }
+void crocksdb_envoptions_destroy(EnvOptions* opt) { delete opt; }
 
 crocksdb_sequential_file_t* crocksdb_sequential_file_create(
-    Env* env, Slice path, const crocksdb_envoptions_t* opts, Status* s) {
+    Env* env, Slice path, const EnvOptions* opts, Status* s) {
   std::unique_ptr<SequentialFile> result;
   auto p = path.ToString();
-  *s = env->NewSequentialFile(p, &result, opts->rep);
+  *s = env->NewSequentialFile(p, &result, *opts);
   if (!s->ok()) {
     return nullptr;
   }
@@ -3533,139 +3518,112 @@ Env* crocksdb_file_system_inspected_env_create(
   return NewFileSystemInspectedEnv(base_env, inspector->rep);
 }
 
-crocksdb_sstfilereader_t* crocksdb_sstfilereader_create(
-    const Options* io_options) {
-  auto reader = new crocksdb_sstfilereader_t;
-  reader->rep = new SstFileReader(*io_options);
-  return reader;
+SstFileReader* crocksdb_sstfilereader_create(const Options* io_options) {
+  return new SstFileReader(*io_options);
 }
 
-void crocksdb_sstfilereader_open(crocksdb_sstfilereader_t* reader,
-                                 const char* name, Status* s) {
-  *s = reader->rep->Open(std::string(name));
+void crocksdb_sstfilereader_open(SstFileReader* reader, Slice name, Status* s) {
+  *s = reader->Open(name.ToString());
 }
 
-Iterator* crocksdb_sstfilereader_new_iterator(crocksdb_sstfilereader_t* reader,
+Iterator* crocksdb_sstfilereader_new_iterator(SstFileReader* reader,
                                               const ReadOptions* options) {
-  return reader->rep->NewIterator(*options);
+  return reader->NewIterator(*options);
 }
 
 const TableProperties* crocksdb_sstfilereader_get_table_properties(
-    const crocksdb_sstfilereader_t* reader) {
-  return reader->rep->GetTableProperties().get();
+    const SstFileReader* reader) {
+  return reader->GetTableProperties().get();
 }
 
-void crocksdb_sstfilereader_verify_checksum(crocksdb_sstfilereader_t* reader,
-                                            Status* s) {
-  *s = reader->rep->VerifyChecksum();
+void crocksdb_sstfilereader_verify_checksum(SstFileReader* reader, Status* s) {
+  *s = reader->VerifyChecksum();
 }
 
-void crocksdb_sstfilereader_destroy(crocksdb_sstfilereader_t* reader) {
-  delete reader->rep;
-  delete reader;
+void crocksdb_sstfilereader_destroy(SstFileReader* reader) { delete reader; }
+
+SstFileWriter* crocksdb_sstfilewriter_create(const EnvOptions* env,
+                                             const Options* io_options) {
+  return new SstFileWriter(*env, *io_options);
 }
 
-crocksdb_sstfilewriter_t* crocksdb_sstfilewriter_create(
-    const crocksdb_envoptions_t* env, const Options* io_options) {
-  crocksdb_sstfilewriter_t* writer = new crocksdb_sstfilewriter_t;
-  writer->rep = new SstFileWriter(env->rep, *io_options);
-  return writer;
-}
-
-crocksdb_sstfilewriter_t* crocksdb_sstfilewriter_create_cf(
-    const crocksdb_envoptions_t* env, const Options* io_options,
+SstFileWriter* crocksdb_sstfilewriter_create_cf(
+    const EnvOptions* env, const Options* io_options,
     ColumnFamilyHandle* column_family) {
-  crocksdb_sstfilewriter_t* writer = new crocksdb_sstfilewriter_t;
-  writer->rep = new SstFileWriter(env->rep, *io_options, column_family);
-  return writer;
+  return new SstFileWriter(*env, *io_options, column_family);
 }
 
-void crocksdb_sstfilewriter_open(crocksdb_sstfilewriter_t* writer,
-                                 const char* name, Status* s) {
-  *s = writer->rep->Open(std::string(name));
+void crocksdb_sstfilewriter_open(SstFileWriter* writer, Slice name, Status* s) {
+  *s = writer->Open(name.ToString());
 }
 
-void crocksdb_sstfilewriter_put(crocksdb_sstfilewriter_t* writer,
-                                const char* key, size_t keylen, const char* val,
-                                size_t vallen, Status* s) {
-  *s = writer->rep->Put(Slice(key, keylen), Slice(val, vallen));
+void crocksdb_sstfilewriter_put(SstFileWriter* writer, Slice key, Slice val,
+                                Status* s) {
+  *s = writer->Put(key, val);
 }
 
-void crocksdb_sstfilewriter_merge(crocksdb_sstfilewriter_t* writer,
-                                  const char* key, size_t keylen,
-                                  const char* val, size_t vallen, Status* s) {
-  *s = writer->rep->Merge(Slice(key, keylen), Slice(val, vallen));
+void crocksdb_sstfilewriter_merge(SstFileWriter* writer, Slice key, Slice val,
+                                  Status* s) {
+  *s = writer->Merge(key, val);
 }
 
-void crocksdb_sstfilewriter_delete(crocksdb_sstfilewriter_t* writer,
-                                   const char* key, size_t keylen, Status* s) {
-  *s = writer->rep->Delete(Slice(key, keylen));
-}
-
-void crocksdb_sstfilewriter_delete_range(crocksdb_sstfilewriter_t* writer,
-                                         const char* begin_key,
-                                         size_t begin_keylen,
-                                         const char* end_key, size_t end_keylen,
-                                         Status* s) {
-  *s = writer->rep->DeleteRange(Slice(begin_key, begin_keylen),
-                                Slice(end_key, end_keylen));
-}
-
-void crocksdb_sstfilewriter_finish(crocksdb_sstfilewriter_t* writer,
-                                   crocksdb_externalsstfileinfo_t* info,
+void crocksdb_sstfilewriter_delete(SstFileWriter* writer, Slice key,
                                    Status* s) {
-  *s = writer->rep->Finish(&info->rep);
+  *s = writer->Delete(key);
 }
 
-uint64_t crocksdb_sstfilewriter_file_size(crocksdb_sstfilewriter_t* writer) {
-  return writer->rep->FileSize();
+void crocksdb_sstfilewriter_delete_range(SstFileWriter* writer, Slice begin_key,
+                                         Slice end_key, Status* s) {
+  *s = writer->DeleteRange(begin_key, end_key);
 }
 
-void crocksdb_sstfilewriter_destroy(crocksdb_sstfilewriter_t* writer) {
-  delete writer->rep;
-  delete writer;
+void crocksdb_sstfilewriter_finish(SstFileWriter* writer,
+                                   ExternalSstFileInfo* info, Status* s) {
+  *s = writer->Finish(info);
 }
 
-crocksdb_externalsstfileinfo_t* crocksdb_externalsstfileinfo_create() {
-  return new crocksdb_externalsstfileinfo_t;
+uint64_t crocksdb_sstfilewriter_file_size(SstFileWriter* writer) {
+  return writer->FileSize();
+}
+
+void crocksdb_sstfilewriter_destroy(SstFileWriter* writer) { delete writer; }
+
+ExternalSstFileInfo* crocksdb_externalsstfileinfo_create() {
+  return new ExternalSstFileInfo;
 };
 
-void crocksdb_externalsstfileinfo_destroy(
-    crocksdb_externalsstfileinfo_t* info) {
+void crocksdb_externalsstfileinfo_destroy(ExternalSstFileInfo* info) {
   delete info;
 }
 
-const char* crocksdb_externalsstfileinfo_file_path(
-    crocksdb_externalsstfileinfo_t* info, size_t* size) {
-  *size = info->rep.file_path.size();
-  return info->rep.file_path.c_str();
+void crocksdb_externalsstfileinfo_file_path(const ExternalSstFileInfo* info,
+                                            Slice* path) {
+  *path = info->file_path;
 }
 
-const char* crocksdb_externalsstfileinfo_smallest_key(
-    crocksdb_externalsstfileinfo_t* info, size_t* size) {
-  *size = info->rep.smallest_key.size();
-  return info->rep.smallest_key.c_str();
+void crocksdb_externalsstfileinfo_smallest_key(const ExternalSstFileInfo* info,
+                                               Slice* key) {
+  *key = info->smallest_key;
 }
 
-const char* crocksdb_externalsstfileinfo_largest_key(
-    crocksdb_externalsstfileinfo_t* info, size_t* size) {
-  *size = info->rep.largest_key.size();
-  return info->rep.largest_key.c_str();
+void crocksdb_externalsstfileinfo_largest_key(const ExternalSstFileInfo* info,
+                                              Slice* key) {
+  *key = info->largest_key;
 }
 
-uint64_t crocksdb_externalsstfileinfo_sequence_number(
-    crocksdb_externalsstfileinfo_t* info) {
-  return info->rep.sequence_number;
+SequenceNumber crocksdb_externalsstfileinfo_sequence_number(
+    const ExternalSstFileInfo* info) {
+  return info->sequence_number;
 }
 
 uint64_t crocksdb_externalsstfileinfo_file_size(
-    crocksdb_externalsstfileinfo_t* info) {
-  return info->rep.file_size;
+    const ExternalSstFileInfo* info) {
+  return info->file_size;
 }
 
 uint64_t crocksdb_externalsstfileinfo_num_entries(
-    crocksdb_externalsstfileinfo_t* info) {
-  return info->rep.num_entries;
+    const ExternalSstFileInfo* info) {
+  return info->num_entries;
 }
 
 void crocksdb_ingestexternalfileoptions_init(IngestExternalFileOptions* opt) {
@@ -3884,54 +3842,11 @@ void crocksdb_get_options_from_string(const Options* base_options,
   *s = GetOptionsFromString(*base_options, std::string(opts_str), new_options);
 }
 
-void crocksdb_delete_files_in_range(DB* db, const char* start_key,
-                                    size_t start_key_len, const char* limit_key,
-                                    size_t limit_key_len,
-                                    unsigned char include_end, Status* s) {
-  Slice a, b;
-  *s = DeleteFilesInRange(
-      db, db->DefaultColumnFamily(),
-      (start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr),
-      (limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr),
-      include_end);
-}
-
-void crocksdb_delete_files_in_range_cf(
-    DB* db, ColumnFamilyHandle* column_family, const char* start_key,
-    size_t start_key_len, const char* limit_key, size_t limit_key_len,
-    unsigned char include_end, Status* s) {
-  Slice a, b;
-  *s = DeleteFilesInRange(
-      db, column_family,
-      (start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr),
-      (limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr),
-      include_end);
-}
-
 void crocksdb_delete_files_in_ranges_cf(DB* db, ColumnFamilyHandle* cf,
-                                        const char* const* start_keys,
-                                        const size_t* start_keys_lens,
-                                        const char* const* limit_keys,
-                                        const size_t* limit_keys_lens,
-                                        size_t num_ranges,
-                                        unsigned char include_end, Status* s) {
-  std::vector<Slice> starts(num_ranges);
-  std::vector<Slice> limits(num_ranges);
-  std::vector<RangePtr> ranges(num_ranges);
-  for (auto i = 0; i < num_ranges; i++) {
-    const Slice* start = nullptr;
-    if (start_keys[i]) {
-      starts[i] = Slice(start_keys[i], start_keys_lens[i]);
-      start = &starts[i];
-    }
-    const Slice* limit = nullptr;
-    if (limit_keys[i]) {
-      limits[i] = Slice(limit_keys[i], limit_keys_lens[i]);
-      limit = &limits[i];
-    }
-    ranges[i] = RangePtr(start, limit);
-  }
-  *s = DeleteFilesInRanges(db, cf, &ranges[0], num_ranges, include_end);
+                                        const RangePtr* ranges,
+                                        size_t num_ranges, bool include_end,
+                                        Status* s) {
+  *s = DeleteFilesInRanges(db, cf, ranges, num_ranges, include_end);
 }
 
 void crocksdb_free(void* ptr) { free(ptr); }
@@ -4518,12 +4433,12 @@ struct ExternalSstFileModifier {
 // !!! this function is dangerous because it uses rocksdb's non-public API !!!
 // find the offset of external sst file's `global seq no` and modify it.
 uint64_t crocksdb_set_external_sst_file_global_seq_no(
-    DB* db, ColumnFamilyHandle* column_family, const char* file,
-    uint64_t seq_no, Status* s) {
+    DB* db, ColumnFamilyHandle* column_family, Slice file, uint64_t seq_no,
+    Status* s) {
   auto env = db->GetEnv();
   EnvOptions env_options(db->GetDBOptions());
   ExternalSstFileModifier modifier(env, env_options, column_family);
-  *s = modifier.Open(std::string(file));
+  *s = modifier.Open(file.ToString());
   if (s->ok()) {
     uint64_t pre_seq_no;
     *s = modifier.SetGlobalSeqNo(seq_no, &pre_seq_no);
@@ -5380,109 +5295,20 @@ void ctitandb_create_iterators(DB* db, const TitanReadOptions* titan_options,
   }
 }
 
-void ctitandb_delete_files_in_range(DB* db, const char* start_key,
-                                    size_t start_key_len, const char* limit_key,
-                                    size_t limit_key_len,
-                                    unsigned char include_end, Status* s) {
-  Slice a, b;
-  RangePtr range(
-      start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr,
-      limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr);
-
-  *s = static_cast<TitanDB*>(db)->DeleteFilesInRanges(db->DefaultColumnFamily(),
-                                                      &range, 1, include_end);
-}
-
-void ctitandb_delete_files_in_range_cf(
-    DB* db, ColumnFamilyHandle* column_family, const char* start_key,
-    size_t start_key_len, const char* limit_key, size_t limit_key_len,
-    unsigned char include_end, Status* s) {
-  Slice a, b;
-  RangePtr range(
-      start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr,
-      limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr);
-
-  *s = static_cast<TitanDB*>(db)->DeleteFilesInRanges(column_family, &range, 1,
+void ctitandb_delete_files_in_ranges_cf(DB* db, ColumnFamilyHandle* cf,
+                                        const RangePtr* ranges,
+                                        size_t num_ranges, bool include_end,
+                                        Status* s) {
+  *s = static_cast<TitanDB*>(db)->DeleteFilesInRanges(cf, ranges, num_ranges,
                                                       include_end);
 }
 
-void ctitandb_delete_files_in_ranges_cf(DB* db, ColumnFamilyHandle* cf,
-                                        const char* const* start_keys,
-                                        const size_t* start_keys_lens,
-                                        const char* const* limit_keys,
-                                        const size_t* limit_keys_lens,
-                                        size_t num_ranges,
-                                        unsigned char include_end, Status* s) {
-  std::vector<Slice> starts(num_ranges);
-  std::vector<Slice> limits(num_ranges);
-  std::vector<RangePtr> ranges(num_ranges);
-  for (auto i = 0; i < num_ranges; i++) {
-    const Slice* start = nullptr;
-    if (start_keys[i]) {
-      starts[i] = Slice(start_keys[i], start_keys_lens[i]);
-      start = &starts[i];
-    }
-    const Slice* limit = nullptr;
-    if (limit_keys[i]) {
-      limits[i] = Slice(limit_keys[i], limit_keys_lens[i]);
-      limit = &limits[i];
-    }
-    ranges[i] = RangePtr(start, limit);
-  }
-  *s = static_cast<TitanDB*>(db)->DeleteFilesInRanges(cf, &ranges[0],
-                                                      num_ranges, include_end);
-}
-
-void ctitandb_delete_blob_files_in_range(DB* db, const char* start_key,
-                                         size_t start_key_len,
-                                         const char* limit_key,
-                                         size_t limit_key_len,
-                                         unsigned char include_end, Status* s) {
-  Slice a, b;
-  RangePtr range(
-      start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr,
-      limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr);
-
+void ctitandb_delete_blob_files_in_ranges_cf(DB* db, ColumnFamilyHandle* cf,
+                                             const RangePtr* ranges,
+                                             size_t num_ranges,
+                                             bool include_end, Status* s) {
   *s = static_cast<TitanDB*>(db)->DeleteBlobFilesInRanges(
-      db->DefaultColumnFamily(), &range, 1, include_end);
-}
-
-void ctitandb_delete_blob_files_in_range_cf(
-    DB* db, ColumnFamilyHandle* column_family, const char* start_key,
-    size_t start_key_len, const char* limit_key, size_t limit_key_len,
-    unsigned char include_end, Status* s) {
-  Slice a, b;
-  RangePtr range(
-      start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr,
-      limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr);
-
-  *s = static_cast<TitanDB*>(db)->DeleteBlobFilesInRanges(column_family, &range,
-                                                          1, include_end);
-}
-
-void ctitandb_delete_blob_files_in_ranges_cf(
-    DB* db, ColumnFamilyHandle* cf, const char* const* start_keys,
-    const size_t* start_keys_lens, const char* const* limit_keys,
-    const size_t* limit_keys_lens, size_t num_ranges, unsigned char include_end,
-    Status* s) {
-  std::vector<Slice> starts(num_ranges);
-  std::vector<Slice> limits(num_ranges);
-  std::vector<RangePtr> ranges(num_ranges);
-  for (auto i = 0; i < num_ranges; i++) {
-    const Slice* start = nullptr;
-    if (start_keys[i]) {
-      starts[i] = Slice(start_keys[i], start_keys_lens[i]);
-      start = &starts[i];
-    }
-    const Slice* limit = nullptr;
-    if (limit_keys[i]) {
-      limits[i] = Slice(limit_keys[i], limit_keys_lens[i]);
-      limit = &limits[i];
-    }
-    ranges[i] = RangePtr(start, limit);
-  }
-  *s = static_cast<TitanDB*>(db)->DeleteBlobFilesInRanges(
-      cf, &ranges[0], num_ranges, include_end);
+      cf, ranges, num_ranges, include_end);
 }
 
 void crocksdb_free_cplus_array(const char* arr) { delete[] arr; }

@@ -4,13 +4,16 @@ mod inspected;
 pub mod logger;
 mod sequential_file;
 
+use std::path::Path;
+
 use self::inspected::SysFileSystemInspector;
 #[cfg(feature = "encryption")]
 use crate::encryption::{KeyManager, SysKeyManager};
 use crate::error::ffi_call;
+use crate::util::PathToSlice;
 use crate::{Code, Result, Status};
 use libc::c_char;
-use tirocks_sys::r;
+use tirocks_sys::rocksdb_EnvOptions;
 
 pub use self::inspected::FileSystemInspector;
 pub use self::sequential_file::SequentialFile;
@@ -21,7 +24,7 @@ pub type Priority = tirocks_sys::rocksdb_Env_Priority;
 /// Options while opening a file to read/write
 // TODO: perhaps use the C struct directly
 pub struct EnvOptions {
-    ptr: *mut tirocks_sys::crocksdb_envoptions_t,
+    ptr: *mut rocksdb_EnvOptions,
 }
 
 impl Default for EnvOptions {
@@ -43,10 +46,17 @@ impl Drop for EnvOptions {
     }
 }
 
+impl EnvOptions {
+    pub(crate) fn get_ptr(&self) -> *mut rocksdb_EnvOptions {
+        self.ptr
+    }
+}
+
 /// An Env is an interface used by the rocksdb implementation to access
 /// operating system functionality like the filesystem etc.  Callers
 /// may wish to provide a custom Env object when opening a database to
 /// get fine gain control; e.g., to rate limit file system operations.
+#[derive(Debug)]
 pub struct Env {
     ptr: *mut tirocks_sys::rocksdb_Env,
     // Some env is based on other instance. And base should outlive `ptr`.
@@ -137,11 +147,17 @@ impl Env {
     /// Create a brand new sequentially-readable file with the specified name.
     /// On failure returns non-OK.  If the file does not exist, returns a non-OK status.
     #[inline]
-    pub fn new_sequential_file(&self, path: &str, opts: EnvOptions) -> Result<SequentialFile> {
+    pub fn new_sequential_file(
+        &self,
+        path: impl AsRef<Path>,
+        opts: EnvOptions,
+    ) -> Result<SequentialFile> {
         unsafe {
-            let file_path = r(path.as_bytes());
+            let file_path = path.path_to_slice();
             let file = ffi_call!(crocksdb_sequential_file_create(
-                self.ptr, file_path, opts.ptr
+                self.ptr,
+                file_path,
+                opts.get_ptr()
             ))?;
             Ok(SequentialFile::from_ptr(file))
         }
@@ -153,18 +169,18 @@ impl Env {
     ///                  whether this file exists, or if the path is invalid.
     ///         IOError if an IO Error was encountered
     #[inline]
-    pub fn file_exists(&self, path: &str) -> Result<()> {
+    pub fn file_exists(&self, path: impl AsRef<Path>) -> Result<()> {
         unsafe {
-            let file_path = r(path.as_bytes());
+            let file_path = path.path_to_slice();
             ffi_call!(crocksdb_env_file_exists(self.ptr, file_path))
         }
     }
 
     /// Delete the named file.
     #[inline]
-    pub fn delete_file(&self, path: &str) -> Result<()> {
+    pub fn delete_file(&self, path: impl AsRef<Path>) -> Result<()> {
         unsafe {
-            let file_path = r(path.as_bytes());
+            let file_path = path.path_to_slice();
             ffi_call!(crocksdb_env_delete_file(self.ptr, file_path))
         }
     }
@@ -184,6 +200,11 @@ impl Env {
         unsafe {
             tirocks_sys::crocksdb_env_join_all_threads(self.ptr);
         }
+    }
+
+    #[inline]
+    pub(crate) fn get_ptr(&self) -> *mut tirocks_sys::rocksdb_Env {
+        self.ptr
     }
 }
 

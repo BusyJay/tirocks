@@ -24,14 +24,37 @@ extern "C" fn logv<L: Logger>(ctx: *mut c_void, log_level: LogLevel, log: rocksd
     }
 }
 
-#[allow(unused)]
-pub(crate) fn new_logger<L: Logger>(l: L) -> *mut tirocks_sys::crocksdb_logger_t {
-    unsafe {
-        let p = Box::new(l);
-        tirocks_sys::crocksdb_logger_create(
-            Box::into_raw(p) as *mut c_void,
-            Some(destructor::<L>),
-            Some(logv::<L>),
-        )
+/// A wrapped info logger that can be shared by multiple DBs.
+pub struct SysInfoLogger {
+    ptr: *mut tirocks_sys::crocksdb_logger_t,
+}
+
+unsafe impl Send for SysInfoLogger {}
+unsafe impl Sync for SysInfoLogger {}
+
+impl SysInfoLogger {
+    pub fn new<L: Logger>(l: L) -> SysInfoLogger {
+        let ptr = unsafe {
+            let p = Box::new(l);
+            tirocks_sys::crocksdb_logger_create(
+                Box::into_raw(p) as *mut c_void,
+                Some(destructor::<L>),
+                Some(logv::<L>),
+            )
+        };
+        SysInfoLogger { ptr }
+    }
+
+    pub(crate) fn get_ptr(&self) -> *mut tirocks_sys::crocksdb_logger_t {
+        self.ptr
+    }
+}
+
+impl Drop for SysInfoLogger {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            tirocks_sys::crocksdb_log_destroy(self.ptr);
+        }
     }
 }
