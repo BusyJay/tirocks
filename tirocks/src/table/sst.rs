@@ -15,10 +15,10 @@ use tirocks_sys::{
 use crate::{
     db::RawColumnFamilyHandle,
     env::EnvOptions,
-    option::{PathToSlice, RawOptions, ReadOptions},
+    option::{RawOptions, ReadOptions},
     properties::table::{builtin::TableProperties, user::SequenceNumber},
     snapshot::WithSnapOpt,
-    util::{check_status, simple_access},
+    util::{check_status, simple_access, PathToSlice},
     Options, RawIterator, RawSnapshot, Result, Status,
 };
 
@@ -272,12 +272,12 @@ impl<'a> SstFileReader<'a> {
         snap: Option<&'b RawSnapshot>,
         opt: &'b mut ReadOptions,
     ) -> RawIterator<'b> {
-        let mut with_snap_opt = None;
+        let mut _with_snap_opt = None;
         let opt = match snap {
             None => opt.get(),
             Some(s) => {
-                with_snap_opt = Some(WithSnapOpt::new(opt, s));
-                with_snap_opt.as_ref().unwrap().get()
+                _with_snap_opt = Some(WithSnapOpt::new(opt, s));
+                _with_snap_opt.as_ref().unwrap().get()
             }
         };
         unsafe {

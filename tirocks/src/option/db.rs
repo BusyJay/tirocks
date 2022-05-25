@@ -4,7 +4,7 @@ use std::{
     mem::{self, ManuallyDrop},
     ops::{Deref, DerefMut},
     path::Path,
-    ptr::{self, NonNull},
+    ptr::NonNull,
     sync::Arc,
     time::Duration,
 };
@@ -17,11 +17,9 @@ use crate::{
     },
     listener::SysEventListener,
     rate_limiter::RateLimiter,
-    util::simple_access,
+    util::{simple_access, PathToSlice},
     Statistics,
 };
-
-use super::PathToSlice;
 
 pub type AccessHint = tirocks_sys::rocksdb_DBOptions_AccessHint;
 pub type WalRecoveryMode = tirocks_sys::rocksdb_WALRecoveryMode;

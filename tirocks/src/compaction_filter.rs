@@ -1,6 +1,6 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::{ffi::CStr, marker::PhantomData, ptr, slice};
+use std::{ffi::CStr, ptr, slice};
 
 use libc::{c_char, c_void};
 use tirocks_sys::{

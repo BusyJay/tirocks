@@ -3,9 +3,11 @@
 // For now the macro is only used by encryption.
 #![cfg_attr(not(feature = "encryption"), allow(unused))]
 
-use std::{borrow::Cow, ffi::CStr, marker::PhantomData, mem, path::Path, ptr};
+use std::{
+    borrow::Cow, ffi::CStr, marker::PhantomData, mem, os::unix::prelude::OsStrExt, path::Path, ptr,
+};
 
-use crate::{option::PathToSlice, Result, Status};
+use crate::{Result, Status};
 use libc::c_void;
 use tirocks_sys::{r, rocksdb_Range, rocksdb_RangePtr, rocksdb_Slice, s};
 
@@ -25,6 +27,18 @@ macro_rules! utf8_name {
 }
 
 pub(crate) use utf8_name;
+
+pub(crate) trait PathToSlice {
+    unsafe fn path_to_slice(&self) -> rocksdb_Slice;
+}
+
+impl<T: AsRef<Path>> PathToSlice for T {
+    #[inline]
+    unsafe fn path_to_slice(&self) -> rocksdb_Slice {
+        let p = self.as_ref().as_os_str().as_bytes();
+        r(p)
+    }
+}
 
 macro_rules! expand_one_row {
     (setter $(#[$outer:meta])* $prefix:ident <$op:ident> $field:ident / $rename:ident / :$ty:ty$([$($new_tt:tt)*])?) => {

@@ -2,14 +2,11 @@
 
 use std::{mem::ManuallyDrop, path::Path, ptr};
 
-use tirocks_sys::{r, rocksdb_RangePtr, rocksdb_Slice};
+use tirocks_sys::{r, rocksdb_Slice};
 
 use crate::{
-    option::{
-        CompactRangeOptions, CompactionOptions, FlushOptions, IngestExternalFileOptions,
-        PathToSlice,
-    },
-    util::check_status,
+    option::{CompactRangeOptions, CompactionOptions, FlushOptions, IngestExternalFileOptions},
+    util::{check_status, PathToSlice},
     RawDb, Result, Status,
 };
 

@@ -7,10 +7,9 @@ use crate::{
     comparator::SysComparator,
     env::Env,
     option::{
-        CfOptions, DbOptions, Options, PathToSlice, RawCfOptions, RawDbOptions, TitanCfOptions,
-        TitanDbOptions,
+        CfOptions, DbOptions, Options, RawCfOptions, RawDbOptions, TitanCfOptions, TitanDbOptions,
     },
-    util::check_status,
+    util::{check_status, PathToSlice},
     Result, Status,
 };
 

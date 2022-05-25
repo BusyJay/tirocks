@@ -2,17 +2,17 @@
 
 use std::ops::Deref;
 use std::path::Path;
+use std::str;
 use std::sync::{Arc, Mutex};
-use std::{ptr, str};
-use tirocks_sys::{r, rocksdb_DB, rocksdb_RangePtr};
+use tirocks_sys::{r, rocksdb_DB};
 
 use crate::metadata::{CfMetaData, SizeApproximationOptions};
 use crate::option::{
-    CfOptions, DbOptions, OwnedRawDbOptions, OwnedRawTitanDbOptions, PathToSlice, RawCfOptions,
-    RawDbOptions, RawOptions, RawTitanOptions, ReadOptions, TitanCfOptions, WriteOptions,
+    CfOptions, DbOptions, OwnedRawDbOptions, OwnedRawTitanDbOptions, RawCfOptions, RawDbOptions,
+    RawOptions, RawTitanOptions, ReadOptions, TitanCfOptions, WriteOptions,
 };
 use crate::properties::table::user::SequenceNumber;
-use crate::util::{self, check_status, range_to_rocks, split_pairs};
+use crate::util::{self, check_status, range_to_rocks, split_pairs, PathToSlice};
 use crate::write_batch::WriteBatch;
 use crate::{comparator::SysComparator, env::Env};
 use crate::{Code, PinSlice, RawIterator, Result, Status};

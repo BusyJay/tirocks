@@ -9,8 +9,6 @@ mod write;
 use std::{
     mem::ManuallyDrop,
     ops::{Deref, DerefMut},
-    os::unix::prelude::OsStrExt,
-    path::Path,
     ptr,
     sync::Arc,
 };
@@ -29,7 +27,7 @@ pub use flush::{
 };
 pub use read::{ReadOptions, ReadTier};
 use tirocks_sys::{
-    r, rocksdb_CompressionType, rocksdb_Options, rocksdb_Slice, rocksdb_titandb_TitanOptions,
+    rocksdb_CompressionType, rocksdb_Options, rocksdb_Slice, rocksdb_titandb_TitanOptions,
 };
 pub use write::WriteOptions;
 
@@ -88,18 +86,6 @@ impl Default for OwnedSlice {
                 size_: 0,
             },
         }
-    }
-}
-
-pub(crate) trait PathToSlice {
-    unsafe fn path_to_slice(&self) -> rocksdb_Slice;
-}
-
-impl<T: AsRef<Path>> PathToSlice for T {
-    #[inline]
-    unsafe fn path_to_slice(&self) -> rocksdb_Slice {
-        let p = self.as_ref().as_os_str().as_bytes();
-        r(p)
     }
 }
 

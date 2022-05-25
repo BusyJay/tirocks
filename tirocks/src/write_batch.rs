@@ -1,6 +1,6 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::{marker::PhantomData, mem};
+use std::marker::PhantomData;
 
 use tirocks_sys::{r, rocksdb_WriteBatch, rocksdb_WriteBatch_Iterator, s};
 
