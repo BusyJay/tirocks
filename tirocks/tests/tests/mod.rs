@@ -11,7 +11,13 @@ mod test_event_listener;
 mod test_ingest_external_file;
 mod test_iterator;
 mod test_logger;
+mod test_metadata;
 mod test_misc;
+mod test_multithread;
+mod test_options;
+mod test_prefix_extractor;
+mod test_rate_limiter;
+mod test_readonly;
 
 fn tempdir_with_prefix(prefix: &str) -> tempfile::TempDir {
     tempfile::Builder::new().prefix(prefix).tempdir().expect("")

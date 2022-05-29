@@ -1,5 +1,6 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
+use core::slice;
 use std::{
     mem,
     ops::{Deref, DerefMut},
@@ -15,16 +16,206 @@ use crate::{
     slice_transform::SysSliceTransform, sst_partitioner::SysSstParitionerFactory,
     table::SysTableFactory, util::simple_access,
 };
-use tirocks_sys::{r, rocksdb_ColumnFamilyOptions, rocksdb_titandb_TitanCFOptions, s};
+use tirocks_sys::{
+    r, rocksdb_ColumnFamilyOptions, rocksdb_CompactionOptionsFIFO,
+    rocksdb_CompactionOptionsUniversal, rocksdb_CompressionOptions, rocksdb_titandb_TitanCFOptions,
+    s,
+};
 
 use super::CompressionType;
 
 pub type CompactionStyle = tirocks_sys::rocksdb_CompactionStyle;
 pub type CompactionPriority = tirocks_sys::rocksdb_CompactionPri;
-pub type CompressionOptions = tirocks_sys::rocksdb_CompressionOptions;
-pub type FifoCompactionOptions = tirocks_sys::rocksdb_CompactionOptionsFIFO;
-pub type UniversalCompactionOptions = tirocks_sys::rocksdb_CompactionOptionsUniversal;
+pub type CompactionStopStyle = tirocks_sys::rocksdb_CompactionStopStyle;
 pub type TitanBlobRunMode = tirocks_sys::rocksdb_titandb_TitanBlobRunMode;
+
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct CompressionOptions(rocksdb_CompressionOptions);
+
+impl CompressionOptions {
+    #[inline]
+    pub fn set_window_bits(&mut self, bits: i32) -> &mut Self {
+        self.0.window_bits = bits;
+        self
+    }
+
+    #[inline]
+    pub fn set_level(&mut self, level: i32) -> &mut Self {
+        self.0.level = level;
+        self
+    }
+
+    #[inline]
+    pub fn set_strategy(&mut self, strategy: i32) -> &mut Self {
+        self.0.strategy = strategy;
+        self
+    }
+
+    /// Maximum size of dictionaries used to prime the compression library.
+    /// Enabling dictionary can improve compression ratios when there are
+    /// repetitions across data blocks.
+    ///
+    /// The dictionary is created by sampling the SST file data. If
+    /// `zstd_max_train_bytes` is nonzero, the samples are passed through zstd's
+    /// dictionary generator. Otherwise, the random samples are used directly as
+    /// the dictionary.
+    ///
+    /// When compression dictionary is disabled, we compress and write each block
+    /// before buffering data for the next one. When compression dictionary is
+    /// enabled, we buffer all SST file data in-memory so we can sample it, as data
+    /// can only be compressed and written after the dictionary has been finalized.
+    /// So users of this feature may see increased memory usage.
+    ///
+    /// Default: 0.
+    #[inline]
+    pub fn set_max_dict_bytes(&mut self, bytes: u32) -> &mut Self {
+        self.0.max_dict_bytes = bytes;
+        self
+    }
+
+    /// Maximum size of training data passed to zstd's dictionary trainer. Using
+    /// zstd's dictionary trainer can achieve even better compression ratio
+    /// improvements than using `max_dict_bytes` alone.
+    ///
+    /// The training data will be used to generate a dictionary of max_dict_bytes.
+    ///
+    /// Default: 0.
+    #[inline]
+    pub fn set_zstd_max_train_bytes(&mut self, bytes: u32) -> &mut Self {
+        self.0.zstd_max_train_bytes = bytes;
+        self
+    }
+
+    /// When the compression options are set by the user, it will be set to "true".
+    /// For bottommost_compression_opts, to enable it, user must set enabled=true.
+    /// Otherwise, bottommost compression will use compression_opts as default
+    /// compression options.
+    ///
+    /// For compression_opts, if compression_opts.enabled=false, it is still
+    /// used as compression options for compression process.
+    ///
+    /// Default: false.
+    #[inline]
+    pub fn set_enabled(&mut self, enable: bool) -> &mut Self {
+        self.0.enabled = enable;
+        self
+    }
+}
+
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct FifoCompactionOptions(rocksdb_CompactionOptionsFIFO);
+
+impl FifoCompactionOptions {
+    /// once the total sum of table files reaches this, we will delete the oldest
+    /// table file
+    /// Default: 1GB
+    #[inline]
+    pub fn set_max_table_files_size(&mut self, size: u64) -> &mut Self {
+        self.0.max_table_files_size = size;
+        self
+    }
+
+    /// If true, try to do compaction to compact smaller files into larger ones.
+    /// Minimum files to compact follows options.level0_file_num_compaction_trigger
+    /// and compaction won't trigger if average compact bytes per del file is
+    /// larger than options.write_buffer_size. This is to protect large files
+    /// from being compacted again.
+    /// Default: false;
+    #[inline]
+    pub fn set_allow_compaction(&mut self, allow: bool) -> &mut Self {
+        self.0.allow_compaction = allow;
+        self
+    }
+}
+
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct UniversalCompactionOptions(rocksdb_CompactionOptionsUniversal);
+
+impl UniversalCompactionOptions {
+    /// Percentage flexibility while comparing file size. If the candidate file(s)
+    /// size is 1% smaller than the next file's size, then include next file into
+    /// this candidate set.
+    /// Default: 1
+    #[inline]
+    pub fn set_size_ratio(&mut self, ratio: u32) -> &mut Self {
+        self.0.size_ratio = ratio;
+        self
+    }
+
+    /// The minimum number of files in a single compaction run.
+    /// Default: 2
+    #[inline]
+    pub fn set_min_merge_width(&mut self, width: u32) -> &mut Self {
+        self.0.min_merge_width = width;
+        self
+    }
+
+    /// The maximum number of files in a single compaction run.
+    /// Default: UINT_MAX
+    #[inline]
+    pub fn set_max_merge_width(&mut self, width: u32) -> &mut Self {
+        self.0.max_merge_width = width;
+        self
+    }
+
+    /// The size amplification is defined as the amount (in percentage) of
+    /// additional storage needed to store a single byte of data in the database.
+    /// For example, a size amplification of 2% means that a database that
+    /// contains 100 bytes of user-data may occupy upto 102 bytes of
+    /// physical storage. By this definition, a fully compacted database has
+    /// a size amplification of 0%. Rocksdb uses the following heuristic
+    /// to calculate size amplification: it assumes that all files excluding
+    /// the earliest file contribute to the size amplification.
+    /// Default: 200, which means that a 100 byte database could require upto
+    /// 300 bytes of storage.
+    #[inline]
+    pub fn set_max_size_amplification_percent(&mut self, percent: u32) -> &mut Self {
+        self.0.max_size_amplification_percent = percent;
+        self
+    }
+
+    /// If this option is set to be -1 (the default value), all the output files
+    /// will follow compression type specified.
+    ///
+    /// If this option is not negative, we will try to make sure compressed
+    /// size is just above this value. In normal cases, at least this percentage
+    /// of data will be compressed.
+    /// When we are compacting to a new file, here is the criteria whether
+    /// it needs to be compressed: assuming here are the list of files sorted
+    /// by generation time:
+    ///    A1...An B1...Bm C1...Ct
+    /// where A1 is the newest and Ct is the oldest, and we are going to compact
+    /// B1...Bm, we calculate the total size of all the files as total_size, as
+    /// well as  the total size of C1...Ct as total_C, the compaction output file
+    /// will be compressed iff
+    ///   total_C / total_size < this percentage
+    /// Default: -1
+    #[inline]
+    pub fn set_compression_size_percent(&mut self, percent: i32) -> &mut Self {
+        self.0.compression_size_percent = percent;
+        self
+    }
+
+    /// The algorithm used to stop picking files into a single compaction run
+    /// Default: kCompactionStopStyleTotalSize
+    #[inline]
+    pub fn set_stop_style(&mut self, style: CompactionStopStyle) -> &mut Self {
+        self.0.stop_style = style;
+        self
+    }
+
+    /// Option to optimize the universal multi level compaction by enabling
+    /// trivial move for non overlapping files.
+    /// Default: false
+    #[inline]
+    pub fn set_allow_trivial_move(&mut self, allow: bool) -> &mut Self {
+        self.0.allow_trivial_move = allow;
+        self
+    }
+}
 
 #[repr(transparent)]
 pub struct RawCfOptions(rocksdb_ColumnFamilyOptions);
@@ -245,6 +436,16 @@ impl RawCfOptions {
         self
     }
 
+    #[inline]
+    pub fn compression_per_level(&self) -> &[CompressionType] {
+        unsafe {
+            let mut count = 0;
+            let ptr =
+                tirocks_sys::crocksdb_options_get_compression_per_level(self.as_ptr(), &mut count);
+            slice::from_raw_parts(ptr, count)
+        }
+    }
+
     simple_access! {
         /// Number of levels for this database
         num_levels: i32
@@ -281,6 +482,9 @@ impl RawCfOptions {
         ///
         /// Dynamically changeable through SetOptions() API
         target_file_size_base: u64
+
+        /// Check [`target_file_size_base`]
+        (<get) target_file_size_base: u64
 
         /// By default target_file_size_multiplier is 1, which means
         /// by default files in different levels will have similar size.
@@ -373,6 +577,9 @@ impl RawCfOptions {
         ///
         /// Dynamically changeable through SetOptions() API
         max_bytes_for_level_multiplier: f64
+
+        /// Check [`set_max_bytes_for_level_multiplier`].
+        (<get) max_bytes_for_level_multiplier: f64
     }
 
     /// Different max-size multipliers for different levels.
@@ -437,7 +644,9 @@ impl RawCfOptions {
     #[inline]
     pub fn compaction_options_universal_mut(&mut self) -> &mut UniversalCompactionOptions {
         unsafe {
-            &mut *tirocks_sys::crocksdb_options_get_universal_compaction_options(self.as_mut_ptr())
+            let ptr =
+                tirocks_sys::crocksdb_options_get_universal_compaction_options(self.as_mut_ptr());
+            &mut *(ptr as *mut UniversalCompactionOptions)
         }
     }
 
@@ -449,7 +658,8 @@ impl RawCfOptions {
     #[inline]
     pub fn compaction_options_fifo_mut(&mut self) -> &mut FifoCompactionOptions {
         unsafe {
-            &mut *tirocks_sys::crocksdb_options_get_fifo_compaction_options(self.as_mut_ptr())
+            let ptr = tirocks_sys::crocksdb_options_get_fifo_compaction_options(self.as_mut_ptr());
+            &mut *(ptr as *mut FifoCompactionOptions)
         }
     }
 
@@ -693,6 +903,9 @@ impl RawCfOptions {
         /// Dynamically changeable through SetOptions() API
         compression: CompressionType
 
+        /// Check [`set_compression`]
+        (<get) compression: CompressionType
+
         /// Compression algorithm that will be used for the bottommost level that
         /// contain files.
         ///
@@ -706,16 +919,19 @@ impl RawCfOptions {
     #[inline]
     pub fn bottommost_compression_opts_mut(&mut self) -> &mut CompressionOptions {
         unsafe {
-            &mut *tirocks_sys::crocksdb_options_get_bottommost_compression_options(
-                self.as_mut_ptr(),
-            )
+            let ptr =
+                tirocks_sys::crocksdb_options_get_bottommost_compression_options(self.as_mut_ptr());
+            &mut *(ptr as *mut CompressionOptions)
         }
     }
 
     /// Different options for compression algorithms
     #[inline]
     pub fn compression_opts_mut(&mut self) -> &mut CompressionOptions {
-        unsafe { &mut *tirocks_sys::crocksdb_options_get_compression_options(self.as_mut_ptr()) }
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_options_get_compression_options(self.as_mut_ptr());
+            &mut *(ptr as *mut CompressionOptions)
+        }
     }
 
     simple_access! {
@@ -765,6 +981,9 @@ impl RawCfOptions {
         ///
         /// Dynamically changeable through SetOptions() API
         disable_write_stall: bool
+
+        /// Check [`set_disable_write_stall`]
+        (<get) disable_write_stall: bool
 
         /// This is a factory that provides TableFactory objects.
         /// Default: a block-based table factory that provides a default
@@ -895,9 +1114,12 @@ impl RawTitanCfOptions {
     /// ignored, we only use `blob_file_compression` above to determine wether the
     /// blob file is compressed. We use this options mainly to configure the
     /// compression dictionary.
+    #[inline]
     pub fn blob_file_compression_options_mut(&mut self) -> &mut CompressionOptions {
         unsafe {
-            &mut *tirocks_sys::ctitandb_options_get_blob_file_compression_options(self.as_mut_ptr())
+            let ptr =
+                tirocks_sys::ctitandb_options_get_blob_file_compression_options(self.as_mut_ptr());
+            &mut *(ptr as *mut CompressionOptions)
         }
     }
 

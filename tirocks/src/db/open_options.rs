@@ -36,8 +36,12 @@ impl DefaultCfOnlyBuilder {
     }
 
     #[inline]
-    pub fn set_read_only(&mut self, error_if_log_exists: bool) -> &mut Self {
-        self.error_if_log_exists = Some(error_if_log_exists);
+    pub fn set_read_only(&mut self, enable: bool, error_if_log_exists: bool) -> &mut Self {
+        self.error_if_log_exists = if enable {
+            Some(error_if_log_exists)
+        } else {
+            None
+        };
         self
     }
 
@@ -139,8 +143,12 @@ impl MultiCfBuilder {
         self
     }
 
-    pub fn set_read_only(&mut self, error_if_log_exists: bool) -> &mut Self {
-        self.error_if_log_exists = Some(error_if_log_exists);
+    pub fn set_read_only(&mut self, enable: bool, error_if_log_exists: bool) -> &mut Self {
+        self.error_if_log_exists = if enable {
+            Some(error_if_log_exists)
+        } else {
+            None
+        };
         self
     }
 }

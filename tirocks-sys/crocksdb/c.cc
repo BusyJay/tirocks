@@ -2410,16 +2410,10 @@ void crocksdb_options_set_compression_per_level(
   }
 }
 
-size_t crocksdb_options_get_compression_level_number(
-    const ColumnFamilyOptions* opt) {
-  return opt->compression_per_level.size();
-}
-
-void crocksdb_options_get_compression_per_level(const ColumnFamilyOptions* opt,
-                                                CompressionType* level_values) {
-  for (size_t i = 0; i < opt->compression_per_level.size(); i++) {
-    level_values[i] = opt->compression_per_level[i];
-  }
+const CompressionType* crocksdb_options_get_compression_per_level(
+    const ColumnFamilyOptions* opt, size_t* num_levels) {
+  *num_levels = opt->compression_per_level.size();
+  return opt->compression_per_level.data();
 }
 
 void crocksdb_options_set_compression_options(
@@ -3271,6 +3265,10 @@ void crocksdb_lru_cache_options_set_high_pri_pool_ratio(
   opt->high_pri_pool_ratio = high_pri_pool_ratio;
 }
 
+void crocksdb_jemallocallocatoroptions_init(JemallocAllocatorOptions* opt) {
+  *opt = JemallocAllocatorOptions();
+}
+
 void crocksdb_lru_cache_options_set_use_jemalloc(
     LRUCacheOptions* opt, JemallocAllocatorOptions* j_opt, Status* s) {
   *s = rocksdb::NewJemallocNodumpAllocator(*j_opt, &opt->memory_allocator);
@@ -3286,6 +3284,14 @@ void crocksdb_cache_destroy(crocksdb_cache_t* cache) { delete cache; }
 
 void crocksdb_cache_set_capacity(crocksdb_cache_t* cache, size_t capacity) {
   cache->rep->SetCapacity(capacity);
+}
+
+size_t crocksdb_cache_usage(const crocksdb_cache_t* c) {
+  return c->rep->GetUsage();
+}
+
+size_t crocksdb_cache_capacity(const crocksdb_cache_t* c) {
+  return c->rep->GetCapacity();
 }
 
 Env* crocksdb_default_env_create() { return Env::Default(); }
@@ -3861,11 +3867,11 @@ crocksdb_logger_t* crocksdb_create_env_logger(const char* fname, Env* env) {
   return logger;
 }
 
-crocksdb_logger_t* crocksdb_create_log_from_options(const char* path,
+crocksdb_logger_t* crocksdb_create_log_from_options(Slice path,
                                                     const DBOptions* opts,
                                                     Status* s) {
   std::shared_ptr<Logger> l;
-  *s = CreateLoggerFromOptions(std::string(path), *opts, &l);
+  *s = CreateLoggerFromOptions(path.ToString(), *opts, &l);
   if (s->ok()) {
     auto logger = new crocksdb_logger_t;
     logger->rep = l;
@@ -4261,12 +4267,14 @@ void crocksdb_options_add_table_properties_collector_factory(
   opt->table_properties_collector_factories.push_back(f->rep);
 }
 
-void crocksdb_options_set_compact_on_deletion(ColumnFamilyOptions* opt,
-                                              size_t sliding_window_size,
-                                              size_t deletion_trigger) {
-  opt->table_properties_collector_factories.push_back(
-      rocksdb::NewCompactOnDeletionCollectorFactory(sliding_window_size,
-                                                    deletion_trigger));
+crocksdb_table_properties_collector_factory_t*
+crocksdb_table_properties_collector_factory_create_compact_on_deletion(
+    size_t sliding_window_size, size_t deletion_trigger) {
+  auto factory = rocksdb::NewCompactOnDeletionCollectorFactory(
+      sliding_window_size, deletion_trigger);
+  auto res = new crocksdb_table_properties_collector_factory_t;
+  res->rep = factory;
+  return res;
 }
 
 /* Get Table Properties */

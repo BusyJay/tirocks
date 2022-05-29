@@ -2964,15 +2964,10 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_options_get_compression_level_number(
-        opt: *const rocksdb_ColumnFamilyOptions,
-    ) -> usize;
-}
-extern "C" {
     pub fn crocksdb_options_get_compression_per_level(
         opt: *const rocksdb_ColumnFamilyOptions,
-        level_values: *mut rocksdb_CompressionType,
-    );
+        level_count: *mut usize,
+    ) -> *const rocksdb_CompressionType;
 }
 extern "C" {
     pub fn crocksdb_options_set_bottommost_compression(
@@ -4066,6 +4061,9 @@ extern "C" {
     );
 }
 extern "C" {
+    pub fn crocksdb_jemallocallocatoroptions_init(arg1: *mut rocksdb_JemallocAllocatorOptions);
+}
+extern "C" {
     pub fn crocksdb_lru_cache_options_set_use_jemalloc(
         arg1: *mut rocksdb_LRUCacheOptions,
         arg2: *mut rocksdb_JemallocAllocatorOptions,
@@ -4080,6 +4078,12 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_cache_set_capacity(cache: *mut crocksdb_cache_t, capacity: usize);
+}
+extern "C" {
+    pub fn crocksdb_cache_usage(arg1: *const crocksdb_cache_t) -> usize;
+}
+extern "C" {
+    pub fn crocksdb_cache_capacity(arg1: *const crocksdb_cache_t) -> usize;
 }
 extern "C" {
     pub fn crocksdb_default_env_create() -> *mut rocksdb_Env;
@@ -4526,7 +4530,7 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_create_log_from_options(
-        path: *const libc::c_char,
+        path: rocksdb_Slice,
         opts: *const rocksdb_DBOptions,
         s: *mut rocksdb_Status,
     ) -> *mut crocksdb_logger_t;
@@ -4864,11 +4868,10 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_options_set_compact_on_deletion(
-        opt: *mut rocksdb_ColumnFamilyOptions,
+    pub fn crocksdb_table_properties_collector_factory_create_compact_on_deletion(
         sliding_window_size: usize,
         deletion_trigger: usize,
-    );
+    ) -> *mut crocksdb_table_properties_collector_factory_t;
 }
 extern "C" {
     pub fn crocksdb_get_properties_of_all_tables(

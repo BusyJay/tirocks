@@ -918,10 +918,9 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_merge_operator(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_compression_per_level(
     ColumnFamilyOptions* opt, const CompressionType* level_values,
     size_t num_levels);
-extern C_ROCKSDB_LIBRARY_API size_t
-crocksdb_options_get_compression_level_number(const ColumnFamilyOptions* opt);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_options_get_compression_per_level(
-    const ColumnFamilyOptions* opt, CompressionType* level_values);
+extern C_ROCKSDB_LIBRARY_API const CompressionType*
+crocksdb_options_get_compression_per_level(const ColumnFamilyOptions* opt,
+                                           size_t* level_count);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_bottommost_compression(
     ColumnFamilyOptions* opt, CompressionType c);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_create_if_missing(
@@ -1426,6 +1425,8 @@ extern C_ROCKSDB_LIBRARY_API void
 crocksdb_lru_cache_options_set_strict_capacity_limit(LRUCacheOptions*, bool);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_lru_cache_options_set_high_pri_pool_ratio(LRUCacheOptions*, double);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_jemallocallocatoroptions_init(
+    JemallocAllocatorOptions*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_lru_cache_options_set_use_jemalloc(
     LRUCacheOptions*, JemallocAllocatorOptions*, Status*);
 extern C_ROCKSDB_LIBRARY_API crocksdb_cache_t* crocksdb_cache_create_lru(
@@ -1434,6 +1435,10 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_cache_destroy(
     crocksdb_cache_t* cache);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_cache_set_capacity(
     crocksdb_cache_t* cache, size_t capacity);
+extern C_ROCKSDB_LIBRARY_API size_t
+crocksdb_cache_usage(const crocksdb_cache_t*);
+extern C_ROCKSDB_LIBRARY_API size_t
+crocksdb_cache_capacity(const crocksdb_cache_t*);
 
 /* Env */
 
@@ -1651,8 +1656,7 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_free(void* ptr);
 extern C_ROCKSDB_LIBRARY_API crocksdb_logger_t* crocksdb_create_env_logger(
     const char* fname, Env* env);
 extern C_ROCKSDB_LIBRARY_API crocksdb_logger_t*
-crocksdb_create_log_from_options(const char* path, const DBOptions* opts,
-                                 Status* s);
+crocksdb_create_log_from_options(Slice path, const DBOptions* opts, Status* s);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_log_destroy(crocksdb_logger_t*);
 
 extern C_ROCKSDB_LIBRARY_API PinnableSlice* crocksdb_pinnableslice_create();
@@ -1830,9 +1834,9 @@ extern C_ROCKSDB_LIBRARY_API void
 crocksdb_options_add_table_properties_collector_factory(
     ColumnFamilyOptions* opt, crocksdb_table_properties_collector_factory_t* f);
 
-extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_compact_on_deletion(
-    ColumnFamilyOptions* opt, size_t sliding_window_size,
-    size_t deletion_trigger);
+extern C_ROCKSDB_LIBRARY_API crocksdb_table_properties_collector_factory_t*
+crocksdb_table_properties_collector_factory_create_compact_on_deletion(
+    size_t sliding_window_size, size_t deletion_trigger);
 
 /* Get Table Properties */
 extern C_ROCKSDB_LIBRARY_API void crocksdb_get_properties_of_all_tables(

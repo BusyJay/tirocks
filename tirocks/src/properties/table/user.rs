@@ -288,6 +288,17 @@ impl SysTablePropertiesCollectorFactory {
     pub(crate) fn get(&self) -> *mut crocksdb_table_properties_collector_factory_t {
         self.ptr
     }
+
+    pub fn with_compact_on_deletion(sliding_window_size: usize, deletion_trigger: usize) -> Self {
+        unsafe {
+            let ptr =
+                tirocks_sys::crocksdb_table_properties_collector_factory_create_compact_on_deletion(
+                    sliding_window_size,
+                    deletion_trigger,
+                );
+            SysTablePropertiesCollectorFactory { ptr }
+        }
+    }
 }
 
 impl Drop for SysTablePropertiesCollectorFactory {

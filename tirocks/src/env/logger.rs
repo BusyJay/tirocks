@@ -1,7 +1,15 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
+use std::path::Path;
+
 use libc::c_void;
 use tirocks_sys::{rocksdb_Slice, s};
+
+use crate::{
+    option::RawDbOptions,
+    util::{check_status, PathToSlice},
+    Result, Status,
+};
 
 pub type LogLevel = tirocks_sys::rocksdb_InfoLogLevel;
 
@@ -43,6 +51,22 @@ impl SysInfoLogger {
             )
         };
         SysInfoLogger { ptr }
+    }
+
+    /// Use the configuration to create an info log at given directory.
+    ///
+    /// If there is already an logger set to option, the logger is used directly.
+    pub fn from_options(opt: &RawDbOptions, dir: impl AsRef<Path>) -> Result<SysInfoLogger> {
+        unsafe {
+            let mut s = Status::default();
+            let ptr = tirocks_sys::crocksdb_create_log_from_options(
+                dir.path_to_slice(),
+                opt.as_ptr(),
+                s.as_mut_ptr(),
+            );
+            check_status!(s)?;
+            Ok(SysInfoLogger { ptr })
+        }
     }
 
     pub(crate) fn get(&self) -> *mut tirocks_sys::crocksdb_logger_t {
