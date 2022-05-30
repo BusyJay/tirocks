@@ -18,6 +18,9 @@ mod test_options;
 mod test_prefix_extractor;
 mod test_rate_limiter;
 mod test_readonly;
+mod test_slice_transform;
+mod test_table_properties;
+mod test_titan;
 
 fn tempdir_with_prefix(prefix: &str) -> tempfile::TempDir {
     tempfile::Builder::new().prefix(prefix).tempdir().expect("")

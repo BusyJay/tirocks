@@ -153,7 +153,7 @@ impl MultiCfBuilder {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct MultiCfTitanBuilder {
     db: TitanDbOptions,
     cfs: Vec<(String, TitanCfOptions)>,

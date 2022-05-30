@@ -5115,7 +5115,7 @@ void ctitandb_options_set_dirname(TitanDBOptions* opts, Slice name) {
   opts->dirname = name.ToString();
 }
 
-uint64_t ctitandb_options_min_blob_size(const TitanCFOptions* opts) {
+uint64_t ctitandb_options_get_min_blob_size(const TitanCFOptions* opts) {
   return opts->min_blob_size;
 }
 
@@ -5317,6 +5317,50 @@ void ctitandb_delete_blob_files_in_ranges_cf(DB* db, ColumnFamilyHandle* cf,
                                              bool include_end, Status* s) {
   *s = static_cast<TitanDB*>(db)->DeleteBlobFilesInRanges(
       cf, ranges, num_ranges, include_end);
+}
+
+void ctitandb_property_name_num_blob_files_at_level_prefix(Slice* s) {
+  *s = TitanDB::Properties::kNumBlobFilesAtLevelPrefix;
+}
+
+void ctitandb_property_name_live_blob_size(Slice* s) {
+  *s = TitanDB::Properties::kLiveBlobSize;
+}
+
+void ctitandb_property_name_num_live_blob_file(Slice* s) {
+  *s = TitanDB::Properties::kNumLiveBlobFile;
+}
+
+void ctitandb_property_name_num_obsolete_blob_file(Slice* s) {
+  *s = TitanDB::Properties::kNumObsoleteBlobFile;
+}
+
+void ctitandb_property_name_live_blob_file_size(Slice* s) {
+  *s = TitanDB::Properties::kLiveBlobFileSize;
+}
+
+void ctitandb_property_name_obsolete_blob_file_size(Slice* s) {
+  *s = TitanDB::Properties::kObsoleteBlobFileSize;
+}
+
+void ctitandb_property_name_num_discardable_ratio_le0_file(Slice* s) {
+  *s = TitanDB::Properties::kNumDiscardableRatioLE0File;
+}
+
+void ctitandb_property_name_num_discardable_ratio_le20_file(Slice* s) {
+  *s = TitanDB::Properties::kNumDiscardableRatioLE20File;
+}
+
+void ctitandb_property_name_num_discardable_ratio_le50_file(Slice* s) {
+  *s = TitanDB::Properties::kNumDiscardableRatioLE50File;
+}
+
+void ctitandb_property_name_num_discardable_ratio_le80_file(Slice* s) {
+  *s = TitanDB::Properties::kNumDiscardableRatioLE80File;
+}
+
+void ctitandb_property_name_num_discardable_ratio_le100_file(Slice* s) {
+  *s = TitanDB::Properties::kNumDiscardableRatioLE100File;
 }
 
 void crocksdb_free_cplus_array(const char* arr) { delete[] arr; }

@@ -663,10 +663,6 @@ impl Db {
         }
     }
 
-    pub(crate) fn get(&self) -> *mut rocksdb_DB {
-        self.ptr
-    }
-
     #[inline]
     pub fn is_titan(&self) -> bool {
         self.is_titan

@@ -1104,6 +1104,9 @@ impl RawTitanCfOptions {
         /// Default: 4096
         min_blob_size: u64
 
+        /// Check [`set_min_blob_size`].
+        (<get) min_blob_size: u64
+
         /// The compression algorithm used to compress data in blob files.
         ///
         /// Default: kNoCompression
@@ -1214,6 +1217,10 @@ impl RawTitanCfOptions {
 
     pub(crate) fn as_mut_ptr(&mut self) -> *mut rocksdb_titandb_TitanCFOptions {
         self as *mut _ as _
+    }
+
+    pub(crate) fn as_ptr(&self) -> *const rocksdb_titandb_TitanCFOptions {
+        self as *const _ as _
     }
 }
 

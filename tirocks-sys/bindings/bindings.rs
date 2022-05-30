@@ -5695,6 +5695,39 @@ extern "C" {
     );
 }
 extern "C" {
+    pub fn ctitandb_property_name_num_blob_files_at_level_prefix(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_live_blob_size(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_num_live_blob_file(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_num_obsolete_blob_file(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_live_blob_file_size(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_obsolete_blob_file_size(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_num_discardable_ratio_le0_file(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_num_discardable_ratio_le20_file(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_num_discardable_ratio_le50_file(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_num_discardable_ratio_le80_file(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_num_discardable_ratio_le100_file(s: *mut rocksdb_Slice);
+}
+extern "C" {
     pub fn crocksdb_free_cplus_array(arr: *const libc::c_char);
 }
 extern "C" {

@@ -2309,6 +2309,29 @@ extern C_ROCKSDB_LIBRARY_API void ctitandb_delete_blob_files_in_ranges_cf(
     DB* db, ColumnFamilyHandle* cf, const RangePtr* ranges, size_t num_ranges,
     bool include_end, Status* s);
 
+extern C_ROCKSDB_LIBRARY_API void
+ctitandb_property_name_num_blob_files_at_level_prefix(Slice* s);
+extern C_ROCKSDB_LIBRARY_API void ctitandb_property_name_live_blob_size(
+    Slice* s);
+extern C_ROCKSDB_LIBRARY_API void ctitandb_property_name_num_live_blob_file(
+    Slice* s);
+extern C_ROCKSDB_LIBRARY_API void ctitandb_property_name_num_obsolete_blob_file(
+    Slice* s);
+extern C_ROCKSDB_LIBRARY_API void ctitandb_property_name_live_blob_file_size(
+    Slice* s);
+extern C_ROCKSDB_LIBRARY_API void
+ctitandb_property_name_obsolete_blob_file_size(Slice* s);
+extern C_ROCKSDB_LIBRARY_API void
+ctitandb_property_name_num_discardable_ratio_le0_file(Slice* s);
+extern C_ROCKSDB_LIBRARY_API void
+ctitandb_property_name_num_discardable_ratio_le20_file(Slice* s);
+extern C_ROCKSDB_LIBRARY_API void
+ctitandb_property_name_num_discardable_ratio_le50_file(Slice* s);
+extern C_ROCKSDB_LIBRARY_API void
+ctitandb_property_name_num_discardable_ratio_le80_file(Slice* s);
+extern C_ROCKSDB_LIBRARY_API void
+ctitandb_property_name_num_discardable_ratio_le100_file(Slice* s);
+
 extern C_ROCKSDB_LIBRARY_API void crocksdb_free_cplus_array(const char* arr);
 extern C_ROCKSDB_LIBRARY_API const char* crocksdb_to_cplus_array(Slice s);
 
