@@ -16,18 +16,18 @@ pub struct SysTableFactory {
 impl SysTableFactory {
     #[inline]
     pub fn new_block_based(opt: &BlockBasedTableOptions) -> Self {
-        let ptr = unsafe { tirocks_sys::crocksdb_tablefactory_create_block_based(opt.get()) };
+        let ptr = unsafe { tirocks_sys::crocksdb_tablefactory_create_block_based(opt.get_ptr()) };
         Self { ptr }
     }
 
     #[inline]
     pub fn new_plain(opt: &PlainTableOptions) -> Self {
-        let ptr = unsafe { tirocks_sys::crocksdb_tablefactory_create_plain(opt.get()) };
+        let ptr = unsafe { tirocks_sys::crocksdb_tablefactory_create_plain(opt.as_ptr()) };
         Self { ptr }
     }
 
     #[inline]
-    pub(crate) fn get(&self) -> *mut crocksdb_tablefactory_t {
+    pub(crate) fn get_ptr(&self) -> *mut crocksdb_tablefactory_t {
         self.ptr
     }
 }

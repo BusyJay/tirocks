@@ -149,7 +149,7 @@ pub struct SysCache {
 
 impl SysCache {
     #[inline]
-    pub(crate) fn get(&self) -> *mut crocksdb_cache_t {
+    pub(crate) fn get_ptr(&self) -> *mut crocksdb_cache_t {
         self.ptr
     }
 

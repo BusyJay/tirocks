@@ -112,7 +112,7 @@ impl Statistics {
     }
 
     #[inline]
-    pub(crate) fn as_mut_ptr(&self) -> *mut tirocks_sys::crocksdb_statistics_t {
+    pub(crate) fn get_ptr(&self) -> *mut tirocks_sys::crocksdb_statistics_t {
         self.ptr
     }
 }

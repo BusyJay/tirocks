@@ -162,7 +162,7 @@ impl RateLimiter {
     }
 
     #[inline]
-    pub(crate) fn as_mut_ptr(&self) -> *mut crocksdb_ratelimiter_t {
+    pub(crate) fn get_ptr(&self) -> *mut crocksdb_ratelimiter_t {
         self.ptr
     }
 }

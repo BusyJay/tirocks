@@ -309,7 +309,7 @@ impl SysCompactionFilterFactory {
     }
 
     #[inline]
-    pub(crate) fn get(&self) -> *mut crocksdb_compactionfilterfactory_t {
+    pub(crate) fn get_ptr(&self) -> *mut crocksdb_compactionfilterfactory_t {
         self.ptr
     }
 }

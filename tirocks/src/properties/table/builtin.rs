@@ -420,7 +420,7 @@ impl OwnedTablePropertiesCollection {
     }
 
     #[inline]
-    pub(crate) fn get(&self) -> *mut rocksdb_TablePropertiesCollection {
+    pub(crate) fn get_ptr(&self) -> *mut rocksdb_TablePropertiesCollection {
         self.ptr
     }
 

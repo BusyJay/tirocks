@@ -26,7 +26,7 @@ impl AsRef<[u8]> for PinSlice {
 }
 
 impl PinSlice {
-    pub(crate) fn get(&self) -> *mut rocksdb_PinnableSlice {
+    pub(crate) fn get_ptr(&self) -> *mut rocksdb_PinnableSlice {
         self.ptr
     }
 

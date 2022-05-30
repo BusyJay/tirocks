@@ -305,7 +305,7 @@ impl ReadOptions {
     // TODO: support table filter.
 
     #[inline]
-    pub(crate) fn get(&self) -> *const rocksdb_titandb_TitanReadOptions {
+    pub(crate) fn get_ptr(&self) -> *const rocksdb_titandb_TitanReadOptions {
         &self.raw
     }
 }

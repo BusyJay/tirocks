@@ -169,7 +169,7 @@ impl SysSstParitionerFactory {
     }
 
     #[inline]
-    pub(crate) fn get(&self) -> *mut crocksdb_sst_partitioner_factory_t {
+    pub(crate) fn get_ptr(&self) -> *mut crocksdb_sst_partitioner_factory_t {
         self.ptr
     }
 }

@@ -30,7 +30,13 @@ impl RawDb {
             let mut content = None;
             let mut handle = |v: &[u8]| content = Some(v.to_vec());
             let (ctx, fp) = util::wrap_string_receiver(&mut handle);
-            tirocks_sys::crocksdb_property_value_cf(self.as_ptr(), cf.get(), r(key), ctx, Some(fp));
+            tirocks_sys::crocksdb_property_value_cf(
+                self.get_ptr(),
+                cf.get_ptr(),
+                r(key),
+                ctx,
+                Some(fp),
+            );
             match content {
                 Some(c) => String::from_utf8(c).map(Some),
                 None => Ok(None),
@@ -46,8 +52,8 @@ impl RawDb {
         unsafe {
             let mut value = 0;
             let f = tirocks_sys::crocksdb_property_int_value_cf(
-                self.as_ptr(),
-                cf.get(),
+                self.get_ptr(),
+                cf.get_ptr(),
                 r(key),
                 &mut value,
             );
@@ -67,7 +73,7 @@ impl RawDb {
         unsafe {
             let mut value = 0;
             let f = tirocks_sys::crocksdb_property_aggregated_int_value(
-                self.as_ptr(),
+                self.get_ptr(),
                 r(key),
                 &mut value,
             );
@@ -106,8 +112,8 @@ impl RawDb {
         let key = prop.key();
         unsafe {
             tirocks_sys::crocksdb_get_map_property_cf(
-                self.as_ptr(),
-                cf.get(),
+                self.get_ptr(),
+                cf.get_ptr(),
                 r(key),
                 value.as_mut_ptr(),
             )
@@ -123,9 +129,9 @@ impl RawDb {
         unsafe {
             let mut s = Status::default();
             tirocks_sys::crocksdb_get_properties_of_all_tables_cf(
-                self.as_ptr(),
-                cf.get(),
-                c.get(),
+                self.get_ptr(),
+                cf.get_ptr(),
+                c.get_ptr(),
                 s.as_mut_ptr(),
             );
             check_status!(s)
@@ -146,9 +152,9 @@ impl RawDb {
                 .map(|(s, e)| range_to_rocks(s, e))
                 .collect();
             tirocks_sys::crocksdb_get_properties_of_tables_in_range(
-                self.as_ptr(),
-                cf.get(),
-                c.get(),
+                self.get_ptr(),
+                cf.get_ptr(),
+                c.get_ptr(),
                 ranges.len() as i32,
                 ranges.as_ptr(),
                 s.as_mut_ptr(),

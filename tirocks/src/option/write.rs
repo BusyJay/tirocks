@@ -120,7 +120,7 @@ impl WriteOptions {
     }
 
     #[inline]
-    pub(crate) fn get(&self) -> *const rocksdb_WriteOptions {
+    pub(crate) fn get_ptr(&self) -> *const rocksdb_WriteOptions {
         &self.raw
     }
 }

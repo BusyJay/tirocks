@@ -157,7 +157,7 @@ impl RawDb {
     /// Returns a list of all table files with their level, start key and end key
     #[inline]
     pub fn live_files_metadata(&self) -> LiveFileMetaDataCollection {
-        let ptr = unsafe { tirocks_sys::crocksdb_livefiles(self.as_ptr()) };
+        let ptr = unsafe { tirocks_sys::crocksdb_livefiles(self.get_ptr()) };
         LiveFileMetaDataCollection { ptr }
     }
 }

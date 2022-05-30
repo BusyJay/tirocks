@@ -251,8 +251,8 @@ pub fn set_external_sst_file_global_sequence_number(
     unsafe {
         let mut s = Status::default();
         let pre_seq_no = tirocks_sys::crocksdb_set_external_sst_file_global_seq_no(
-            db.as_ptr(),
-            cf.get(),
+            db.get_ptr(),
+            cf.get_ptr(),
             file.path_to_slice(),
             seq_no,
             s.as_mut_ptr(),

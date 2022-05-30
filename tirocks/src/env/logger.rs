@@ -69,7 +69,7 @@ impl SysInfoLogger {
         }
     }
 
-    pub(crate) fn get(&self) -> *mut tirocks_sys::crocksdb_logger_t {
+    pub(crate) fn get_ptr(&self) -> *mut tirocks_sys::crocksdb_logger_t {
         self.ptr
     }
 }

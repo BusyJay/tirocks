@@ -147,7 +147,7 @@ impl SysSliceTransform {
     }
 
     #[inline]
-    pub(crate) fn get(&self) -> *mut crocksdb_slicetransform_t {
+    pub(crate) fn get_ptr(&self) -> *mut crocksdb_slicetransform_t {
         self.ptr
     }
 }

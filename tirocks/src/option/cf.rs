@@ -372,7 +372,7 @@ impl RawCfOptions {
         /// the prefix can be the key itself.
         ///
         /// Default: nullptr (disable)
-        memtable_insert_with_hint_prefix_extractor: &SysSliceTransform [ .get() ]
+        memtable_insert_with_hint_prefix_extractor: &SysSliceTransform [ .get_ptr() ]
 
         /// Control locality of bloom filter probes to improve cache miss rate.
         /// This option only applies to memtable prefix bloom and plaintable
@@ -677,7 +677,7 @@ impl RawCfOptions {
         /// This is a factory that provides MemTableRep objects.
         /// Default: a factory that provides a skip-list-based implementation of
         /// MemTableRep.
-        memtable_factory: &SysMemTableRepFactory [ .get() ]
+        memtable_factory: &SysMemTableRepFactory [ .get_ptr() ]
     }
 
     /// Check [`set_memtable_factory`].
@@ -708,7 +708,7 @@ impl RawCfOptions {
         /// the tables.
         /// Default: empty vector -- no user-defined statistics collection will be
         /// performed.
-        (add) table_properties_collector_factory: &SysTablePropertiesCollectorFactory [ .get() ]
+        (add) table_properties_collector_factory: &SysTablePropertiesCollectorFactory [ .get_ptr() ]
 
         /// Maximum number of successive merge operations on a key in the memtable.
         ///
@@ -825,7 +825,7 @@ impl RawCfOptions {
     /// It's undefinied behavior if `RawCfOptions` outlives `SysComparator`.
     #[inline]
     pub unsafe fn set_comparator(&mut self, c: &SysComparator) -> &mut Self {
-        tirocks_sys::crocksdb_options_set_comparator(self.as_mut_ptr(), c.get());
+        tirocks_sys::crocksdb_options_set_comparator(self.as_mut_ptr(), c.get_ptr());
         self
     }
 
@@ -839,7 +839,7 @@ impl RawCfOptions {
         /// previously without a merge operator is introduced to Merge operation
         /// for the first time. It's necessary to specify a merge operator when
         /// opening the DB in this case.
-        merge_operator: &SysMergeOperator [ .get() ]
+        merge_operator: &SysMergeOperator [ .get_ptr() ]
 
         /// This is a factory that provides `CompactionFilter` objects which allow
         /// an application to modify/delete a key-value during table file creation.
@@ -856,7 +856,7 @@ impl RawCfOptions {
         /// `TableFileCreationReason`-based decision. This allows the application to
         /// know about the different ongoing threads of work and makes it unnecessary
         /// for `CompactionFilter` to provide thread-safety.
-        compaction_filter_factory: &SysCompactionFilterFactory [ .get() ]
+        compaction_filter_factory: &SysCompactionFilterFactory [ .get_ptr() ]
 
         /// Amount of data to build up in memory (backed by an unsorted log
         /// on disk) before converting to a sorted on-disk file.
@@ -955,7 +955,7 @@ impl RawCfOptions {
         /// 2) Compare(prefix(key), key) <= 0.
         /// 3) If Compare(k1, k2) <= 0, then Compare(prefix(k1), prefix(k2)) <= 0
         /// 4) prefix(prefix(key)) == prefix(key)
-        prefix_extractor: &SysSliceTransform [ .get() ]
+        prefix_extractor: &SysSliceTransform [ .get_ptr() ]
 
         /// Control maximum total data size for a level.
         /// max_bytes_for_level_base is the max total for level-1.
@@ -989,14 +989,14 @@ impl RawCfOptions {
         /// Default: a block-based table factory that provides a default
         /// implementation of TableBuilder and TableReader with default
         /// BlockBasedTableOptions.
-        table_factory: &SysTableFactory [ .get() ]
+        table_factory: &SysTableFactory [ .get_ptr() ]
 
         /// If non-nullptr, use the specified factory for a function to determine the
         /// partitioning of sst files. This helps compaction to split the files
         /// on interesting boundaries (key prefixes) to make propagation of sst
         /// files less write amplifying (covering the whole key space).
         /// THE FEATURE IS STILL EXPERIMENTAL
-        sst_partitioner_factory: &SysSstParitionerFactory [ .get() ]
+        sst_partitioner_factory: &SysSstParitionerFactory [ .get_ptr() ]
     }
 
     pub(crate) unsafe fn from_ptr<'a>(ptr: *const rocksdb_ColumnFamilyOptions) -> &'a Self {
@@ -1132,7 +1132,7 @@ impl RawTitanCfOptions {
         /// If non-NULL use the specified cache for blob records.
         ///
         /// Default: nullptr
-        blob_cache: &SysCache [ .get() ]
+        blob_cache: &SysCache [ .get_ptr() ]
 
         /// Max batch size for GC.
         ///

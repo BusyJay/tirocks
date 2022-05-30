@@ -47,7 +47,7 @@ impl Drop for EnvOptions {
 }
 
 impl EnvOptions {
-    pub(crate) fn as_ptr(&self) -> *mut rocksdb_EnvOptions {
+    pub(crate) fn get_ptr(&self) -> *mut rocksdb_EnvOptions {
         self.ptr
     }
 }
@@ -157,7 +157,7 @@ impl Env {
             let file = ffi_call!(crocksdb_sequential_file_create(
                 self.ptr,
                 file_path,
-                opts.as_ptr()
+                opts.get_ptr()
             ))?;
             Ok(SequentialFile::from_ptr(file))
         }
@@ -203,7 +203,7 @@ impl Env {
     }
 
     #[inline]
-    pub(crate) fn as_mut_ptr(&self) -> *mut tirocks_sys::rocksdb_Env {
+    pub(crate) fn get_ptr(&self) -> *mut tirocks_sys::rocksdb_Env {
         self.ptr
     }
 }

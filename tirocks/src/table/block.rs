@@ -57,13 +57,13 @@ impl BlockBasedTableOptions {
 
         /// If non-NULL use the specified cache for blocks.
         /// If NULL, rocksdb will automatically create and use an 8MB internal cache.
-        block_cache: &SysCache [ .get() ]
+        block_cache: &SysCache [ .get_ptr() ]
 
         /// If non-NULL use the specified cache for compressed blocks.
         /// If NULL, rocksdb will not use a compressed block cache.
         /// Note: though it looks similar to `block_cache`, RocksDB doesn't put the
         ///       same type of object there.
-        block_cache_compressed: &SysCache [ .get() ]
+        block_cache_compressed: &SysCache [ .get_ptr() ]
 
         /// Approximate size of user data packed per block.  Note that the
         /// block size specified here corresponds to uncompressed data.  The
@@ -105,7 +105,7 @@ impl BlockBasedTableOptions {
         /// If non-nullptr, use the specified filter policy to reduce disk reads.
         /// Many applications will benefit from passing the result of
         /// new_bloom_filter_policy() here.
-        filter_policy: &SysFilterPolicy [ .get() ]
+        filter_policy: &SysFilterPolicy [ .get_ptr() ]
 
         /// If true, place whole keys in the filter (not just prefixes).
         /// This must generally be true for gets to be efficient.
@@ -162,11 +162,11 @@ impl BlockBasedTableOptions {
 
     #[inline]
     fn as_mut_ptr(&mut self) -> *mut rocksdb_BlockBasedTableOptions {
-        self.get()
+        self.get_ptr()
     }
 
     #[inline]
-    pub(crate) fn get(&self) -> *mut rocksdb_BlockBasedTableOptions {
+    pub(crate) fn get_ptr(&self) -> *mut rocksdb_BlockBasedTableOptions {
         self.ptr
     }
 }

@@ -56,7 +56,7 @@ impl SysMemTableRepFactory {
     }
 
     #[inline]
-    pub(crate) fn get(&self) -> *mut crocksdb_memtablerepfactory_t {
+    pub(crate) fn get_ptr(&self) -> *mut crocksdb_memtablerepfactory_t {
         self.ptr
     }
 }

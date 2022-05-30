@@ -235,7 +235,13 @@ impl<'a, I: Iterable + 'a> Drop for Iterator<'a, I> {
 
 unsafe impl Iterable for RawDb {
     fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawColumnFamilyHandle) -> *mut rocksdb_Iterator {
-        unsafe { tirocks_sys::crocksdb_create_iterator_cf(self.as_ptr(), opt.get() as _, cf.get()) }
+        unsafe {
+            tirocks_sys::crocksdb_create_iterator_cf(
+                self.get_ptr(),
+                opt.get_ptr() as _,
+                cf.get_ptr(),
+            )
+        }
     }
 }
 
@@ -244,9 +250,17 @@ unsafe impl Iterable for Db {
     fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawColumnFamilyHandle) -> *mut rocksdb_Iterator {
         unsafe {
             if !self.is_titan() {
-                tirocks_sys::crocksdb_create_iterator_cf(self.as_ptr(), opt.get() as _, cf.get())
+                tirocks_sys::crocksdb_create_iterator_cf(
+                    self.get_ptr(),
+                    opt.get_ptr() as _,
+                    cf.get_ptr(),
+                )
             } else {
-                tirocks_sys::ctitandb_create_iterator_cf(self.as_ptr(), opt.get(), cf.get())
+                tirocks_sys::ctitandb_create_iterator_cf(
+                    self.get_ptr(),
+                    opt.get_ptr(),
+                    cf.get_ptr(),
+                )
             }
         }
     }

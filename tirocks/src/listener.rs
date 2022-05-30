@@ -245,7 +245,7 @@ impl SysEventListener {
     }
 
     #[inline]
-    pub(crate) fn get(&self) -> *mut crocksdb_eventlistener_t {
+    pub(crate) fn get_ptr(&self) -> *mut crocksdb_eventlistener_t {
         self.ptr
     }
 }

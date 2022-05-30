@@ -21,14 +21,14 @@ pub struct RawColumnFamilyHandle(rocksdb_ColumnFamilyHandle);
 impl RawColumnFamilyHandle {
     #[inline]
     pub fn id(&self) -> u32 {
-        unsafe { tirocks_sys::crocksdb_column_family_handle_id(self.get()) }
+        unsafe { tirocks_sys::crocksdb_column_family_handle_id(self.get_ptr()) }
     }
 
     #[inline]
     pub fn name(&self) -> std::result::Result<&str, Utf8Error> {
         unsafe {
             let mut name = r(&[]);
-            tirocks_sys::crocksdb_column_family_handle_name(self.get(), &mut name);
+            tirocks_sys::crocksdb_column_family_handle_name(self.get_ptr(), &mut name);
             std::str::from_utf8(s(name))
         }
     }
@@ -37,7 +37,7 @@ impl RawColumnFamilyHandle {
         self.name().map_or(false, |n| n == DEFAULT_CF_NAME)
     }
 
-    pub(crate) unsafe fn get(&self) -> *mut rocksdb_ColumnFamilyHandle {
+    pub(crate) fn get_ptr(&self) -> *mut rocksdb_ColumnFamilyHandle {
         self as *const _ as *mut _
     }
 }
@@ -69,7 +69,7 @@ impl RefCountedColumnFamilyHandle {
         atomic::fence(Ordering::Acquire);
         let mut s = Status::default();
         if self.inner.as_ref().managed {
-            tirocks_sys::crocksdb_column_family_handle_destroy(db, self.get(), s.as_mut_ptr());
+            tirocks_sys::crocksdb_column_family_handle_destroy(db, self.get_ptr(), s.as_mut_ptr());
         }
         drop(Box::from(self.inner.as_ptr()));
         check_status!(s)?;
@@ -78,12 +78,12 @@ impl RefCountedColumnFamilyHandle {
 
     pub(crate) unsafe fn destroy(&mut self, db: *mut rocksdb_DB) -> Result<()> {
         let mut s = Status::default();
-        tirocks_sys::crocksdb_drop_column_family(db, self.get(), s.as_mut_ptr());
+        tirocks_sys::crocksdb_drop_column_family(db, self.get_ptr(), s.as_mut_ptr());
         check_status!(s)
     }
 
-    pub(crate) unsafe fn get(&self) -> *mut rocksdb_ColumnFamilyHandle {
-        self.inner.as_ref().ptr
+    pub(crate) fn get_ptr(&self) -> *mut rocksdb_ColumnFamilyHandle {
+        unsafe { self.inner.as_ref().ptr }
     }
 
     #[inline]
@@ -162,7 +162,7 @@ impl<D: DbRef> Drop for ColumnFamilyHandle<D> {
         unsafe {
             let handle = &mut self.handle;
             self.db.visit(|d| {
-                let _ = handle.maybe_drop(d.as_ptr());
+                let _ = handle.maybe_drop(d.get_ptr());
             });
         }
     }
@@ -174,6 +174,6 @@ impl RawDb {
     }
 
     pub fn default_cf_raw(&self) -> *mut rocksdb_ColumnFamilyHandle {
-        unsafe { tirocks_sys::crocksdb_get_default_column_family(self.as_ptr()) }
+        unsafe { tirocks_sys::crocksdb_get_default_column_family(self.get_ptr()) }
     }
 }

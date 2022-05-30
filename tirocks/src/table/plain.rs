@@ -91,7 +91,7 @@ impl PlainTableOptions {
     }
 
     #[inline]
-    pub(crate) fn get(&self) -> *const rocksdb_PlainTableOptions {
+    pub(crate) fn as_ptr(&self) -> *const rocksdb_PlainTableOptions {
         &self.0
     }
 }

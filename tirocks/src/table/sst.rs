@@ -124,9 +124,9 @@ impl<'a> SstFileWriter<'a> {
     ) -> Self {
         let ptr = unsafe {
             tirocks_sys::crocksdb_sstfilewriter_create_cf(
-                env_opt.as_ptr(),
-                opt.get(),
-                cf.map_or_else(ptr::null_mut, |c| c.get()),
+                env_opt.get_ptr(),
+                opt.as_ptr(),
+                cf.map_or_else(ptr::null_mut, |c| c.get_ptr()),
             )
         };
         Self {
@@ -237,7 +237,7 @@ impl<'a> Drop for SstFileReader<'a> {
 impl<'a> SstFileReader<'a> {
     #[inline]
     pub fn new(options: &Options) -> Self {
-        let ptr = unsafe { tirocks_sys::crocksdb_sstfilereader_create(options.get()) };
+        let ptr = unsafe { tirocks_sys::crocksdb_sstfilereader_create(options.get_ptr()) };
         Self {
             ptr,
             life: PhantomData,
@@ -274,10 +274,10 @@ impl<'a> SstFileReader<'a> {
     ) -> RawIterator<'b> {
         let mut _with_snap_opt = None;
         let opt = match snap {
-            None => opt.get(),
+            None => opt.get_ptr(),
             Some(s) => {
                 _with_snap_opt = Some(WithSnapOpt::new(opt, s));
-                _with_snap_opt.as_ref().unwrap().get()
+                _with_snap_opt.as_ref().unwrap().get_ptr()
             }
         };
         unsafe {

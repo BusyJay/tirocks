@@ -59,7 +59,7 @@ impl SysComparator {
     }
 
     #[inline]
-    pub(crate) fn get(&self) -> *mut crocksdb_comparator_t {
+    pub(crate) fn get_ptr(&self) -> *mut crocksdb_comparator_t {
         self.ptr
     }
 }

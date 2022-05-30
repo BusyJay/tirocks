@@ -392,7 +392,7 @@ impl PerfContext {
     }
 
     #[inline]
-    fn as_ptr(&self) -> *mut rocksdb_PerfContext {
+    fn as_ptr(&self) -> *const rocksdb_PerfContext {
         self.ptr
     }
 }
@@ -463,7 +463,7 @@ impl IoStatsContext {
     }
 
     #[inline]
-    fn as_ptr(&self) -> *mut rocksdb_IOStatsContext {
+    fn as_ptr(&self) -> *const rocksdb_IOStatsContext {
         self.ptr
     }
 }

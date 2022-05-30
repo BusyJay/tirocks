@@ -133,7 +133,7 @@ impl RawOptions {
     }
 
     #[inline]
-    pub fn get(&self) -> *const rocksdb_Options {
+    pub fn as_ptr(&self) -> *const rocksdb_Options {
         self.ptr
     }
 }
@@ -216,7 +216,7 @@ impl Options {
     }
 
     #[inline]
-    pub(crate) fn get(&self) -> *mut rocksdb_Options {
+    pub(crate) fn get_ptr(&self) -> *mut rocksdb_Options {
         self.opt.ptr
     }
 }

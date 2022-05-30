@@ -73,7 +73,7 @@ impl MergeOperationInput {
 pub struct MergeOperationOutput(rocksdb_MergeOperator_MergeOperationOutput);
 
 impl MergeOperationOutput {
-    fn as_ptr(&mut self) -> *mut rocksdb_MergeOperator_MergeOperationOutput {
+    fn as_mut_ptr(&mut self) -> *mut rocksdb_MergeOperator_MergeOperationOutput {
         self as *mut _ as _
     }
 
@@ -81,7 +81,7 @@ impl MergeOperationOutput {
     #[inline]
     pub fn set_new_value(&mut self, value: &[u8]) -> &mut Self {
         unsafe {
-            tirocks_sys::crocksdb_mergeoperationoutput_set_new_value(self.as_ptr(), r(value));
+            tirocks_sys::crocksdb_mergeoperationoutput_set_new_value(self.as_mut_ptr(), r(value));
         }
         self
     }
@@ -89,7 +89,10 @@ impl MergeOperationOutput {
     #[inline]
     pub fn append_new_value(&mut self, value: &[u8]) -> &mut Self {
         unsafe {
-            tirocks_sys::crocksdb_mergeoperationoutput_append_new_value(self.as_ptr(), r(value));
+            tirocks_sys::crocksdb_mergeoperationoutput_append_new_value(
+                self.as_mut_ptr(),
+                r(value),
+            );
         }
         self
     }
@@ -100,7 +103,7 @@ impl MergeOperationOutput {
     pub fn set_existing_operand(&mut self, input: &MergeOperationInput, pos: usize) -> &mut Self {
         unsafe {
             tirocks_sys::crocksdb_mergeoperationoutput_set_existing_operand(
-                self.as_ptr(),
+                self.as_mut_ptr(),
                 input.as_ptr(),
                 pos,
             );
@@ -114,7 +117,7 @@ impl MergeOperationOutput {
     pub fn set_existing_operand_to_value(&mut self, input: &MergeOperationInput) -> &mut Self {
         unsafe {
             tirocks_sys::crocksdb_mergeoperationoutput_set_existing_operand_to_value(
-                self.as_ptr(),
+                self.as_mut_ptr(),
                 input.as_ptr(),
             )
         }
@@ -125,7 +128,7 @@ impl MergeOperationOutput {
     #[inline]
     pub fn set_new_type(&mut self, new_type: MergeValueType) -> &mut Self {
         unsafe {
-            tirocks_sys::crocksdb_mergeoperationoutput_set_new_type(self.as_ptr(), new_type);
+            tirocks_sys::crocksdb_mergeoperationoutput_set_new_type(self.as_mut_ptr(), new_type);
         }
         self
     }
@@ -427,7 +430,7 @@ impl SysMergeOperator {
         }
     }
 
-    pub(crate) fn get(&self) -> *mut crocksdb_mergeoperator_t {
+    pub(crate) fn get_ptr(&self) -> *mut crocksdb_mergeoperator_t {
         self.ptr
     }
 }

@@ -234,7 +234,7 @@ impl OpenOptions for DefaultCfOnlyBuilder {
         self.opt.comparator().map(|c| comparator.push(c.clone()));
         let ptr = if let Some(ttl) = self.ttl {
             tirocks_sys::crocksdb_open_with_ttl(
-                self.opt.get(),
+                self.opt.get_ptr(),
                 p,
                 ttl,
                 self.error_if_log_exists.is_some(),
@@ -242,13 +242,13 @@ impl OpenOptions for DefaultCfOnlyBuilder {
             )
         } else if let Some(error_if_log_exists) = self.error_if_log_exists {
             tirocks_sys::crocksdb_open_for_read_only(
-                self.opt.get(),
+                self.opt.get_ptr(),
                 p,
                 error_if_log_exists,
                 s.as_mut_ptr(),
             )
         } else {
-            tirocks_sys::crocksdb_open(self.opt.get(), p, s.as_mut_ptr())
+            tirocks_sys::crocksdb_open(self.opt.get_ptr(), p, s.as_mut_ptr())
         };
         check_status!(s)?;
         Ok((ptr, false))
@@ -276,7 +276,7 @@ impl OpenOptions for MultiCfBuilder {
         let p = path.path_to_slice();
         let ptr = if !self.ttl.is_empty() {
             tirocks_sys::crocksdb_open_column_families_with_ttl(
-                self.db.get(),
+                self.db.get_ptr(),
                 p,
                 self.cfs.len() as i32,
                 names.as_ptr(),
@@ -288,7 +288,7 @@ impl OpenOptions for MultiCfBuilder {
             )
         } else if let Some(error_if_log_file_exist) = self.error_if_log_exists {
             tirocks_sys::crocksdb_open_for_read_only_column_families(
-                self.db.get(),
+                self.db.get_ptr(),
                 p,
                 self.cfs.len() as i32,
                 names.as_ptr(),
@@ -299,7 +299,7 @@ impl OpenOptions for MultiCfBuilder {
             )
         } else {
             tirocks_sys::crocksdb_open_column_families(
-                self.db.get(),
+                self.db.get_ptr(),
                 p,
                 self.cfs.len() as i32,
                 names.as_ptr(),
@@ -335,7 +335,7 @@ impl OpenOptions for MultiCfTitanBuilder {
         let p = path.path_to_slice();
         let ptr = tirocks_sys::ctitandb_open_column_families(
             p,
-            self.db.get(),
+            self.db.get_ptr(),
             self.cfs.len() as i32,
             names.as_ptr(),
             opts.as_ptr(),
