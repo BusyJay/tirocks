@@ -9,7 +9,7 @@ use tirocks_sys::{
     rocksdb_UserCollectedProperties, s,
 };
 
-use crate::Status;
+use crate::{Result, Status};
 
 pub type SequenceNumber = tirocks_sys::rocksdb_SequenceNumber;
 pub type EntryType = tirocks_sys::rocksdb_EntryType;
@@ -20,7 +20,7 @@ pub struct Context {
 }
 
 impl Context {
-    const UNKNOWN_COLUMN_FAMILY_ID: u32 = i32::MAX as u32;
+    pub const UNKNOWN_COLUMN_FAMILY_ID: u32 = i32::MAX as u32;
 
     #[inline]
     pub fn column_family_id(&self) -> u32 {
@@ -41,13 +41,6 @@ impl UserCollectedProperties {
         ptr: *const tirocks_sys::rocksdb_UserCollectedProperties,
     ) -> &'a UserCollectedProperties {
         &*(ptr as *const UserCollectedProperties)
-    }
-
-    #[inline]
-    pub(crate) unsafe fn from_ptr_mut<'a>(
-        ptr: *mut tirocks_sys::rocksdb_UserCollectedProperties,
-    ) -> &'a mut UserCollectedProperties {
-        &mut *(ptr as *mut UserCollectedProperties)
     }
 
     #[inline]
@@ -170,11 +163,11 @@ pub trait TablePropertiesCollector {
         entry_type: EntryType,
         seq: SequenceNumber,
         file_size: u64,
-    ) -> Status;
+    ) -> Result<()>;
 
     /// Will be called when a table has already been built and is ready for
     /// writing the properties block.
-    fn finish(&mut self, properties: &mut UserCollectedProperties) -> Status;
+    fn finish(&mut self, properties: &mut UserCollectedProperties) -> Result<()>;
 }
 
 extern "C" fn collector_name<T: TablePropertiesCollector>(handle: *mut c_void) -> *const c_char {
@@ -202,6 +195,10 @@ extern "C" fn collector_add<T: TablePropertiesCollector>(
     unsafe {
         let handle = &mut *(handle as *mut T);
         let s = handle.add(s(key), s(value), entry_type, seq, file_size);
+        let s = match s {
+            Ok(()) => Status::default(),
+            Err(e) => e,
+        };
         ptr::write(status, s.into_raw());
     }
 }
@@ -214,6 +211,10 @@ extern "C" fn collector_finish<T: TablePropertiesCollector>(
     unsafe {
         let handle = &mut *(handle as *mut T);
         let s = handle.finish(&mut *(props as *mut UserCollectedProperties));
+        let s = match s {
+            Ok(()) => Status::default(),
+            Err(e) => e,
+        };
         ptr::write(status, s.into_raw());
     }
 }
@@ -287,6 +288,17 @@ impl SysTablePropertiesCollectorFactory {
     #[inline]
     pub(crate) fn get_ptr(&self) -> *mut crocksdb_table_properties_collector_factory_t {
         self.ptr
+    }
+
+    pub fn with_compact_on_deletion(sliding_window_size: usize, deletion_trigger: usize) -> Self {
+        unsafe {
+            let ptr =
+                tirocks_sys::crocksdb_table_properties_collector_factory_create_compact_on_deletion(
+                    sliding_window_size,
+                    deletion_trigger,
+                );
+            SysTablePropertiesCollectorFactory { ptr }
+        }
     }
 }
 

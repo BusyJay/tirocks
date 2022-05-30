@@ -466,3 +466,91 @@ impl<Q: AsRef<[u8]>> Index<Q> for PropertyMap {
             .unwrap_or_else(|| panic!("no entry found for key {:?}", key))
     }
 }
+
+/// The number of blob files at specified level.
+pub struct PropTitanNumBlobFilesAtLevel {
+    key: Vec<u8>,
+}
+
+impl PropTitanNumBlobFilesAtLevel {
+    pub fn new(level: usize) -> Self {
+        let prefix = unsafe {
+            let mut buf = r(&[]);
+            tirocks_sys::ctitandb_property_name_num_blob_files_at_level_prefix(&mut buf);
+            s(buf)
+        };
+        let mut key = Vec::with_capacity(prefix.len() + 1);
+        key.extend_from_slice(prefix);
+        write!(key, "{}", level).unwrap();
+        Self { key }
+    }
+}
+
+impl Property for PropTitanNumBlobFilesAtLevel {
+    #[inline]
+    fn key(&self) -> &[u8] {
+        &self.key
+    }
+}
+
+impl IntProperty for PropTitanNumBlobFilesAtLevel {}
+
+define! {
+    int
+    /// Total blob value size referenced by LSM tree
+    PropTitanLiveBlobSize, ctitandb_property_name_live_blob_size
+}
+
+define! {
+    int
+    /// Total blob file count.
+    PropTitanNumLiveBlobFile, ctitandb_property_name_num_live_blob_file
+}
+
+define! {
+    int
+    /// Total obsolete blob file count.
+    PropTitanNumObsoleteBlobFile, ctitandb_property_name_num_obsolete_blob_file
+}
+
+define! {
+    int
+    /// Total size of live blob file.
+    PropTitanLiveBlobFileSize, ctitandb_property_name_live_blob_file_size
+}
+
+define! {
+    int
+    /// Total size of obsolete blob file.
+    PropTitanObsoleteBlobFileSize, ctitandb_property_name_obsolete_blob_file_size
+}
+
+define! {
+    int
+    /// Count of file whose discardable ratio is less or equal to 0%.
+    PropTitanNumDiscardableRatioLe0File, ctitandb_property_name_num_discardable_ratio_le0_file
+}
+
+define! {
+    int
+    /// Count of file whose discardable ratio is less or equal to 20%.
+    PropTitanNumDiscardableRatioLe20File, ctitandb_property_name_num_discardable_ratio_le20_file
+}
+
+define! {
+    int
+    /// Count of file whose discardable ratio is less or equal to 50%.
+    PropTitanNumDiscardableRatioLe50File, ctitandb_property_name_num_discardable_ratio_le50_file
+}
+
+define! {
+    int
+    /// Count of file whose discardable ratio is less or equal to 80%.
+    PropTitanNumDiscardableRatioLe80File, ctitandb_property_name_num_discardable_ratio_le80_file
+}
+
+define! {
+    int
+    /// Count of file whose discardable ratio is less or equal to 100%.
+    PropTitanNumDiscardableRatioLe100File, ctitandb_property_name_num_discardable_ratio_le100_file
+}

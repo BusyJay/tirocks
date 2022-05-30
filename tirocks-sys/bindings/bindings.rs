@@ -2964,15 +2964,10 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_options_get_compression_level_number(
-        opt: *const rocksdb_ColumnFamilyOptions,
-    ) -> usize;
-}
-extern "C" {
     pub fn crocksdb_options_get_compression_per_level(
         opt: *const rocksdb_ColumnFamilyOptions,
-        level_values: *mut rocksdb_CompressionType,
-    );
+        level_count: *mut usize,
+    ) -> *const rocksdb_CompressionType;
 }
 extern "C" {
     pub fn crocksdb_options_set_bottommost_compression(
@@ -4066,6 +4061,9 @@ extern "C" {
     );
 }
 extern "C" {
+    pub fn crocksdb_jemallocallocatoroptions_init(arg1: *mut rocksdb_JemallocAllocatorOptions);
+}
+extern "C" {
     pub fn crocksdb_lru_cache_options_set_use_jemalloc(
         arg1: *mut rocksdb_LRUCacheOptions,
         arg2: *mut rocksdb_JemallocAllocatorOptions,
@@ -4080,6 +4078,12 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_cache_set_capacity(cache: *mut crocksdb_cache_t, capacity: usize);
+}
+extern "C" {
+    pub fn crocksdb_cache_usage(arg1: *const crocksdb_cache_t) -> usize;
+}
+extern "C" {
+    pub fn crocksdb_cache_capacity(arg1: *const crocksdb_cache_t) -> usize;
 }
 extern "C" {
     pub fn crocksdb_default_env_create() -> *mut rocksdb_Env;
@@ -4526,7 +4530,7 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_create_log_from_options(
-        path: *const libc::c_char,
+        path: rocksdb_Slice,
         opts: *const rocksdb_DBOptions,
         s: *mut rocksdb_Status,
     ) -> *mut crocksdb_logger_t;
@@ -4864,11 +4868,10 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_options_set_compact_on_deletion(
-        opt: *mut rocksdb_ColumnFamilyOptions,
+    pub fn crocksdb_table_properties_collector_factory_create_compact_on_deletion(
         sliding_window_size: usize,
         deletion_trigger: usize,
-    );
+    ) -> *mut crocksdb_table_properties_collector_factory_t;
 }
 extern "C" {
     pub fn crocksdb_get_properties_of_all_tables(
@@ -5034,275 +5037,287 @@ extern "C" {
     pub fn crocksdb_perf_context_reset(arg1: *mut rocksdb_PerfContext);
 }
 extern "C" {
-    pub fn crocksdb_perf_context_user_key_comparison_count(arg1: *mut rocksdb_PerfContext) -> u64;
-}
-extern "C" {
-    pub fn crocksdb_perf_context_block_cache_hit_count(arg1: *mut rocksdb_PerfContext) -> u64;
-}
-extern "C" {
-    pub fn crocksdb_perf_context_block_read_count(arg1: *mut rocksdb_PerfContext) -> u64;
-}
-extern "C" {
-    pub fn crocksdb_perf_context_block_read_byte(arg1: *mut rocksdb_PerfContext) -> u64;
-}
-extern "C" {
-    pub fn crocksdb_perf_context_block_read_time(arg1: *mut rocksdb_PerfContext) -> u64;
-}
-extern "C" {
-    pub fn crocksdb_perf_context_block_cache_index_hit_count(arg1: *mut rocksdb_PerfContext)
+    pub fn crocksdb_perf_context_user_key_comparison_count(arg1: *const rocksdb_PerfContext)
         -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_index_block_read_count(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_block_cache_hit_count(arg1: *const rocksdb_PerfContext) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_perf_context_block_read_count(arg1: *const rocksdb_PerfContext) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_perf_context_block_read_byte(arg1: *const rocksdb_PerfContext) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_perf_context_block_read_time(arg1: *const rocksdb_PerfContext) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_perf_context_block_cache_index_hit_count(
+        arg1: *const rocksdb_PerfContext,
+    ) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_perf_context_index_block_read_count(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
     pub fn crocksdb_perf_context_block_cache_filter_hit_count(
-        arg1: *mut rocksdb_PerfContext,
+        arg1: *const rocksdb_PerfContext,
     ) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_filter_block_read_count(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_filter_block_read_count(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
     pub fn crocksdb_perf_context_compression_dict_block_read_count(
-        arg1: *mut rocksdb_PerfContext,
+        arg1: *const rocksdb_PerfContext,
     ) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_block_checksum_time(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_block_checksum_time(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_block_decompress_time(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_block_decompress_time(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_get_read_bytes(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_get_read_bytes(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_multiget_read_bytes(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_multiget_read_bytes(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_iter_read_bytes(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_iter_read_bytes(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_internal_key_skipped_count(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_internal_key_skipped_count(
+        arg1: *const rocksdb_PerfContext,
+    ) -> u64;
 }
 extern "C" {
     pub fn crocksdb_perf_context_internal_delete_skipped_count(
-        arg1: *mut rocksdb_PerfContext,
+        arg1: *const rocksdb_PerfContext,
     ) -> u64;
 }
 extern "C" {
     pub fn crocksdb_perf_context_internal_recent_skipped_count(
-        arg1: *mut rocksdb_PerfContext,
+        arg1: *const rocksdb_PerfContext,
     ) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_internal_merge_count(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_internal_merge_count(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_get_snapshot_time(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_get_snapshot_time(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_get_from_memtable_time(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_get_from_memtable_time(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_get_from_memtable_count(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_get_from_memtable_count(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_get_post_process_time(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_get_post_process_time(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_get_from_output_files_time(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_get_from_output_files_time(
+        arg1: *const rocksdb_PerfContext,
+    ) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_seek_on_memtable_time(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_seek_on_memtable_time(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_seek_on_memtable_count(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_seek_on_memtable_count(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_next_on_memtable_count(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_next_on_memtable_count(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_prev_on_memtable_count(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_prev_on_memtable_count(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_seek_child_seek_time(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_seek_child_seek_time(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_seek_child_seek_count(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_seek_child_seek_count(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_seek_min_heap_time(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_seek_min_heap_time(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_seek_max_heap_time(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_seek_max_heap_time(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_seek_internal_seek_time(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_seek_internal_seek_time(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_find_next_user_entry_time(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_find_next_user_entry_time(arg1: *const rocksdb_PerfContext)
+        -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_write_wal_time(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_write_wal_time(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_write_memtable_time(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_write_memtable_time(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_write_delay_time(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_write_delay_time(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
     pub fn crocksdb_perf_context_write_pre_and_post_process_time(
-        arg1: *mut rocksdb_PerfContext,
+        arg1: *const rocksdb_PerfContext,
     ) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_db_mutex_lock_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_db_mutex_lock_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_write_thread_wait_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_write_thread_wait_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
     pub fn crocksdb_perf_context_write_scheduling_flushes_compactions_time(
-        arg1: *mut rocksdb_PerfContext,
+        arg1: *const rocksdb_PerfContext,
     ) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_db_condition_wait_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_db_condition_wait_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_merge_operator_time_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_merge_operator_time_nanos(arg1: *const rocksdb_PerfContext)
+        -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_read_index_block_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_read_index_block_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_read_filter_block_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_read_filter_block_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_new_table_block_iter_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_new_table_block_iter_nanos(
+        arg1: *const rocksdb_PerfContext,
+    ) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_new_table_iterator_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_new_table_iterator_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_block_seek_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_block_seek_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_find_table_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_find_table_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_bloom_memtable_hit_count(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_bloom_memtable_hit_count(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_bloom_memtable_miss_count(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_bloom_memtable_miss_count(arg1: *const rocksdb_PerfContext)
+        -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_bloom_sst_hit_count(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_bloom_sst_hit_count(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_bloom_sst_miss_count(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_bloom_sst_miss_count(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_key_lock_wait_time(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_key_lock_wait_time(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_key_lock_wait_count(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_key_lock_wait_count(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
     pub fn crocksdb_perf_context_env_new_sequential_file_nanos(
-        arg1: *mut rocksdb_PerfContext,
+        arg1: *const rocksdb_PerfContext,
     ) -> u64;
 }
 extern "C" {
     pub fn crocksdb_perf_context_env_new_random_access_file_nanos(
-        arg1: *mut rocksdb_PerfContext,
+        arg1: *const rocksdb_PerfContext,
     ) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_env_new_writable_file_nanos(arg1: *mut rocksdb_PerfContext)
-        -> u64;
+    pub fn crocksdb_perf_context_env_new_writable_file_nanos(
+        arg1: *const rocksdb_PerfContext,
+    ) -> u64;
 }
 extern "C" {
     pub fn crocksdb_perf_context_env_reuse_writable_file_nanos(
-        arg1: *mut rocksdb_PerfContext,
+        arg1: *const rocksdb_PerfContext,
     ) -> u64;
 }
 extern "C" {
     pub fn crocksdb_perf_context_env_new_random_rw_file_nanos(
-        arg1: *mut rocksdb_PerfContext,
+        arg1: *const rocksdb_PerfContext,
     ) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_env_new_directory_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_env_new_directory_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_env_file_exists_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_env_file_exists_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_env_get_children_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_env_get_children_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
     pub fn crocksdb_perf_context_env_get_children_file_attributes_nanos(
-        arg1: *mut rocksdb_PerfContext,
+        arg1: *const rocksdb_PerfContext,
     ) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_env_delete_file_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_env_delete_file_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_env_create_dir_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_env_create_dir_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
     pub fn crocksdb_perf_context_env_create_dir_if_missing_nanos(
-        arg1: *mut rocksdb_PerfContext,
+        arg1: *const rocksdb_PerfContext,
     ) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_env_delete_dir_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_env_delete_dir_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_env_get_file_size_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_env_get_file_size_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
     pub fn crocksdb_perf_context_env_get_file_modification_time_nanos(
-        arg1: *mut rocksdb_PerfContext,
+        arg1: *const rocksdb_PerfContext,
     ) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_env_rename_file_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_env_rename_file_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_env_link_file_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_env_link_file_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_env_lock_file_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_env_lock_file_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_env_unlock_file_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_env_unlock_file_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_env_new_logger_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_env_new_logger_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_get_cpu_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_get_cpu_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_iter_next_cpu_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_iter_next_cpu_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_iter_prev_cpu_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_iter_prev_cpu_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_iter_seek_cpu_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_iter_seek_cpu_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_encrypt_data_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_encrypt_data_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_perf_context_decrypt_data_nanos(arg1: *mut rocksdb_PerfContext) -> u64;
+    pub fn crocksdb_perf_context_decrypt_data_nanos(arg1: *const rocksdb_PerfContext) -> u64;
 }
 extern "C" {
     pub fn crocksdb_get_iostats_context() -> *mut rocksdb_IOStatsContext;
@@ -5311,43 +5326,44 @@ extern "C" {
     pub fn crocksdb_iostats_context_reset(arg1: *mut rocksdb_IOStatsContext);
 }
 extern "C" {
-    pub fn crocksdb_iostats_context_thread_pool_id(arg1: *mut rocksdb_IOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_thread_pool_id(arg1: *const rocksdb_IOStatsContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_iostats_context_bytes_written(arg1: *mut rocksdb_IOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_bytes_written(arg1: *const rocksdb_IOStatsContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_iostats_context_bytes_read(arg1: *mut rocksdb_IOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_bytes_read(arg1: *const rocksdb_IOStatsContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_iostats_context_open_nanos(arg1: *mut rocksdb_IOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_open_nanos(arg1: *const rocksdb_IOStatsContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_iostats_context_allocate_nanos(arg1: *mut rocksdb_IOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_allocate_nanos(arg1: *const rocksdb_IOStatsContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_iostats_context_write_nanos(arg1: *mut rocksdb_IOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_write_nanos(arg1: *const rocksdb_IOStatsContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_iostats_context_read_nanos(arg1: *mut rocksdb_IOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_read_nanos(arg1: *const rocksdb_IOStatsContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_iostats_context_range_sync_nanos(arg1: *mut rocksdb_IOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_range_sync_nanos(arg1: *const rocksdb_IOStatsContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_iostats_context_fsync_nanos(arg1: *mut rocksdb_IOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_fsync_nanos(arg1: *const rocksdb_IOStatsContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_iostats_context_prepare_write_nanos(arg1: *mut rocksdb_IOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_prepare_write_nanos(arg1: *const rocksdb_IOStatsContext)
+        -> u64;
 }
 extern "C" {
-    pub fn crocksdb_iostats_context_logger_nanos(arg1: *mut rocksdb_IOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_logger_nanos(arg1: *const rocksdb_IOStatsContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_iostats_context_cpu_write_nanos(arg1: *mut rocksdb_IOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_cpu_write_nanos(arg1: *const rocksdb_IOStatsContext) -> u64;
 }
 extern "C" {
-    pub fn crocksdb_iostats_context_cpu_read_nanos(arg1: *mut rocksdb_IOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_cpu_read_nanos(arg1: *const rocksdb_IOStatsContext) -> u64;
 }
 pub type crocksdb_sst_partitioner_should_partition_cb = ::std::option::Option<
     unsafe extern "C" fn(
@@ -5690,6 +5706,39 @@ extern "C" {
         include_end: bool,
         s: *mut rocksdb_Status,
     );
+}
+extern "C" {
+    pub fn ctitandb_property_name_num_blob_files_at_level_prefix(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_live_blob_size(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_num_live_blob_file(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_num_obsolete_blob_file(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_live_blob_file_size(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_obsolete_blob_file_size(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_num_discardable_ratio_le0_file(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_num_discardable_ratio_le20_file(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_num_discardable_ratio_le50_file(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_num_discardable_ratio_le80_file(s: *mut rocksdb_Slice);
+}
+extern "C" {
+    pub fn ctitandb_property_name_num_discardable_ratio_le100_file(s: *mut rocksdb_Slice);
 }
 extern "C" {
     pub fn crocksdb_free_cplus_array(arr: *const libc::c_char);

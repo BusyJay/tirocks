@@ -2410,16 +2410,10 @@ void crocksdb_options_set_compression_per_level(
   }
 }
 
-size_t crocksdb_options_get_compression_level_number(
-    const ColumnFamilyOptions* opt) {
-  return opt->compression_per_level.size();
-}
-
-void crocksdb_options_get_compression_per_level(const ColumnFamilyOptions* opt,
-                                                CompressionType* level_values) {
-  for (size_t i = 0; i < opt->compression_per_level.size(); i++) {
-    level_values[i] = opt->compression_per_level[i];
-  }
+const CompressionType* crocksdb_options_get_compression_per_level(
+    const ColumnFamilyOptions* opt, size_t* num_levels) {
+  *num_levels = opt->compression_per_level.size();
+  return opt->compression_per_level.data();
 }
 
 void crocksdb_options_set_compression_options(
@@ -3271,6 +3265,10 @@ void crocksdb_lru_cache_options_set_high_pri_pool_ratio(
   opt->high_pri_pool_ratio = high_pri_pool_ratio;
 }
 
+void crocksdb_jemallocallocatoroptions_init(JemallocAllocatorOptions* opt) {
+  *opt = JemallocAllocatorOptions();
+}
+
 void crocksdb_lru_cache_options_set_use_jemalloc(
     LRUCacheOptions* opt, JemallocAllocatorOptions* j_opt, Status* s) {
   *s = rocksdb::NewJemallocNodumpAllocator(*j_opt, &opt->memory_allocator);
@@ -3286,6 +3284,14 @@ void crocksdb_cache_destroy(crocksdb_cache_t* cache) { delete cache; }
 
 void crocksdb_cache_set_capacity(crocksdb_cache_t* cache, size_t capacity) {
   cache->rep->SetCapacity(capacity);
+}
+
+size_t crocksdb_cache_usage(const crocksdb_cache_t* c) {
+  return c->rep->GetUsage();
+}
+
+size_t crocksdb_cache_capacity(const crocksdb_cache_t* c) {
+  return c->rep->GetCapacity();
 }
 
 Env* crocksdb_default_env_create() { return Env::Default(); }
@@ -3861,11 +3867,11 @@ crocksdb_logger_t* crocksdb_create_env_logger(const char* fname, Env* env) {
   return logger;
 }
 
-crocksdb_logger_t* crocksdb_create_log_from_options(const char* path,
+crocksdb_logger_t* crocksdb_create_log_from_options(Slice path,
                                                     const DBOptions* opts,
                                                     Status* s) {
   std::shared_ptr<Logger> l;
-  *s = CreateLoggerFromOptions(std::string(path), *opts, &l);
+  *s = CreateLoggerFromOptions(path.ToString(), *opts, &l);
   if (s->ok()) {
     auto logger = new crocksdb_logger_t;
     logger->rep = l;
@@ -4261,12 +4267,14 @@ void crocksdb_options_add_table_properties_collector_factory(
   opt->table_properties_collector_factories.push_back(f->rep);
 }
 
-void crocksdb_options_set_compact_on_deletion(ColumnFamilyOptions* opt,
-                                              size_t sliding_window_size,
-                                              size_t deletion_trigger) {
-  opt->table_properties_collector_factories.push_back(
-      rocksdb::NewCompactOnDeletionCollectorFactory(sliding_window_size,
-                                                    deletion_trigger));
+crocksdb_table_properties_collector_factory_t*
+crocksdb_table_properties_collector_factory_create_compact_on_deletion(
+    size_t sliding_window_size, size_t deletion_trigger) {
+  auto factory = rocksdb::NewCompactOnDeletionCollectorFactory(
+      sliding_window_size, deletion_trigger);
+  auto res = new crocksdb_table_properties_collector_factory_t;
+  res->rep = factory;
+  return res;
 }
 
 /* Get Table Properties */
@@ -4537,334 +4545,351 @@ PerfContext* crocksdb_get_perf_context() { return rocksdb::get_perf_context(); }
 
 void crocksdb_perf_context_reset(PerfContext* ctx) { ctx->Reset(); }
 
-uint64_t crocksdb_perf_context_user_key_comparison_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_user_key_comparison_count(
+    const PerfContext* ctx) {
   return ctx->user_key_comparison_count;
 }
 
-uint64_t crocksdb_perf_context_block_cache_hit_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_block_cache_hit_count(const PerfContext* ctx) {
   return ctx->block_cache_hit_count;
 }
 
-uint64_t crocksdb_perf_context_block_read_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_block_read_count(const PerfContext* ctx) {
   return ctx->block_read_count;
 }
 
-uint64_t crocksdb_perf_context_block_read_byte(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_block_read_byte(const PerfContext* ctx) {
   return ctx->block_read_byte;
 }
 
-uint64_t crocksdb_perf_context_block_read_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_block_read_time(const PerfContext* ctx) {
   return ctx->block_read_time;
 }
 
-uint64_t crocksdb_perf_context_block_cache_index_hit_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_block_cache_index_hit_count(
+    const PerfContext* ctx) {
   return ctx->block_cache_index_hit_count;
 }
 
-uint64_t crocksdb_perf_context_index_block_read_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_index_block_read_count(const PerfContext* ctx) {
   return ctx->index_block_read_count;
 }
 
-uint64_t crocksdb_perf_context_block_cache_filter_hit_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_block_cache_filter_hit_count(
+    const PerfContext* ctx) {
   return ctx->block_cache_filter_hit_count;
 }
 
-uint64_t crocksdb_perf_context_filter_block_read_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_filter_block_read_count(const PerfContext* ctx) {
   return ctx->filter_block_read_count;
 }
 
 uint64_t crocksdb_perf_context_compression_dict_block_read_count(
-    PerfContext* ctx) {
+    const PerfContext* ctx) {
   return ctx->compression_dict_block_read_count;
 }
 
-uint64_t crocksdb_perf_context_block_checksum_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_block_checksum_time(const PerfContext* ctx) {
   return ctx->block_checksum_time;
 }
 
-uint64_t crocksdb_perf_context_block_decompress_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_block_decompress_time(const PerfContext* ctx) {
   return ctx->block_decompress_time;
 }
 
-uint64_t crocksdb_perf_context_get_read_bytes(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_get_read_bytes(const PerfContext* ctx) {
   return ctx->get_read_bytes;
 }
 
-uint64_t crocksdb_perf_context_multiget_read_bytes(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_multiget_read_bytes(const PerfContext* ctx) {
   return ctx->multiget_read_bytes;
 }
 
-uint64_t crocksdb_perf_context_iter_read_bytes(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_iter_read_bytes(const PerfContext* ctx) {
   return ctx->iter_read_bytes;
 }
 
-uint64_t crocksdb_perf_context_internal_key_skipped_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_internal_key_skipped_count(
+    const PerfContext* ctx) {
   return ctx->internal_key_skipped_count;
 }
 
-uint64_t crocksdb_perf_context_internal_delete_skipped_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_internal_delete_skipped_count(
+    const PerfContext* ctx) {
   return ctx->internal_delete_skipped_count;
 }
 
-uint64_t crocksdb_perf_context_internal_recent_skipped_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_internal_recent_skipped_count(
+    const PerfContext* ctx) {
   return ctx->internal_recent_skipped_count;
 }
 
-uint64_t crocksdb_perf_context_internal_merge_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_internal_merge_count(const PerfContext* ctx) {
   return ctx->internal_merge_count;
 }
 
-uint64_t crocksdb_perf_context_get_snapshot_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_get_snapshot_time(const PerfContext* ctx) {
   return ctx->get_snapshot_time;
 }
 
-uint64_t crocksdb_perf_context_get_from_memtable_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_get_from_memtable_time(const PerfContext* ctx) {
   return ctx->get_from_memtable_time;
 }
 
-uint64_t crocksdb_perf_context_get_from_memtable_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_get_from_memtable_count(const PerfContext* ctx) {
   return ctx->get_from_memtable_count;
 }
 
-uint64_t crocksdb_perf_context_get_post_process_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_get_post_process_time(const PerfContext* ctx) {
   return ctx->get_post_process_time;
 }
 
-uint64_t crocksdb_perf_context_get_from_output_files_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_get_from_output_files_time(
+    const PerfContext* ctx) {
   return ctx->get_from_output_files_time;
 }
 
-uint64_t crocksdb_perf_context_seek_on_memtable_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_seek_on_memtable_time(const PerfContext* ctx) {
   return ctx->seek_on_memtable_time;
 }
 
-uint64_t crocksdb_perf_context_seek_on_memtable_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_seek_on_memtable_count(const PerfContext* ctx) {
   return ctx->seek_on_memtable_count;
 }
 
-uint64_t crocksdb_perf_context_next_on_memtable_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_next_on_memtable_count(const PerfContext* ctx) {
   return ctx->next_on_memtable_count;
 }
 
-uint64_t crocksdb_perf_context_prev_on_memtable_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_prev_on_memtable_count(const PerfContext* ctx) {
   return ctx->prev_on_memtable_count;
 }
 
-uint64_t crocksdb_perf_context_seek_child_seek_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_seek_child_seek_time(const PerfContext* ctx) {
   return ctx->seek_child_seek_time;
 }
 
-uint64_t crocksdb_perf_context_seek_child_seek_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_seek_child_seek_count(const PerfContext* ctx) {
   return ctx->seek_child_seek_count;
 }
 
-uint64_t crocksdb_perf_context_seek_min_heap_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_seek_min_heap_time(const PerfContext* ctx) {
   return ctx->seek_min_heap_time;
 }
 
-uint64_t crocksdb_perf_context_seek_max_heap_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_seek_max_heap_time(const PerfContext* ctx) {
   return ctx->seek_max_heap_time;
 }
 
-uint64_t crocksdb_perf_context_seek_internal_seek_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_seek_internal_seek_time(const PerfContext* ctx) {
   return ctx->seek_internal_seek_time;
 }
 
-uint64_t crocksdb_perf_context_find_next_user_entry_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_find_next_user_entry_time(
+    const PerfContext* ctx) {
   return ctx->find_next_user_entry_time;
 }
 
-uint64_t crocksdb_perf_context_write_wal_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_write_wal_time(const PerfContext* ctx) {
   return ctx->write_wal_time;
 }
 
-uint64_t crocksdb_perf_context_write_memtable_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_write_memtable_time(const PerfContext* ctx) {
   return ctx->write_memtable_time;
 }
 
-uint64_t crocksdb_perf_context_write_delay_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_write_delay_time(const PerfContext* ctx) {
   return ctx->write_delay_time;
 }
 
 uint64_t crocksdb_perf_context_write_pre_and_post_process_time(
-    PerfContext* ctx) {
+    const PerfContext* ctx) {
   return ctx->write_pre_and_post_process_time;
 }
 
-uint64_t crocksdb_perf_context_db_mutex_lock_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_db_mutex_lock_nanos(const PerfContext* ctx) {
   return ctx->db_mutex_lock_nanos;
 }
 
-uint64_t crocksdb_perf_context_write_thread_wait_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_write_thread_wait_nanos(const PerfContext* ctx) {
   return ctx->write_thread_wait_nanos;
 }
 
 uint64_t crocksdb_perf_context_write_scheduling_flushes_compactions_time(
-    PerfContext* ctx) {
+    const PerfContext* ctx) {
   return ctx->write_scheduling_flushes_compactions_time;
 }
 
-uint64_t crocksdb_perf_context_db_condition_wait_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_db_condition_wait_nanos(const PerfContext* ctx) {
   return ctx->db_condition_wait_nanos;
 }
 
-uint64_t crocksdb_perf_context_merge_operator_time_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_merge_operator_time_nanos(
+    const PerfContext* ctx) {
   return ctx->merge_operator_time_nanos;
 }
 
-uint64_t crocksdb_perf_context_read_index_block_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_read_index_block_nanos(const PerfContext* ctx) {
   return ctx->read_index_block_nanos;
 }
 
-uint64_t crocksdb_perf_context_read_filter_block_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_read_filter_block_nanos(const PerfContext* ctx) {
   return ctx->read_filter_block_nanos;
 }
 
-uint64_t crocksdb_perf_context_new_table_block_iter_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_new_table_block_iter_nanos(
+    const PerfContext* ctx) {
   return ctx->new_table_block_iter_nanos;
 }
 
-uint64_t crocksdb_perf_context_new_table_iterator_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_new_table_iterator_nanos(
+    const PerfContext* ctx) {
   return ctx->new_table_iterator_nanos;
 }
 
-uint64_t crocksdb_perf_context_block_seek_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_block_seek_nanos(const PerfContext* ctx) {
   return ctx->block_seek_nanos;
 }
 
-uint64_t crocksdb_perf_context_find_table_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_find_table_nanos(const PerfContext* ctx) {
   return ctx->find_table_nanos;
 }
 
-uint64_t crocksdb_perf_context_bloom_memtable_hit_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_bloom_memtable_hit_count(
+    const PerfContext* ctx) {
   return ctx->bloom_memtable_hit_count;
 }
 
-uint64_t crocksdb_perf_context_bloom_memtable_miss_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_bloom_memtable_miss_count(
+    const PerfContext* ctx) {
   return ctx->bloom_memtable_miss_count;
 }
 
-uint64_t crocksdb_perf_context_bloom_sst_hit_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_bloom_sst_hit_count(const PerfContext* ctx) {
   return ctx->bloom_sst_hit_count;
 }
 
-uint64_t crocksdb_perf_context_bloom_sst_miss_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_bloom_sst_miss_count(const PerfContext* ctx) {
   return ctx->bloom_sst_miss_count;
 }
 
-uint64_t crocksdb_perf_context_key_lock_wait_time(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_key_lock_wait_time(const PerfContext* ctx) {
   return ctx->key_lock_wait_time;
 }
 
-uint64_t crocksdb_perf_context_key_lock_wait_count(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_key_lock_wait_count(const PerfContext* ctx) {
   return ctx->key_lock_wait_count;
 }
 
-uint64_t crocksdb_perf_context_env_new_sequential_file_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_env_new_sequential_file_nanos(
+    const PerfContext* ctx) {
   return ctx->env_new_sequential_file_nanos;
 }
 
 uint64_t crocksdb_perf_context_env_new_random_access_file_nanos(
-    PerfContext* ctx) {
+    const PerfContext* ctx) {
   return ctx->env_new_random_access_file_nanos;
 }
 
-uint64_t crocksdb_perf_context_env_new_writable_file_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_env_new_writable_file_nanos(
+    const PerfContext* ctx) {
   return ctx->env_new_writable_file_nanos;
 }
 
-uint64_t crocksdb_perf_context_env_reuse_writable_file_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_env_reuse_writable_file_nanos(
+    const PerfContext* ctx) {
   return ctx->env_reuse_writable_file_nanos;
 }
 
-uint64_t crocksdb_perf_context_env_new_random_rw_file_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_env_new_random_rw_file_nanos(
+    const PerfContext* ctx) {
   return ctx->env_new_random_rw_file_nanos;
 }
 
-uint64_t crocksdb_perf_context_env_new_directory_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_env_new_directory_nanos(const PerfContext* ctx) {
   return ctx->env_new_directory_nanos;
 }
 
-uint64_t crocksdb_perf_context_env_file_exists_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_env_file_exists_nanos(const PerfContext* ctx) {
   return ctx->env_file_exists_nanos;
 }
 
-uint64_t crocksdb_perf_context_env_get_children_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_env_get_children_nanos(const PerfContext* ctx) {
   return ctx->env_get_children_nanos;
 }
 
 uint64_t crocksdb_perf_context_env_get_children_file_attributes_nanos(
-    PerfContext* ctx) {
+    const PerfContext* ctx) {
   return ctx->env_get_children_file_attributes_nanos;
 }
 
-uint64_t crocksdb_perf_context_env_delete_file_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_env_delete_file_nanos(const PerfContext* ctx) {
   return ctx->env_delete_file_nanos;
 }
 
-uint64_t crocksdb_perf_context_env_create_dir_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_env_create_dir_nanos(const PerfContext* ctx) {
   return ctx->env_create_dir_nanos;
 }
 
 uint64_t crocksdb_perf_context_env_create_dir_if_missing_nanos(
-    PerfContext* ctx) {
+    const PerfContext* ctx) {
   return ctx->env_create_dir_if_missing_nanos;
 }
 
-uint64_t crocksdb_perf_context_env_delete_dir_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_env_delete_dir_nanos(const PerfContext* ctx) {
   return ctx->env_delete_dir_nanos;
 }
 
-uint64_t crocksdb_perf_context_env_get_file_size_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_env_get_file_size_nanos(const PerfContext* ctx) {
   return ctx->env_get_file_size_nanos;
 }
 
 uint64_t crocksdb_perf_context_env_get_file_modification_time_nanos(
-    PerfContext* ctx) {
+    const PerfContext* ctx) {
   return ctx->env_get_file_modification_time_nanos;
 }
 
-uint64_t crocksdb_perf_context_env_rename_file_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_env_rename_file_nanos(const PerfContext* ctx) {
   return ctx->env_rename_file_nanos;
 }
 
-uint64_t crocksdb_perf_context_env_link_file_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_env_link_file_nanos(const PerfContext* ctx) {
   return ctx->env_link_file_nanos;
 }
 
-uint64_t crocksdb_perf_context_env_lock_file_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_env_lock_file_nanos(const PerfContext* ctx) {
   return ctx->env_lock_file_nanos;
 }
 
-uint64_t crocksdb_perf_context_env_unlock_file_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_env_unlock_file_nanos(const PerfContext* ctx) {
   return ctx->env_unlock_file_nanos;
 }
 
-uint64_t crocksdb_perf_context_env_new_logger_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_env_new_logger_nanos(const PerfContext* ctx) {
   return ctx->env_new_logger_nanos;
 }
 
-uint64_t crocksdb_perf_context_get_cpu_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_get_cpu_nanos(const PerfContext* ctx) {
   return ctx->get_cpu_nanos;
 }
 
-uint64_t crocksdb_perf_context_iter_next_cpu_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_iter_next_cpu_nanos(const PerfContext* ctx) {
   return ctx->iter_next_cpu_nanos;
 }
 
-uint64_t crocksdb_perf_context_iter_prev_cpu_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_iter_prev_cpu_nanos(const PerfContext* ctx) {
   return ctx->iter_next_cpu_nanos;
 }
 
-uint64_t crocksdb_perf_context_iter_seek_cpu_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_iter_seek_cpu_nanos(const PerfContext* ctx) {
   return ctx->iter_next_cpu_nanos;
 }
 
-uint64_t crocksdb_perf_context_encrypt_data_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_encrypt_data_nanos(const PerfContext* ctx) {
   return ctx->encrypt_data_nanos;
 }
 
-uint64_t crocksdb_perf_context_decrypt_data_nanos(PerfContext* ctx) {
+uint64_t crocksdb_perf_context_decrypt_data_nanos(const PerfContext* ctx) {
   return ctx->decrypt_data_nanos;
 }
 
@@ -4874,55 +4899,56 @@ IOStatsContext* crocksdb_get_iostats_context(void) {
 
 void crocksdb_iostats_context_reset(IOStatsContext* ctx) { ctx->Reset(); }
 
-uint64_t crocksdb_iostats_context_thread_pool_id(IOStatsContext* ctx) {
+uint64_t crocksdb_iostats_context_thread_pool_id(const IOStatsContext* ctx) {
   return ctx->thread_pool_id;
 }
 
-uint64_t crocksdb_iostats_context_bytes_written(IOStatsContext* ctx) {
+uint64_t crocksdb_iostats_context_bytes_written(const IOStatsContext* ctx) {
   return ctx->bytes_written;
 }
 
-uint64_t crocksdb_iostats_context_bytes_read(IOStatsContext* ctx) {
+uint64_t crocksdb_iostats_context_bytes_read(const IOStatsContext* ctx) {
   return ctx->bytes_read;
 }
 
-uint64_t crocksdb_iostats_context_open_nanos(IOStatsContext* ctx) {
+uint64_t crocksdb_iostats_context_open_nanos(const IOStatsContext* ctx) {
   return ctx->open_nanos;
 }
 
-uint64_t crocksdb_iostats_context_allocate_nanos(IOStatsContext* ctx) {
+uint64_t crocksdb_iostats_context_allocate_nanos(const IOStatsContext* ctx) {
   return ctx->allocate_nanos;
 }
 
-uint64_t crocksdb_iostats_context_write_nanos(IOStatsContext* ctx) {
+uint64_t crocksdb_iostats_context_write_nanos(const IOStatsContext* ctx) {
   return ctx->write_nanos;
 }
 
-uint64_t crocksdb_iostats_context_read_nanos(IOStatsContext* ctx) {
+uint64_t crocksdb_iostats_context_read_nanos(const IOStatsContext* ctx) {
   return ctx->read_nanos;
 }
 
-uint64_t crocksdb_iostats_context_range_sync_nanos(IOStatsContext* ctx) {
+uint64_t crocksdb_iostats_context_range_sync_nanos(const IOStatsContext* ctx) {
   return ctx->range_sync_nanos;
 }
 
-uint64_t crocksdb_iostats_context_fsync_nanos(IOStatsContext* ctx) {
+uint64_t crocksdb_iostats_context_fsync_nanos(const IOStatsContext* ctx) {
   return ctx->fsync_nanos;
 }
 
-uint64_t crocksdb_iostats_context_prepare_write_nanos(IOStatsContext* ctx) {
+uint64_t crocksdb_iostats_context_prepare_write_nanos(
+    const IOStatsContext* ctx) {
   return ctx->prepare_write_nanos;
 }
 
-uint64_t crocksdb_iostats_context_logger_nanos(IOStatsContext* ctx) {
+uint64_t crocksdb_iostats_context_logger_nanos(const IOStatsContext* ctx) {
   return ctx->logger_nanos;
 }
 
-uint64_t crocksdb_iostats_context_cpu_write_nanos(IOStatsContext* ctx) {
+uint64_t crocksdb_iostats_context_cpu_write_nanos(const IOStatsContext* ctx) {
   return ctx->cpu_write_nanos;
 }
 
-uint64_t crocksdb_iostats_context_cpu_read_nanos(IOStatsContext* ctx) {
+uint64_t crocksdb_iostats_context_cpu_read_nanos(const IOStatsContext* ctx) {
   return ctx->cpu_read_nanos;
 }
 
@@ -5107,7 +5133,7 @@ void ctitandb_options_set_dirname(TitanDBOptions* opts, Slice name) {
   opts->dirname = name.ToString();
 }
 
-uint64_t ctitandb_options_min_blob_size(const TitanCFOptions* opts) {
+uint64_t ctitandb_options_get_min_blob_size(const TitanCFOptions* opts) {
   return opts->min_blob_size;
 }
 
@@ -5309,6 +5335,50 @@ void ctitandb_delete_blob_files_in_ranges_cf(DB* db, ColumnFamilyHandle* cf,
                                              bool include_end, Status* s) {
   *s = static_cast<TitanDB*>(db)->DeleteBlobFilesInRanges(
       cf, ranges, num_ranges, include_end);
+}
+
+void ctitandb_property_name_num_blob_files_at_level_prefix(Slice* s) {
+  *s = TitanDB::Properties::kNumBlobFilesAtLevelPrefix;
+}
+
+void ctitandb_property_name_live_blob_size(Slice* s) {
+  *s = TitanDB::Properties::kLiveBlobSize;
+}
+
+void ctitandb_property_name_num_live_blob_file(Slice* s) {
+  *s = TitanDB::Properties::kNumLiveBlobFile;
+}
+
+void ctitandb_property_name_num_obsolete_blob_file(Slice* s) {
+  *s = TitanDB::Properties::kNumObsoleteBlobFile;
+}
+
+void ctitandb_property_name_live_blob_file_size(Slice* s) {
+  *s = TitanDB::Properties::kLiveBlobFileSize;
+}
+
+void ctitandb_property_name_obsolete_blob_file_size(Slice* s) {
+  *s = TitanDB::Properties::kObsoleteBlobFileSize;
+}
+
+void ctitandb_property_name_num_discardable_ratio_le0_file(Slice* s) {
+  *s = TitanDB::Properties::kNumDiscardableRatioLE0File;
+}
+
+void ctitandb_property_name_num_discardable_ratio_le20_file(Slice* s) {
+  *s = TitanDB::Properties::kNumDiscardableRatioLE20File;
+}
+
+void ctitandb_property_name_num_discardable_ratio_le50_file(Slice* s) {
+  *s = TitanDB::Properties::kNumDiscardableRatioLE50File;
+}
+
+void ctitandb_property_name_num_discardable_ratio_le80_file(Slice* s) {
+  *s = TitanDB::Properties::kNumDiscardableRatioLE80File;
+}
+
+void ctitandb_property_name_num_discardable_ratio_le100_file(Slice* s) {
+  *s = TitanDB::Properties::kNumDiscardableRatioLE100File;
 }
 
 void crocksdb_free_cplus_array(const char* arr) { delete[] arr; }
