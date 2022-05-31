@@ -2836,7 +2836,7 @@ bool crocksdb_options_get_force_consistency_checks(
 
 crocksdb_statistics_t* crocksdb_statistics_create() {
   auto s = new crocksdb_statistics_t;
-  s->statistics = CreateDBStatistics();
+  s->statistics = rocksdb::titandb::CreateDBStatistics();
   return s;
 }
 
