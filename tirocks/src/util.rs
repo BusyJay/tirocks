@@ -68,18 +68,23 @@ macro_rules! expand_one_row {
 
 pub(crate) use expand_one_row;
 
-/// A helper macros to generate getters/setters.
+/// A helper macros to generate getters/setters that delegates calls to C functions.
 /// ```skip
 /// impl A {
 ///     simple_access! {
 ///         prefix
-///         /// Docs
-///         name: Type
+///         /// Docs about set
+///         name1: Type [ .get() ]
+///         /// Docs about get
+///         (<get) name2: Type
 ///     }
 /// }
 /// ```
-/// `simple_access` will generate setter `set_name` with the default implementation call
-/// to `prefix_set_name(self.as_mut_ptr(), val)`.
+/// `simple_access` will generate setter `set_name1` with the default implementation call
+/// to `prefix_set_name1(self.as_mut_ptr(), val.get())`. The expression inside `[]` will be
+/// appended to value directly.
+/// `(<)` means getter, `get` means the delegate C function is `prefix_get_name2`. If `get`
+/// is omitted, then the function becomes `prefix_name2`.
 // TODO: simplify the definition
 macro_rules! simple_access {
     ($(#[$outer:meta])* <$method:ident> $prefix:ident $(<$op:ident>)? $field:ident / $rename:ident / :$ty:ty$([$($new_tt:tt)*])?) => {

@@ -410,7 +410,7 @@ pub struct PropertyMap {
 impl Drop for PropertyMap {
     #[inline]
     fn drop(&mut self) {
-        unsafe { tirocks_sys::crocksdb_destroy_map_property(self.ptr) }
+        unsafe { tirocks_sys::crocksdb_map_property_destroy(self.ptr) }
     }
 }
 

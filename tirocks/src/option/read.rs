@@ -313,7 +313,7 @@ impl ReadOptions {
 impl Drop for ReadOptions {
     fn drop(&mut self) {
         unsafe {
-            tirocks_sys::ctitandb_readoptions_destroy(&mut self.raw);
+            tirocks_sys::ctitandb_readoptions_inplace_destroy(&mut self.raw);
         }
     }
 }

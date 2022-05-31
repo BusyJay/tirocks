@@ -1844,7 +1844,7 @@ extern "C" {
     pub fn crocksdb_create_map_property() -> *mut crocksdb_map_property_t;
 }
 extern "C" {
-    pub fn crocksdb_destroy_map_property(info: *mut crocksdb_map_property_t);
+    pub fn crocksdb_map_property_destroy(info: *mut crocksdb_map_property_t);
 }
 extern "C" {
     pub fn crocksdb_get_map_property_cf(
@@ -5662,7 +5662,7 @@ extern "C" {
     pub fn ctitandb_readoptions_init(arg1: *mut rocksdb_titandb_TitanReadOptions);
 }
 extern "C" {
-    pub fn ctitandb_readoptions_destroy(arg1: *mut rocksdb_titandb_TitanReadOptions);
+    pub fn ctitandb_readoptions_inplace_destroy(arg1: *mut rocksdb_titandb_TitanReadOptions);
 }
 extern "C" {
     pub fn ctitandb_create_iterator(
