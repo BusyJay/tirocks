@@ -27,3 +27,6 @@ pub enum rocksdb_PerfContext {}
 pub enum rocksdb_PerfFlags {}
 pub enum rocksdb_MergeOperator_MergeOperationInput {}
 pub enum rocksdb_MergeOperator_MergeOperationOutput {}
+pub enum rocksdb_SstFileReader {}
+pub enum rocksdb_SstFileWriter {}
+pub enum rocksdb_ExternalSstFileInfo {}

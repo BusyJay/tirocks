@@ -1,19 +1,21 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
 use std::{
-    fmt::{self, Debug, Formatter},
+    fmt::{self, Debug, Display, Formatter},
     marker::PhantomData,
-    ops::Index,
-    ptr::{self, NonNull},
-    slice,
+    ops::{Deref, Index},
+    ptr,
     str::{self, Utf8Error},
 };
 
 use tirocks_sys::{
-    crocksdb_table_properties_collection_iterator_t, r, rocksdb_TablePropertiesCollection, s,
+    crocksdb_table_properties_collection_iterator_t, r, rocksdb_TableProperties,
+    rocksdb_TablePropertiesCollection, s,
 };
 
 use crate::util;
+
+use super::user::UserCollectedProperties;
 
 #[repr(transparent)]
 pub struct TableProperties(tirocks_sys::rocksdb_TableProperties);
@@ -26,144 +28,133 @@ impl TableProperties {
         &*(ptr as *const TableProperties)
     }
 
+    #[inline]
+    fn as_ptr(&self) -> *const rocksdb_TableProperties {
+        self as *const _ as _
+    }
+
     /// the total size of all data blocks.
     #[inline]
     pub fn data_size(&self) -> u64 {
-        unsafe { tirocks_sys::crocksdb_table_properties_get_data_size(self as *const _ as _) }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_data_size(self.as_ptr()) }
     }
 
     /// the size of index block.
     #[inline]
     pub fn index_size(&self) -> u64 {
-        unsafe { tirocks_sys::crocksdb_table_properties_get_index_size(self as *const _ as _) }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_index_size(self.as_ptr()) }
     }
 
     /// Total number of index partitions if kTwoLevelIndexSearch is used
     #[inline]
     pub fn index_partitions(&self) -> u64 {
-        unsafe {
-            tirocks_sys::crocksdb_table_properties_get_index_partitions(self as *const _ as _)
-        }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_index_partitions(self.as_ptr()) }
     }
 
     /// Size of the top-level index if kTwoLevelIndexSearch is used
     #[inline]
     pub fn top_level_index_size(&self) -> u64 {
-        unsafe {
-            tirocks_sys::crocksdb_table_properties_get_top_level_index_size(self as *const _ as _)
-        }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_top_level_index_size(self.as_ptr()) }
     }
 
     /// Whether the index key is user key. Otherwise it includes 8 byte of sequence
     /// number added by internal key format.
     #[inline]
     pub fn index_key_is_user_key(&self) -> u64 {
-        unsafe {
-            tirocks_sys::crocksdb_table_properties_get_index_key_is_user_key(self as *const _ as _)
-        }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_index_key_is_user_key(self.as_ptr()) }
     }
 
     /// Whether delta encoding is used to encode the index values.
     #[inline]
     pub fn index_value_is_delta_encoded(&self) -> u64 {
         unsafe {
-            tirocks_sys::crocksdb_table_properties_get_index_value_is_delta_encoded(
-                self as *const _ as _,
-            )
+            tirocks_sys::crocksdb_table_properties_get_index_value_is_delta_encoded(self.as_ptr())
         }
     }
 
     /// the size of filter block.
     #[inline]
     pub fn filter_size(&self) -> u64 {
-        unsafe { tirocks_sys::crocksdb_table_properties_get_filter_size(self as *const _ as _) }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_filter_size(self.as_ptr()) }
     }
 
     /// total raw key size
     #[inline]
     pub fn raw_key_size(&self) -> u64 {
-        unsafe { tirocks_sys::crocksdb_table_properties_get_raw_key_size(self as *const _ as _) }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_raw_key_size(self.as_ptr()) }
     }
 
     /// total raw value size
     #[inline]
     pub fn raw_value_size(&self) -> u64 {
-        unsafe { tirocks_sys::crocksdb_table_properties_get_raw_value_size(self as *const _ as _) }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_raw_value_size(self.as_ptr()) }
     }
 
     /// the number of blocks in this table
     #[inline]
     pub fn num_data_blocks(&self) -> u64 {
-        unsafe { tirocks_sys::crocksdb_table_properties_get_num_data_blocks(self as *const _ as _) }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_num_data_blocks(self.as_ptr()) }
     }
 
     /// the number of entries in this table
     #[inline]
     pub fn num_entries(&self) -> u64 {
-        unsafe { tirocks_sys::crocksdb_table_properties_get_num_entries(self as *const _ as _) }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_num_entries(self.as_ptr()) }
     }
 
     /// the number of deletions in the table
     #[inline]
     pub fn num_deletions(&self) -> u64 {
-        unsafe { tirocks_sys::crocksdb_table_properties_get_num_deletions(self as *const _ as _) }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_num_deletions(self.as_ptr()) }
     }
 
     /// the number of merge operands in the table
     #[inline]
     pub fn num_merge_operands(&self) -> u64 {
-        unsafe {
-            tirocks_sys::crocksdb_table_properties_get_num_merge_operands(self as *const _ as _)
-        }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_num_merge_operands(self.as_ptr()) }
     }
 
     /// the number of range deletions in this table
     #[inline]
     pub fn num_range_deletions(&self) -> u64 {
-        unsafe {
-            tirocks_sys::crocksdb_table_properties_get_num_range_deletions(self as *const _ as _)
-        }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_num_range_deletions(self.as_ptr()) }
     }
 
     /// format version, reserved for backward compatibility
     #[inline]
     pub fn format_version(&self) -> u64 {
-        unsafe { tirocks_sys::crocksdb_table_properties_get_format_version(self as *const _ as _) }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_format_version(self.as_ptr()) }
     }
 
     /// If 0, key is variable length. Otherwise number of bytes for each key.
     #[inline]
     pub fn fixed_key_len(&self) -> u64 {
-        unsafe { tirocks_sys::crocksdb_table_properties_get_fixed_key_len(self as *const _ as _) }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_fixed_key_len(self.as_ptr()) }
     }
 
     /// ID of column family for this SST file, corresponding to the CF identified
     /// by column_family_name.
     #[inline]
     pub fn column_family_id(&self) -> u64 {
-        unsafe {
-            tirocks_sys::crocksdb_table_properties_get_column_family_id(self as *const _ as _)
-        }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_column_family_id(self.as_ptr()) }
     }
 
     /// Timestamp of the latest key. 0 means unknown.
     #[inline]
     pub fn creation_time(&self) -> u64 {
-        unsafe { tirocks_sys::crocksdb_table_properties_get_creation_time(self as *const _ as _) }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_creation_time(self.as_ptr()) }
     }
 
     /// Timestamp of the earliest key. 0 means unknown.
     #[inline]
     pub fn oldest_key_time(&self) -> u64 {
-        unsafe { tirocks_sys::crocksdb_table_properties_get_oldest_key_time(self as *const _ as _) }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_oldest_key_time(self.as_ptr()) }
     }
 
     /// Actual SST file creation time. 0 means unknown.
     #[inline]
     pub fn file_creation_time(&self) -> u64 {
-        unsafe {
-            tirocks_sys::crocksdb_table_properties_get_file_creation_time(self as *const _ as _)
-        }
+        unsafe { tirocks_sys::crocksdb_table_properties_get_file_creation_time(self.as_ptr()) }
     }
 
     /// Name of the column family with which this SST file is associated.
@@ -172,10 +163,7 @@ impl TableProperties {
     pub fn column_family_name(&self) -> std::result::Result<&str, Utf8Error> {
         unsafe {
             let mut buf = r(&[]);
-            tirocks_sys::crocksdb_table_properties_get_column_family_name(
-                self as *const _ as _,
-                &mut buf,
-            );
+            tirocks_sys::crocksdb_table_properties_get_column_family_name(self.as_ptr(), &mut buf);
             str::from_utf8(s(buf))
         }
     }
@@ -186,10 +174,7 @@ impl TableProperties {
     pub fn filter_policy_name(&self) -> std::result::Result<&str, Utf8Error> {
         unsafe {
             let mut buf = r(&[]);
-            tirocks_sys::crocksdb_table_properties_get_filter_policy_name(
-                self as *const _ as _,
-                &mut buf,
-            );
+            tirocks_sys::crocksdb_table_properties_get_filter_policy_name(self.as_ptr(), &mut buf);
             str::from_utf8(s(buf))
         }
     }
@@ -199,10 +184,7 @@ impl TableProperties {
     pub fn comparator_name(&self) -> std::result::Result<&str, Utf8Error> {
         unsafe {
             let mut buf = r(&[]);
-            tirocks_sys::crocksdb_table_properties_get_comparator_name(
-                self as *const _ as _,
-                &mut buf,
-            );
+            tirocks_sys::crocksdb_table_properties_get_comparator_name(self.as_ptr(), &mut buf);
             str::from_utf8(s(buf))
         }
     }
@@ -213,10 +195,7 @@ impl TableProperties {
     pub fn merge_operator_name(&self) -> std::result::Result<&str, Utf8Error> {
         unsafe {
             let mut buf = r(&[]);
-            tirocks_sys::crocksdb_table_properties_get_merge_operator_name(
-                self as *const _ as _,
-                &mut buf,
-            );
+            tirocks_sys::crocksdb_table_properties_get_merge_operator_name(self.as_ptr(), &mut buf);
             str::from_utf8(s(buf))
         }
     }
@@ -228,7 +207,7 @@ impl TableProperties {
         unsafe {
             let mut buf = r(&[]);
             tirocks_sys::crocksdb_table_properties_get_prefix_extractor_name(
-                self as *const _ as _,
+                self.as_ptr(),
                 &mut buf,
             );
             str::from_utf8(s(buf))
@@ -243,7 +222,7 @@ impl TableProperties {
         unsafe {
             let mut buf = r(&[]);
             tirocks_sys::crocksdb_table_properties_get_property_collectors_names(
-                self as *const _ as _,
+                self.as_ptr(),
                 &mut buf,
             );
             str::from_utf8(s(buf))
@@ -255,10 +234,7 @@ impl TableProperties {
     pub fn compression_name(&self) -> std::result::Result<&str, Utf8Error> {
         unsafe {
             let mut buf = r(&[]);
-            tirocks_sys::crocksdb_table_properties_get_compression_name(
-                self as *const _ as _,
-                &mut buf,
-            );
+            tirocks_sys::crocksdb_table_properties_get_compression_name(self.as_ptr(), &mut buf);
             str::from_utf8(s(buf))
         }
     }
@@ -268,16 +244,21 @@ impl TableProperties {
     pub fn compression_options(&self) -> std::result::Result<&str, Utf8Error> {
         unsafe {
             let mut buf = r(&[]);
-            tirocks_sys::crocksdb_table_properties_get_compression_options(
-                self as *const _ as _,
-                &mut buf,
-            );
+            tirocks_sys::crocksdb_table_properties_get_compression_options(self.as_ptr(), &mut buf);
             str::from_utf8(s(buf))
+        }
+    }
+
+    #[inline]
+    pub fn user_collected_properties(&self) -> &UserCollectedProperties {
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_table_properties_get_user_properties(self.as_ptr());
+            UserCollectedProperties::from_ptr(ptr)
         }
     }
 }
 
-impl Debug for TableProperties {
+impl Display for TableProperties {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let mut res = Ok(());
         let mut receiver = |buf: &[u8]| {
@@ -291,52 +272,20 @@ impl Debug for TableProperties {
     }
 }
 
-enum Collection<'a> {
-    Owned(NonNull<rocksdb_TablePropertiesCollection>),
-    Borrowed(&'a rocksdb_TablePropertiesCollection),
-}
+#[repr(transparent)]
+pub struct TablePropertiesCollection(rocksdb_TablePropertiesCollection);
 
-pub struct TablePropertiesCollection<'a> {
-    ptr: Collection<'a>,
-}
-
-impl<'a> Drop for TablePropertiesCollection<'a> {
+impl TablePropertiesCollection {
     #[inline]
-    fn drop(&mut self) {
-        if let Collection::Owned(ptr) = self.ptr {
-            unsafe {
-                let ptr = ptr.as_ptr();
-                tirocks_sys::crocksdb_table_properties_collection_destroy(ptr);
-            }
-        }
-    }
-}
-
-impl<'a> TablePropertiesCollection<'a> {
-    #[inline]
-    pub(crate) unsafe fn from_borrowed(
+    pub(crate) unsafe fn from_ptr<'a>(
         ptr: *const tirocks_sys::rocksdb_TablePropertiesCollection,
-    ) -> Self {
-        Self {
-            ptr: Collection::Borrowed(&*ptr),
-        }
+    ) -> &'a Self {
+        &*(ptr as *const TablePropertiesCollection)
     }
 
     #[inline]
-    pub(crate) unsafe fn from_owned(
-        ptr: *mut tirocks_sys::rocksdb_TablePropertiesCollection,
-    ) -> TablePropertiesCollection<'static> {
-        TablePropertiesCollection {
-            ptr: Collection::Owned(NonNull::new_unchecked(ptr)),
-        }
-    }
-
-    #[inline]
-    fn as_ptr(&self) -> *const tirocks_sys::rocksdb_TablePropertiesCollection {
-        match self.ptr {
-            Collection::Borrowed(p) => p,
-            Collection::Owned(p) => p.as_ptr(),
-        }
+    fn as_ptr(&self) -> *const rocksdb_TablePropertiesCollection {
+        self as *const _ as _
     }
 
     #[inline]
@@ -364,7 +313,7 @@ impl<'a> TablePropertiesCollection<'a> {
     }
 }
 
-impl<'a, Q: AsRef<[u8]>> Index<Q> for TablePropertiesCollection<'a> {
+impl<Q: AsRef<[u8]>> Index<Q> for TablePropertiesCollection {
     type Output = TableProperties;
 
     #[inline]
@@ -375,7 +324,7 @@ impl<'a, Q: AsRef<[u8]>> Index<Q> for TablePropertiesCollection<'a> {
     }
 }
 
-impl<'a> IntoIterator for &'a TablePropertiesCollection<'_> {
+impl<'a> IntoIterator for &'a TablePropertiesCollection {
     type Item = (&'a [u8], &'a TableProperties);
     type IntoIter = TablePropertiesCollectionIter<'a>;
 
@@ -387,7 +336,7 @@ impl<'a> IntoIterator for &'a TablePropertiesCollection<'_> {
 
 pub struct TablePropertiesCollectionIter<'a> {
     ptr: *mut crocksdb_table_properties_collection_iterator_t,
-    _life: PhantomData<&'a TablePropertiesCollection<'a>>,
+    _life: PhantomData<&'a TablePropertiesCollection>,
 }
 
 impl<'a> Drop for TablePropertiesCollectionIter<'a> {
@@ -426,5 +375,59 @@ impl<'a> Iterator for TablePropertiesCollectionIter<'a> {
                 None
             }
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct OwnedTablePropertiesCollection {
+    ptr: *mut rocksdb_TablePropertiesCollection,
+}
+
+impl Drop for OwnedTablePropertiesCollection {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            tirocks_sys::crocksdb_table_properties_collection_destroy(self.ptr);
+        }
+    }
+}
+
+impl Deref for OwnedTablePropertiesCollection {
+    type Target = TablePropertiesCollection;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { TablePropertiesCollection::from_ptr(self.ptr) }
+    }
+}
+
+impl Default for OwnedTablePropertiesCollection {
+    #[inline]
+    fn default() -> Self {
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_table_properties_collection_create();
+            Self::from_ptr(ptr)
+        }
+    }
+}
+
+impl OwnedTablePropertiesCollection {
+    #[inline]
+    pub fn clear(&mut self) {
+        unsafe {
+            tirocks_sys::crocksdb_table_properties_collection_clear(self.ptr);
+        }
+    }
+
+    #[inline]
+    pub(crate) fn get_ptr(&self) -> *mut rocksdb_TablePropertiesCollection {
+        self.ptr
+    }
+
+    #[inline]
+    pub(crate) unsafe fn from_ptr(
+        ptr: *mut rocksdb_TablePropertiesCollection,
+    ) -> OwnedTablePropertiesCollection {
+        OwnedTablePropertiesCollection { ptr }
     }
 }

@@ -11,7 +11,7 @@ use tirocks_sys::{
 };
 
 use crate::{
-    table_properties::builtin::{TableProperties, TablePropertiesCollection},
+    properties::table::builtin::{TableProperties, TablePropertiesCollection},
     Status,
 };
 
@@ -160,10 +160,10 @@ impl CompactionJobInfo {
     /// Table properties for input and output tables.
     /// The map is keyed by values from input_files and output_files.
     #[inline]
-    pub fn table_properties(&self) -> TablePropertiesCollection {
+    pub fn table_properties(&self) -> &TablePropertiesCollection {
         unsafe {
             let prop = tirocks_sys::crocksdb_compactionjobinfo_table_properties(self.as_ptr());
-            TablePropertiesCollection::from_borrowed(prop)
+            TablePropertiesCollection::from_ptr(prop)
         }
     }
 

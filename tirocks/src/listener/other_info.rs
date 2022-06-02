@@ -6,7 +6,7 @@ use tirocks_sys::{
     r, rocksdb_ExternalFileIngestionInfo, rocksdb_WriteStallCondition, rocksdb_WriteStallInfo, s,
 };
 
-use crate::table_properties::builtin::TableProperties;
+use crate::properties::table::builtin::TableProperties;
 
 pub type WriteStallCondition = rocksdb_WriteStallCondition;
 

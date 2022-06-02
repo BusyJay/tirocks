@@ -9,10 +9,12 @@ keywords = ["rocksdb", "bindings"]
 [features]
 nightly = []
 encryption = ["tirocks-sys/encryption"]
+jemalloc = ["tirocks-sys/jemalloc"]
 
 [dependencies]
 libc = "0.2.11"
 tirocks-sys = { path = "../tirocks-sys" }
+paste = "1.0"
 
 [dev-dependencies]
 tempfile = "3.0"
