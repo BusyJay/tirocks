@@ -24,9 +24,11 @@ use crate::{
 pub type AccessHint = tirocks_sys::rocksdb_DBOptions_AccessHint;
 pub type WalRecoveryMode = tirocks_sys::rocksdb_WALRecoveryMode;
 
+/// A wrapper for DBOptions.
 #[repr(transparent)]
 pub struct RawDbOptions(rocksdb_DBOptions);
 
+/// Same as [`RawDbOptions`] but will be destroyed on dropped.
 #[derive(Debug)]
 pub struct OwnedRawDbOptions {
     ptr: NonNull<RawDbOptions>,
@@ -64,6 +66,10 @@ impl Drop for OwnedRawDbOptions {
     }
 }
 
+/// Same as [`RawDbOptions`] but will provide lifetime safety.
+///
+/// Besides maintaining the lifetime of options, it also guarantees env if set will
+/// be destroyed after options.
 #[derive(Debug)]
 #[repr(C)]
 pub struct DbOptions {
@@ -639,7 +645,7 @@ impl RawDbOptions {
 }
 
 impl DbOptions {
-    /// Same as `RawDbOptions::set_env` but manage the lifetime of `env`.
+    /// Same as [`RawDbOptions::set_env`] but manage the lifetime of `env`.
     #[inline]
     pub fn set_env(&mut self, env: Arc<Env>) -> &mut Self {
         unsafe {
@@ -649,6 +655,7 @@ impl DbOptions {
         self
     }
 
+    /// Check [`set_env`].
     #[inline]
     pub fn env(&self) -> Option<&Arc<Env>> {
         self.env.as_ref()
