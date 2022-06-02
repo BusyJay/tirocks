@@ -425,7 +425,7 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_get_snapshot_sequence_number(
 extern C_ROCKSDB_LIBRARY_API crocksdb_map_property_t*
 crocksdb_create_map_property();
 
-extern C_ROCKSDB_LIBRARY_API void crocksdb_destroy_map_property(
+extern C_ROCKSDB_LIBRARY_API void crocksdb_map_property_destroy(
     crocksdb_map_property_t* info);
 
 extern C_ROCKSDB_LIBRARY_API bool crocksdb_get_map_property_cf(
@@ -2286,7 +2286,7 @@ extern void C_ROCKSDB_LIBRARY_API ctitandb_options_set_blob_run_mode(
 /* TitanReadOptions */
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_readoptions_init(TitanReadOptions*);
-extern C_ROCKSDB_LIBRARY_API void ctitandb_readoptions_destroy(
+extern C_ROCKSDB_LIBRARY_API void ctitandb_readoptions_inplace_destroy(
     TitanReadOptions*);
 
 /* Titan Iterator */

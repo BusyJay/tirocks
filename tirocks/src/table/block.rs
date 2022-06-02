@@ -162,7 +162,7 @@ impl BlockBasedTableOptions {
 
     #[inline]
     fn as_mut_ptr(&mut self) -> *mut rocksdb_BlockBasedTableOptions {
-        self.get_ptr()
+        self.ptr
     }
 
     #[inline]

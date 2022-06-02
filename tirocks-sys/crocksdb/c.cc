@@ -1156,7 +1156,7 @@ crocksdb_map_property_t* crocksdb_create_map_property() {
   return new crocksdb_map_property_t;
 }
 
-void crocksdb_destroy_map_property(crocksdb_map_property_t* info) {
+void crocksdb_map_property_destroy(crocksdb_map_property_t* info) {
   delete info;
 }
 
@@ -2836,7 +2836,7 @@ bool crocksdb_options_get_force_consistency_checks(
 
 crocksdb_statistics_t* crocksdb_statistics_create() {
   auto s = new crocksdb_statistics_t;
-  s->statistics = CreateDBStatistics();
+  s->statistics = rocksdb::titandb::CreateDBStatistics();
   return s;
 }
 
@@ -5284,7 +5284,7 @@ void ctitandb_readoptions_init(TitanReadOptions* opt) {
   new (opt) TitanReadOptions;
 }
 
-void ctitandb_readoptions_destroy(TitanReadOptions* opt) {
+void ctitandb_readoptions_inplace_destroy(TitanReadOptions* opt) {
   opt->~TitanReadOptions();
 }
 

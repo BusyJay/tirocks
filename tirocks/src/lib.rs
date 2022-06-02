@@ -1,6 +1,8 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
 #![cfg_attr(feature = "nightly", feature(io_error_more))]
+// TODO: remove this when options are all implemented.
+#![allow(unused)]
 
 pub mod cache;
 pub mod compaction_filter;
