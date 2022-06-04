@@ -17,6 +17,7 @@ openssl-sys = { version = "0.9.54", optional = true, features = ["vendored"] }
 zstd-sys = "1.4.19"
 lz4-sys = "1.9"
 snappy-sys = "0.1"
+serde = { version = "1.0", features = ["derive"], optional = true }
 
 [features]
 default = []
@@ -24,6 +25,8 @@ encryption = ["openssl-sys"]
 jemalloc = ["tikv-jemalloc-sys"]
 sse = []
 static-libcpp = []
+# features for implmenting serialize/deserialize for common enum.
+use-serde = ["serde"]
 
 # portable doesn't require static link, though it's meaningless
 # when not using with static-link right now in this crate.
@@ -44,3 +47,4 @@ features = ["unprefixed_malloc_on_supported_platforms"]
 
 [dev-dependencies]
 tempfile = "3.0"
+toml = "0.5"

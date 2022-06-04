@@ -18,6 +18,9 @@ mod bindings {
     include!(env!("BINDING_PATH"));
 }
 
+#[cfg(feature = "serde")]
+mod serde;
+
 use std::{ffi::CStr, mem, str::Utf8Error};
 
 pub use bindings::*;
