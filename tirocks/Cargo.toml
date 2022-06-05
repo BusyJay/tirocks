@@ -10,6 +10,8 @@ keywords = ["rocksdb", "bindings"]
 nightly = []
 encryption = ["tirocks-sys/encryption"]
 jemalloc = ["tirocks-sys/jemalloc"]
+sse = ["tirocks-sys/sse"]
+portable = ["tirocks-sys/portable"]
 
 [dependencies]
 libc = "0.2.11"
