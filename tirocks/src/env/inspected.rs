@@ -6,7 +6,7 @@ use tirocks_sys::rocksdb_Status;
 
 /// Trait to inspect storage requests. FileSystemInspectedEnv will consult
 /// FileSystemInspector before issuing actual disk IO.
-pub trait FileSystemInspector {
+pub trait FileSystemInspector: Send + Sync {
     /// Request to read `len` bytes and return the allowed size.
     #[inline]
     fn read(&self, len: usize) -> Result<usize> {
