@@ -9,7 +9,9 @@ use tirocks_sys::{
 
 use crate::util;
 
+/// A trait for marking ticker types.
 pub trait TickerType {
+    /// The raw ID of the ticker.
     fn r#type(&self) -> u32;
 }
 
@@ -30,7 +32,9 @@ impl TickerType for TitanTickers {
     }
 }
 
+/// A trait for marking histogram type.
 pub trait HistogramType {
+    /// The raw ID of histogram.
     fn r#type(&self) -> u32;
 }
 
@@ -53,6 +57,7 @@ impl HistogramType for TitanHistograms {
 
 pub type HistogramData = rocksdb_HistogramData;
 
+/// Analyze the performance of a db by providing cumulative stats over time.
 pub struct Statistics {
     ptr: *mut tirocks_sys::crocksdb_statistics_t,
 }
