@@ -27,10 +27,10 @@ pub mod table_filter;
 mod util;
 
 pub use error::{Code, Result, Severity, Status, SubCode};
-pub use option::{CfOptions, DbOptions, Options};
+pub use option::DbOptions;
 pub use statistics::Statistics;
-pub use util::{CloneFactory, DefaultFactory};
 use tirocks_sys::rocksdb_DB;
+pub use util::{CloneFactory, DefaultFactory};
 
 // TODO: define later.
 pub struct RawDb;

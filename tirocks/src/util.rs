@@ -199,7 +199,7 @@ pub unsafe fn rocks_slice_to_array(arr: &[rocksdb_Slice]) -> Cow<[&[u8]]> {
     if tirocks_sys::rocks_slice_same_as_rust() {
         Cow::Borrowed(mem::transmute(arr))
     } else {
-        let arr = arr.into_iter().map(|v| unsafe { s(*v) }).collect();
+        let arr = arr.iter().map(|v| unsafe { s(*v) }).collect();
         Cow::Owned(arr)
     }
 }
@@ -209,17 +209,15 @@ pub unsafe fn array_to_rocks_slice<'a>(arr: &'a [&[u8]]) -> Cow<'a, [rocksdb_Sli
     if tirocks_sys::rocks_slice_same_as_rust() {
         Cow::Borrowed(mem::transmute(arr))
     } else {
-        let arr = arr.into_iter().map(|v| unsafe { r(*v) }).collect();
+        let arr = arr.iter().map(|v| unsafe { r(*v) }).collect();
         Cow::Owned(arr)
     }
 }
 
-pub unsafe fn range_to_range_ptr(
-    ranges: &[(Option<&[u8]>, Option<&[u8]>)],
-) -> (
-    Vec<(Option<rocksdb_Slice>, Option<rocksdb_Slice>)>,
-    Vec<rocksdb_RangePtr>,
-) {
+pub type RustRange<'a> = (Option<&'a [u8]>, Option<&'a [u8]>);
+pub type RocksRange = (Option<rocksdb_Slice>, Option<rocksdb_Slice>);
+
+pub unsafe fn range_to_range_ptr(ranges: &[RustRange]) -> (Vec<RocksRange>, Vec<rocksdb_RangePtr>) {
     let rocks_ranges: Vec<_> = ranges
         .iter()
         .map(|pair| (pair.0.map(|k| r(k)), pair.1.map(|k| r(k))))

@@ -1,6 +1,6 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::{borrow::Cow, ffi::CStr, os::raw::c_char, ptr, slice};
+use std::{borrow::Cow, ffi::CStr, marker::PhantomData, os::raw::c_char, ptr, slice};
 
 use libc::c_void;
 use tirocks_sys::{
@@ -141,20 +141,27 @@ unsafe extern "C" fn append_to_output(ctx: *mut c_void, v: rocksdb_Slice) {
     c.append_new_value(s(v));
 }
 
-pub struct NewValue {
+/// A struct to collect slice.
+pub struct NewValue<'a> {
     ctx: *mut c_void,
     func: AppendCb,
+    lifetime: PhantomData<&'a ()>,
 }
 
-impl NewValue {
+impl<'a> NewValue<'a> {
+    /// Append the slice.
+    #[inline]
     pub fn append(&mut self, v: &[u8]) {
         unsafe { self.func.unwrap()(self.ctx, r(v)) }
     }
 
-    pub unsafe fn with_output(output: &mut MergeOperationOutput) -> NewValue {
+    /// Contruct a struct to collect slice.
+    #[inline]
+    pub fn with_output(output: &mut MergeOperationOutput) -> NewValue {
         NewValue {
             ctx: output as *mut _ as _,
             func: Some(append_to_output),
+            lifetime: PhantomData,
         }
     }
 }
@@ -310,6 +317,7 @@ unsafe extern "C" fn partial_merge<T: MergeOperator>(
         &mut NewValue {
             ctx: append_ctx,
             func: append_cb,
+            lifetime: PhantomData,
         },
     )
 }
@@ -327,6 +335,7 @@ unsafe extern "C" fn partial_merge_mult<T: MergeOperator>(
     let mut new_v = NewValue {
         ctx: append_ctx,
         func: append_cb,
+        lifetime: PhantomData,
     };
     let r_ops = util::rocks_slice_to_array(ops);
     c.partial_merge_multi(s(key), &r_ops, &mut new_v)
