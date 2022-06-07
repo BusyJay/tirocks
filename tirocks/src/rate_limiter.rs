@@ -1,40 +1,26 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
+use tirocks_sys::crocksdb_ratelimiter_t;
+
 use crate::env::IoPriority;
-use std::marker::PhantomData;
 use std::time::Duration;
 
 pub type RateLimiterMode = tirocks_sys::rocksdb_RateLimiter_Mode;
 pub type OpType = tirocks_sys::rocksdb_RateLimiter_OpType;
 
 pub struct RateLimiterBuilder {
-    /// It controls the total write rate of compaction and flush in bytes per
-    /// second. Currently, RocksDB does not enforce rate limit for anything other
-    /// than flush and compaction, e.g. write to WAL.
-    pub rate_bytes_per_sec: i64,
-    /// It controls how often tokens are refilled. For example, when `rate_bytes_per_sec`
-    /// is set to 10MB/s and refill_period is set to 100ms, then 1MB is refilled every
-    /// 100ms internally. Larger value can lead to burstier writes while smaller value
-    /// introduces more CPU overhead.
-    pub refill_period: Duration,
-    /// RateLimiter accepts high-pri requests and low-pri requests. A low-pri request is
-    /// usually blocked in favor of hi-pri request. Currently, RocksDB assigns low-pri to
-    /// request from compaction and high-pri to request from flush. Low-pri requests can
-    /// get blocked if flush requests come in continuously. This fairness parameter grants
-    /// low-pri requests permission by 1/fairness chance even though high-pri requests
-    /// exist to avoid starvation.
-    pub fairness: i32,
-    /// Mode indicates which types of operations count against the limit.
-    pub mode: RateLimiterMode,
-    /// Enables dynamic adjustment of rate limit within the range
-    /// `[rate_bytes_per_sec / 20, rate_bytes_per_sec]`, according to the recent demand for
-    /// background I/O.
-    pub auto_tuned: bool,
-    // So adding new fields won't be a breaking change in the future.
-    _hidden: PhantomData<()>,
+    rate_bytes_per_sec: i64,
+    refill_period: Duration,
+    fairness: i32,
+    mode: RateLimiterMode,
+    auto_tuned: bool,
 }
 
 impl RateLimiterBuilder {
+    /// Initialize the builder with `rate_bytes_per_sec`, which controls the total
+    /// write rate of compaction and flush in bytes per second. Currently, RocksDB
+    /// does not enforce rate limit for anything other than flush and compaction,
+    /// e.g. write to WAL.
     #[inline]
     pub fn new(rate_bytes_per_sec: i64) -> RateLimiterBuilder {
         RateLimiterBuilder {
@@ -43,8 +29,45 @@ impl RateLimiterBuilder {
             fairness: 10,
             mode: RateLimiterMode::kWritesOnly,
             auto_tuned: false,
-            _hidden: PhantomData,
         }
+    }
+
+    /// It controls how often tokens are refilled. For example, when `rate_bytes_per_sec`
+    /// is set to 10MB/s and refill_period is set to 100ms, then 1MB is refilled every
+    /// 100ms internally. Larger value can lead to burstier writes while smaller value
+    /// introduces more CPU overhead.
+    #[inline]
+    pub fn set_refill_period(&mut self, refill_period: Duration) -> &mut Self {
+        self.refill_period = refill_period;
+        self
+    }
+
+    /// RateLimiter accepts high-pri requests and low-pri requests. A low-pri request is
+    /// usually blocked in favor of hi-pri request. Currently, RocksDB assigns low-pri to
+    /// request from compaction and high-pri to request from flush. Low-pri requests can
+    /// get blocked if flush requests come in continuously. This fairness parameter grants
+    /// low-pri requests permission by 1/fairness chance even though high-pri requests
+    /// exist to avoid starvation.
+    #[inline]
+    pub fn set_fairness(&mut self, fairness: i32) -> &mut Self {
+        self.fairness = fairness;
+        self
+    }
+
+    /// Mode indicates which types of operations count against the limit.
+    #[inline]
+    pub fn set_mode(&mut self, mode: RateLimiterMode) -> &mut Self {
+        self.mode = mode;
+        self
+    }
+
+    /// Enables dynamic adjustment of rate limit within the range
+    /// `[rate_bytes_per_sec / 20, rate_bytes_per_sec]`, according to the recent demand for
+    /// background I/O.
+    #[inline]
+    pub fn set_auto_tuned(&mut self, auto_tuned: bool) -> &mut Self {
+        self.auto_tuned = auto_tuned;
+        self
     }
 
     /// Create a RateLimiter object, which can be shared among RocksDB instances to
@@ -136,6 +159,11 @@ impl RateLimiter {
     /// Total count of requests that go through rate limiter
     pub fn total_requests(&self, pri: IoPriority) -> i64 {
         unsafe { tirocks_sys::crocksdb_ratelimiter_get_total_requests(self.ptr, pri) }
+    }
+
+    #[inline]
+    pub(crate) fn get_ptr(&self) -> *mut crocksdb_ratelimiter_t {
+        self.ptr
     }
 }
 

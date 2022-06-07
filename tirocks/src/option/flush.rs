@@ -11,6 +11,7 @@ use super::CompressionType;
 
 /// Options that control flush operations
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct FlushOptions {
     raw: rocksdb_FlushOptions,
 }
@@ -47,10 +48,16 @@ impl FlushOptions {
         self.raw.allow_write_stall = allow;
         self
     }
+
+    #[inline]
+    pub(crate) fn as_ptr(&self) -> *const rocksdb_FlushOptions {
+        &self.raw
+    }
 }
 
 // CompactionOptions are used in CompactFiles() call.
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct CompactionOptions {
     raw: rocksdb_CompactionOptions,
 }
@@ -94,12 +101,18 @@ impl CompactionOptions {
         self.raw.max_subcompactions = subcompaction;
         self
     }
+
+    #[inline]
+    pub(crate) fn as_ptr(&self) -> *const rocksdb_CompactionOptions {
+        &self.raw
+    }
 }
 
 pub type BottommostLevelCompaction = rocksdb_BottommostLevelCompaction;
 
 // CompactRangeOptions is used by CompactRange() call.
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct CompactRangeOptions {
     raw: rocksdb_CompactRangeOptions,
 }
@@ -175,10 +188,16 @@ impl CompactRangeOptions {
         self.raw.max_subcompactions = subcompaction;
         self
     }
+
+    #[inline]
+    pub(crate) fn as_ptr(&self) -> *const rocksdb_CompactRangeOptions {
+        &self.raw
+    }
 }
 
 // IngestExternalFileOptions is used by IngestExternalFile()
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct IngestExternalFileOptions {
     raw: rocksdb_IngestExternalFileOptions,
 }
@@ -265,6 +284,12 @@ impl IngestExternalFileOptions {
         self
     }
 
+    /// See [`set_write_global_sequence_number`].
+    #[inline]
+    pub fn write_global_sequence_number(&self) -> bool {
+        self.raw.write_global_seqno
+    }
+
     /// Set to true if you would like to verify the checksums of each block of the
     /// external SST file before ingestion.
     /// Warning: setting this to true causes slowdown in file ingestion because
@@ -273,5 +298,10 @@ impl IngestExternalFileOptions {
     pub fn set_verify_checksums_before_ingest(&mut self, verify: bool) -> &mut Self {
         self.raw.verify_checksums_before_ingest = verify;
         self
+    }
+
+    #[inline]
+    pub(crate) fn as_ptr(&self) -> *const rocksdb_IngestExternalFileOptions {
+        &self.raw
     }
 }
