@@ -1,6 +1,6 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use crate::Result;
+use crate::{util::ffi_call, Result};
 use libc::c_void;
 use tirocks_sys::rocksdb_Status;
 
@@ -97,11 +97,11 @@ impl Drop for SysFileSystemInspector {
 impl FileSystemInspector for SysFileSystemInspector {
     #[inline]
     fn read(&self, len: usize) -> Result<usize> {
-        unsafe { crate::error::ffi_call!(crocksdb_file_system_inspector_read(self.ptr, len)) }
+        unsafe { ffi_call!(crocksdb_file_system_inspector_read(self.ptr, len)) }
     }
 
     #[inline]
     fn write(&self, len: usize) -> Result<usize> {
-        unsafe { crate::error::ffi_call!(crocksdb_file_system_inspector_write(self.ptr, len)) }
+        unsafe { ffi_call!(crocksdb_file_system_inspector_write(self.ptr, len)) }
     }
 }

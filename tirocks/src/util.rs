@@ -120,17 +120,49 @@ macro_rules! simple_access {
 
 pub(crate) use simple_access;
 
-macro_rules! check_status {
-    ($status:ident) => {
-        if $status.ok() {
-            Ok(())
+/// A helper micros for handling FFI calls that need error handling.
+///
+/// It's simply translate the call
+/// ```ignored
+/// ffi_call!(func(...))
+/// ```
+/// to
+/// ```ignored
+/// let res = tirocks_sys::func(..., &mut status);
+/// if status.ok() {
+///     Ok(res)
+/// } else {
+///     Err(status)
+/// }
+/// ```
+macro_rules! ffi_call {
+    ($func:ident($($arg:expr,)+)) => ({
+        let mut status = $crate::Status::default();
+        let res = tirocks_sys::$func($($arg),+, status.as_mut_ptr());
+        if status.ok() {
+            Ok(res)
         } else {
-            Err($status)
+            Err(status)
         }
+    });
+    ($func:ident($arg:expr, $($extra:expr),*)) => {
+        $crate::util::ffi_call!($func($arg, $($extra,)*))
     };
+    ($func:ident($arg:expr)) => {
+        $crate::util::ffi_call!($func($arg,))
+    };
+    ($func:ident()) => ({
+        let mut status = $crate::Status::default();
+        let res = tirocks_sys::$func(status.as_mut_ptr());
+        if status.ok() {
+            Ok(res)
+        } else {
+            Err(status)
+        }
+    })
 }
 
-pub(crate) use check_status;
+pub(crate) use ffi_call;
 
 use crate::{db::RawColumnFamilyHandle, RawDb};
 
@@ -266,15 +298,12 @@ pub fn set_external_sst_file_global_sequence_number(
     seq_no: u64,
 ) -> Result<u64> {
     unsafe {
-        let mut s = Status::default();
-        let pre_seq_no = tirocks_sys::crocksdb_set_external_sst_file_global_seq_no(
+        let pre_seq_no = ffi_call!(crocksdb_set_external_sst_file_global_seq_no(
             db.get_ptr(),
             cf.get_ptr(),
             file.path_to_slice(),
             seq_no,
-            s.as_mut_ptr(),
-        );
-        check_status!(s)?;
+        ))?;
         Ok(pre_seq_no)
     }
 }

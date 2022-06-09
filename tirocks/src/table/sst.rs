@@ -18,7 +18,7 @@ use crate::{
     option::{RawOptions, ReadOptions},
     properties::table::{builtin::TableProperties, user::SequenceNumber},
     snapshot::WithSnapOpt,
-    util::{check_status, simple_access, PathToSlice},
+    util::{ffi_call, simple_access, PathToSlice},
     Options, RawIterator, RawSnapshot, Result, Status,
 };
 
@@ -138,62 +138,39 @@ impl<'a> SstFileWriter<'a> {
     /// Prepare SstFileWriter to write into file located at "file_path".
     #[inline]
     pub fn open(&mut self, path: impl AsRef<Path>) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_sstfilewriter_open(
-                self.ptr,
-                path.path_to_slice(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_sstfilewriter_open(self.ptr, path.path_to_slice(),)) }
     }
 
     /// Add a Put key with value to currently opened file
     /// REQUIRES: key is after any previously added key according to comparator.
     #[inline]
     pub fn put(&mut self, key: &[u8], val: &[u8]) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_sstfilewriter_put(self.ptr, r(key), r(val), s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_sstfilewriter_put(self.ptr, r(key), r(val))) }
     }
 
     /// Add a Merge key with value to currently opened file
     /// REQUIRES: key is after any previously added key according to comparator.
     #[inline]
     pub fn merge(&mut self, key: &[u8], val: &[u8]) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_sstfilewriter_merge(self.ptr, r(key), r(val), s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_sstfilewriter_merge(self.ptr, r(key), r(val))) }
     }
 
     /// Add a deletion key to currently opened file
     /// REQUIRES: key is after any previously added key according to comparator.
     #[inline]
     pub fn delete(&mut self, key: &[u8]) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_sstfilewriter_delete(self.ptr, r(key), s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_sstfilewriter_delete(self.ptr, r(key))) }
     }
 
     /// Add a range deletion tombstone to currently opened file
     #[inline]
     pub fn delete_range(&mut self, begin: &[u8], end: &[u8]) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_sstfilewriter_delete_range(
+            ffi_call!(crocksdb_sstfilewriter_delete_range(
                 self.ptr,
                 r(begin),
                 r(end),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -204,10 +181,8 @@ impl<'a> SstFileWriter<'a> {
     #[inline]
     pub fn finish(&mut self, info: Option<&mut ExternalSstFileInfo>) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
             let info_ptr = info.map_or_else(ptr::null_mut, |i| i.ptr);
-            tirocks_sys::crocksdb_sstfilewriter_finish(self.ptr, info_ptr, s.as_mut_ptr());
-            check_status!(s)
+            ffi_call!(crocksdb_sstfilewriter_finish(self.ptr, info_ptr))
         }
     }
 
@@ -247,15 +222,7 @@ impl<'a> SstFileReader<'a> {
     /// Prepares to read from the file located at "path".
     #[inline]
     pub fn open(&mut self, path: impl AsRef<Path>) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_sstfilereader_open(
-                self.ptr,
-                path.path_to_slice(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_sstfilereader_open(self.ptr, path.path_to_slice(),)) }
     }
 
     #[inline]
@@ -289,10 +256,6 @@ impl<'a> SstFileReader<'a> {
     /// Verifies whether there is corruption in this table.
     #[inline]
     pub fn verify_checksum(&mut self) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_sstfilereader_verify_checksum(self.ptr, s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_sstfilereader_verify_checksum(self.ptr)) }
     }
 }

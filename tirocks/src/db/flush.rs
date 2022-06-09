@@ -6,7 +6,7 @@ use tirocks_sys::{r, rocksdb_Slice};
 
 use crate::{
     option::{CompactRangeOptions, CompactionOptions, FlushOptions, IngestExternalFileOptions},
-    util::{check_status, PathToSlice},
+    util::{ffi_call, PathToSlice},
     RawDb, Result, Status,
 };
 
@@ -47,16 +47,13 @@ impl RawDb {
         unsafe {
             let begin = begin.map(|k| r(k));
             let end = end.map(|k| r(k));
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_compact_range_cf_opt(
+            ffi_call!(crocksdb_compact_range_cf_opt(
                 self.get_ptr(),
                 opt.as_ptr(),
                 cf.get_ptr(),
                 begin.as_ref().map_or_else(ptr::null, |k| k),
                 end.as_ref().map_or_else(ptr::null, |k| k),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -76,17 +73,14 @@ impl RawDb {
                 .into_iter()
                 .map(|n| n.path_to_slice())
                 .collect();
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_compact_files_cf(
+            ffi_call!(crocksdb_compact_files_cf(
                 self.get_ptr(),
                 opt.as_ptr(),
                 cf.get_ptr(),
                 input_file_names.as_ptr(),
                 input_file_names.len(),
                 output_level,
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -95,20 +89,12 @@ impl RawDb {
     /// [`continue_background_work`] is called
     #[inline]
     pub fn pause_background_work(&self) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_pause_bg_work(self.get_ptr(), s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_pause_bg_work(self.get_ptr())) }
     }
 
     #[inline]
     pub fn continue_background_work(&self) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_continue_bg_work(self.get_ptr(), s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_continue_bg_work(self.get_ptr())) }
     }
 
     /// Flush a single column family, even when atomic flush is enabled. To flush
@@ -116,14 +102,11 @@ impl RawDb {
     #[inline]
     pub fn flush(&self, option: &FlushOptions, cf: &RawColumnFamilyHandle) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_flush_cf(
+            ffi_call!(crocksdb_flush_cf(
                 self.get_ptr(),
                 option.as_ptr(),
                 cf.get_ptr(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -138,15 +121,12 @@ impl RawDb {
     pub fn flush_multi(&self, option: &FlushOptions, cfs: &[&RawColumnFamilyHandle]) -> Result<()> {
         unsafe {
             let cfs: Vec<_> = cfs.into_iter().map(|c| c.get_ptr()).collect();
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_flush_cfs(
+            ffi_call!(crocksdb_flush_cfs(
                 self.get_ptr(),
                 option.as_ptr(),
                 cfs.as_ptr(),
                 cfs.len() as i32,
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -154,11 +134,7 @@ impl RawDb {
     /// afterwards.
     #[inline]
     pub fn flush_wal(&self, sync: bool) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_flush_wal(self.get_ptr(), sync, s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_flush_wal(self.get_ptr(), sync)) }
     }
 
     /// Sync the wal. Note that [`write`] followed by [`sync_wal`] is not exactly the
@@ -167,11 +143,7 @@ impl RawDb {
     /// Currently only works if allow_mmap_writes = false in Options.
     #[inline]
     pub fn sync_wal(&self) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_sync_wal(self.get_ptr(), s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_sync_wal(self.get_ptr())) }
     }
 
     /// Load a list of external SST files (1) into the DB
@@ -200,16 +172,13 @@ impl RawDb {
     ) -> Result<()> {
         unsafe {
             let files: Vec<_> = files.into_iter().map(|p| p.path_to_slice()).collect();
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_ingest_external_file_cf(
+            ffi_call!(crocksdb_ingest_external_file_cf(
                 self.get_ptr(),
                 cf.get_ptr(),
                 files.as_ptr(),
                 files.len(),
                 opt.as_ptr(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -223,17 +192,13 @@ impl RawDb {
     ) -> Result<bool> {
         unsafe {
             let files: Vec<_> = files.into_iter().map(|p| p.path_to_slice()).collect();
-            let mut s = Status::default();
-            let flushed = tirocks_sys::crocksdb_ingest_external_file_optimized(
+            ffi_call!(crocksdb_ingest_external_file_optimized(
                 self.get_ptr(),
                 cf.get_ptr(),
                 files.as_ptr(),
                 files.len(),
                 opt.as_ptr(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)?;
-            Ok(flushed)
+            ))
         }
     }
 
@@ -272,20 +237,18 @@ impl RawDb {
                 file_count_list.push(list.len());
                 opts.push(arg.opt.as_ptr());
             }
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_ingest_external_file_multi_cf(
+            let res = ffi_call!(crocksdb_ingest_external_file_multi_cf(
                 self.get_ptr(),
                 cfs.as_ptr(),
                 file_list.as_ptr(),
                 file_count_list.as_ptr(),
                 opts.as_ptr(),
                 args.len(),
-                s.as_mut_ptr(),
-            );
+            ));
             for (p, len) in file_list.iter().zip(file_count_list) {
                 drop(Vec::from_raw_parts(*p as *mut rocksdb_Slice, len, len));
             }
-            check_status!(s)
+            res
         }
     }
 }

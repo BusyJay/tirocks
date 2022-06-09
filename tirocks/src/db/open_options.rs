@@ -9,7 +9,7 @@ use crate::{
     option::{
         CfOptions, DbOptions, Options, RawCfOptions, RawDbOptions, TitanCfOptions, TitanDbOptions,
     },
-    util::{check_status, PathToSlice},
+    util::{ffi_call, PathToSlice},
     Result, Status,
 };
 
@@ -233,24 +233,21 @@ impl OpenOptions for DefaultCfOnlyBuilder {
         let p = path.path_to_slice();
         self.opt.comparator().map(|c| comparator.push(c.clone()));
         let ptr = if let Some(ttl) = self.ttl {
-            tirocks_sys::crocksdb_open_with_ttl(
+            ffi_call!(crocksdb_open_with_ttl(
                 self.opt.get_ptr(),
                 p,
                 ttl,
                 self.error_if_log_exists.is_some(),
-                s.as_mut_ptr(),
-            )
+            ))
         } else if let Some(error_if_log_exists) = self.error_if_log_exists {
-            tirocks_sys::crocksdb_open_for_read_only(
+            ffi_call!(crocksdb_open_for_read_only(
                 self.opt.get_ptr(),
                 p,
                 error_if_log_exists,
-                s.as_mut_ptr(),
-            )
+            ))
         } else {
-            tirocks_sys::crocksdb_open(self.opt.get_ptr(), p, s.as_mut_ptr())
-        };
-        check_status!(s)?;
+            ffi_call!(crocksdb_open(self.opt.get_ptr(), p))
+        }?;
         Ok((ptr, false))
     }
 }
@@ -272,10 +269,9 @@ impl OpenOptions for MultiCfBuilder {
             opt.comparator().map(|c| comparator.push(c.clone()));
         }
         handles.reserve_exact(self.cfs.len());
-        let mut s = Status::default();
         let p = path.path_to_slice();
         let ptr = if !self.ttl.is_empty() {
-            tirocks_sys::crocksdb_open_column_families_with_ttl(
+            ffi_call!(crocksdb_open_column_families_with_ttl(
                 self.db.get_ptr(),
                 p,
                 self.cfs.len() as i32,
@@ -284,10 +280,9 @@ impl OpenOptions for MultiCfBuilder {
                 self.ttl.as_ptr(),
                 self.error_if_log_exists.is_some(),
                 handles.as_mut_ptr(),
-                s.as_mut_ptr(),
-            )
+            ))
         } else if let Some(error_if_log_file_exist) = self.error_if_log_exists {
-            tirocks_sys::crocksdb_open_for_read_only_column_families(
+            ffi_call!(crocksdb_open_for_read_only_column_families(
                 self.db.get_ptr(),
                 p,
                 self.cfs.len() as i32,
@@ -295,20 +290,17 @@ impl OpenOptions for MultiCfBuilder {
                 opts.as_ptr(),
                 handles.as_mut_ptr(),
                 error_if_log_file_exist,
-                s.as_mut_ptr(),
-            )
+            ))
         } else {
-            tirocks_sys::crocksdb_open_column_families(
+            ffi_call!(crocksdb_open_column_families(
                 self.db.get_ptr(),
                 p,
                 self.cfs.len() as i32,
                 names.as_ptr(),
                 opts.as_ptr(),
                 handles.as_mut_ptr(),
-                s.as_mut_ptr(),
-            )
-        };
-        check_status!(s)?;
+            ))
+        }?;
         handles.set_len(self.cfs.len());
         Ok((ptr, false))
     }
@@ -331,18 +323,15 @@ impl OpenOptions for MultiCfTitanBuilder {
             opts.push(opt.as_ptr());
             opt.comparator().map(|c| comparator.push(c.clone()));
         }
-        let mut s = Status::default();
         let p = path.path_to_slice();
-        let ptr = tirocks_sys::ctitandb_open_column_families(
+        let ptr = ffi_call!(ctitandb_open_column_families(
             p,
             self.db.get_ptr(),
             self.cfs.len() as i32,
             names.as_ptr(),
             opts.as_ptr(),
             handles.as_mut_ptr(),
-            s.as_mut_ptr(),
-        );
-        check_status!(s)?;
+        ))?;
         handles.set_len(self.cfs.len());
         Ok((ptr, true))
     }

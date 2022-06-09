@@ -7,7 +7,7 @@ use tirocks_sys::{rocksdb_Slice, s};
 
 use crate::{
     option::RawDbOptions,
-    util::{check_status, PathToSlice},
+    util::{ffi_call, PathToSlice},
     Result, Status,
 };
 
@@ -58,13 +58,10 @@ impl SysInfoLogger {
     /// If there is already an logger set to option, the logger is used directly.
     pub fn from_options(opt: &RawDbOptions, dir: impl AsRef<Path>) -> Result<SysInfoLogger> {
         unsafe {
-            let mut s = Status::default();
-            let ptr = tirocks_sys::crocksdb_create_log_from_options(
+            let ptr = ffi_call!(crocksdb_create_log_from_options(
                 dir.path_to_slice(),
                 opt.as_ptr(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)?;
+            ))?;
             Ok(SysInfoLogger { ptr })
         }
     }

@@ -9,7 +9,7 @@ use crate::{
         table::builtin::OwnedTablePropertiesCollection, IntProperty, MapProperty, Property,
         PropertyMap,
     },
-    util::{self, check_status, range_to_rocks},
+    util::{self, ffi_call, range_to_rocks},
     RawDb, Result, Status,
 };
 
@@ -127,14 +127,11 @@ impl RawDb {
         c: &mut OwnedTablePropertiesCollection,
     ) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_get_properties_of_all_tables_cf(
+            ffi_call!(crocksdb_get_properties_of_all_tables_cf(
                 self.get_ptr(),
                 cf.get_ptr(),
                 c.get_ptr(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -146,20 +143,17 @@ impl RawDb {
         c: &mut OwnedTablePropertiesCollection,
     ) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
             let ranges: Vec<_> = ranges
                 .into_iter()
                 .map(|(s, e)| range_to_rocks(s, e))
                 .collect();
-            tirocks_sys::crocksdb_get_properties_of_tables_in_range(
+            ffi_call!(crocksdb_get_properties_of_tables_in_range(
                 self.get_ptr(),
                 cf.get_ptr(),
                 c.get_ptr(),
                 ranges.len() as i32,
                 ranges.as_ptr(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 }

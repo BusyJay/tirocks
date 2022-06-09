@@ -12,7 +12,7 @@ use crate::option::{
     RawOptions, RawTitanOptions, ReadOptions, TitanCfOptions, WriteOptions,
 };
 use crate::properties::table::user::SequenceNumber;
-use crate::util::{self, check_status, range_to_rocks, split_pairs, PathToSlice};
+use crate::util::{self, ffi_call, range_to_rocks, split_pairs, PathToSlice};
 use crate::write_batch::WriteBatch;
 use crate::{comparator::SysComparator, env::Env};
 use crate::{Code, PinSlice, RawIterator, Result, Status};
@@ -90,32 +90,26 @@ impl RawDb {
         key: &[u8],
         val: &[u8],
     ) -> Result<()> {
-        let mut s = Status::default();
         unsafe {
-            tirocks_sys::crocksdb_put_cf(
+            ffi_call!(crocksdb_put_cf(
                 self.get_ptr(),
                 opt.get_ptr(),
                 cf.get_ptr(),
                 r(key),
                 r(val),
-                s.as_mut_ptr(),
-            );
+            ))
         }
-        check_status!(s)
     }
 
     pub fn delete(&self, opt: &WriteOptions, cf: &RawColumnFamilyHandle, key: &[u8]) -> Result<()> {
-        let mut s = Status::default();
         unsafe {
-            tirocks_sys::crocksdb_delete_cf(
+            ffi_call!(crocksdb_delete_cf(
                 self.get_ptr(),
                 opt.get_ptr(),
                 cf.get_ptr(),
                 r(key),
-                s.as_mut_ptr(),
-            );
+            ))
         }
-        check_status!(s)
     }
 
     pub fn single_delete(
@@ -124,17 +118,14 @@ impl RawDb {
         cf: &RawColumnFamilyHandle,
         key: &[u8],
     ) -> Result<()> {
-        let mut s = Status::default();
         unsafe {
-            tirocks_sys::crocksdb_single_delete_cf(
+            ffi_call!(crocksdb_single_delete_cf(
                 self.get_ptr(),
                 opt.get_ptr(),
                 cf.get_ptr(),
                 r(key),
-                s.as_mut_ptr(),
-            );
+            ))
         }
-        check_status!(s)
     }
 
     pub fn delete_range(
@@ -144,18 +135,15 @@ impl RawDb {
         begin_key: &[u8],
         end_key: &[u8],
     ) -> Result<()> {
-        let mut s = Status::default();
         unsafe {
-            tirocks_sys::crocksdb_delete_range_cf(
+            ffi_call!(crocksdb_delete_range_cf(
                 self.get_ptr(),
                 opt.get_ptr(),
                 cf.get_ptr(),
                 r(begin_key),
                 r(end_key),
-                s.as_mut_ptr(),
-            );
+            ))
         }
-        check_status!(s)
     }
 
     /// Apply the specified updates to the database.
@@ -165,16 +153,13 @@ impl RawDb {
     /// Note: consider setting options.sync = true.
     #[inline]
     pub fn write(&self, opt: &WriteOptions, updates: &mut WriteBatch) -> Result<()> {
-        let mut s = Status::default();
         unsafe {
-            tirocks_sys::crocksdb_write(
+            ffi_call!(crocksdb_write(
                 self.get_ptr(),
                 opt.get_ptr(),
                 updates.as_mut_ptr(),
-                s.as_mut_ptr(),
-            );
+            ))
         }
-        check_status!(s)
     }
 
     pub fn get(
@@ -183,27 +168,28 @@ impl RawDb {
         cf: &RawColumnFamilyHandle,
         key: &[u8],
     ) -> Result<Option<Vec<u8>>> {
-        let mut s = Status::default();
-        let mut res = None;
-        unsafe {
-            let mut f = |r: &[u8]| res = Some(r.to_vec());
+        let mut val = None;
+        let res = unsafe {
+            let mut f = |r: &[u8]| val = Some(r.to_vec());
             let (ctx, fp) = util::wrap_string_receiver(&mut f);
-            tirocks_sys::crocksdb_get_cf(
+            ffi_call!(crocksdb_get_cf(
                 self.get_ptr(),
                 opt.get_ptr() as _,
                 cf.get_ptr(),
                 r(key),
                 ctx,
                 Some(fp),
-                s.as_mut_ptr(),
-            )
+            ))
         };
-        if s.ok() {
-            Ok(res)
-        } else if s.code() == Code::kNotFound {
-            Ok(None)
-        } else {
-            Err(s)
+        match res {
+            Ok(()) => Ok(val),
+            Err(s) => {
+                if s.code() == Code::kNotFound {
+                    Ok(None)
+                } else {
+                    Err(s)
+                }
+            }
         }
     }
 
@@ -214,23 +200,24 @@ impl RawDb {
         key: &[u8],
         value: &mut PinSlice,
     ) -> Result<bool> {
-        let mut s = Status::default();
-        unsafe {
-            tirocks_sys::crocksdb_get_pinned_cf(
+        let res = unsafe {
+            ffi_call!(crocksdb_get_pinned_cf(
                 self.get_ptr(),
                 opt.get_ptr() as _,
                 cf.get_ptr(),
                 r(key),
                 value.get_ptr(),
-                s.as_mut_ptr(),
-            )
+            ))
         };
-        if s.ok() {
-            Ok(true)
-        } else if s.code() == Code::kNotFound {
-            Ok(false)
-        } else {
-            Err(s)
+        match res {
+            Ok(()) => Ok(true),
+            Err(s) => {
+                if s.code() == Code::kNotFound {
+                    Ok(false)
+                } else {
+                    Err(s)
+                }
+            }
         }
     }
 
@@ -249,31 +236,25 @@ impl RawDb {
     ) -> Result<()> {
         unsafe {
             let (key, val) = split_pairs(options);
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_set_options_cf(
+            ffi_call!(crocksdb_set_options_cf(
                 self.get_ptr(),
                 cf.get_ptr(),
                 key.as_ptr(),
                 val.as_ptr(),
                 options.len(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
     pub fn set_db_options(&self, options: &[(impl AsRef<[u8]>, impl AsRef<[u8]>)]) -> Result<()> {
         unsafe {
             let (key, val) = split_pairs(options);
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_set_db_options(
+            ffi_call!(crocksdb_set_db_options(
                 self.get_ptr(),
                 key.as_ptr(),
                 val.as_ptr(),
                 options.len(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -312,11 +293,7 @@ impl RawDb {
     /// times have the same effect as calling it once.
     #[inline]
     pub fn disable_file_deletions(&self) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_disable_file_deletions(self.get_ptr(), s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_disable_file_deletions(self.get_ptr())) }
     }
 
     /// Allow compactions to delete obsolete files.
@@ -330,11 +307,7 @@ impl RawDb {
     /// threads call [`enable_file_deletions`]
     #[inline]
     pub fn enable_file_deletions(&self, force: bool) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_enable_file_deletions(self.get_ptr(), force, s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_enable_file_deletions(self.get_ptr(), force)) }
     }
 
     /// Delete the file name from the db directory and update the internal state to
@@ -342,11 +315,7 @@ impl RawDb {
     /// path relative to the db directory. eg. 000001.sst, /archive/000003.log
     #[inline]
     pub fn delete_file(&self, name: impl AsRef<Path>) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_delete_file(self.get_ptr(), name.path_to_slice(), s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_delete_file(self.get_ptr(), name.path_to_slice())) }
     }
 
     /// Obtains the meta data of the specified column family of the DB.
@@ -380,17 +349,14 @@ impl RawDb {
                 .into_iter()
                 .map(|(s, e)| range_to_rocks(s, e))
                 .collect();
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_approximate_sizes_cf(
+            ffi_call!(crocksdb_approximate_sizes_cf(
                 self.get_ptr(),
                 opt.as_ptr(),
                 cf.get_ptr(),
                 raw_ranges.as_ptr(),
                 raw_ranges.len() as i32,
                 sizes.as_mut_ptr(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)?;
+            ))?;
             sizes.set_len(raw_ranges.len());
             Ok(sizes)
         }
@@ -432,16 +398,13 @@ impl RawDb {
                 cf_names.push(r(name.as_ref().as_bytes()));
                 cf_opts.push(opt.as_ref().as_ptr());
             }
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_destroy_db(
+            ffi_call!(crocksdb_destroy_db(
                 path.path_to_slice(),
                 options.as_ptr(),
                 cf_names.as_ptr(),
                 cf_opts.as_ptr(),
                 cfs.len(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -458,16 +421,13 @@ impl RawDb {
                 cf_names.push(r(name.as_ref().as_bytes()));
                 cf_opts.push(opt.as_ref().as_ptr());
             }
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_repair_db(
+            ffi_call!(crocksdb_repair_db(
                 path.path_to_slice(),
                 options.as_ptr(),
                 cf_names.as_ptr(),
                 cf_opts.as_ptr(),
                 cfs.len(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 }
@@ -521,17 +481,14 @@ impl Db {
     }
 
     pub fn close(mut self) -> Result<()> {
-        let mut s = Status::default();
         unsafe {
             self.clear_handles()?;
-            tirocks_sys::crocksdb_close(self.ptr, s.as_mut_ptr());
+            ffi_call!(crocksdb_close(self.ptr))
         }
-        check_status!(s)
     }
 
     pub fn list_column_families(db: DbOptions, path: impl AsRef<Path>) -> Result<Vec<String>> {
         let mut convert_s = Status::default();
-        let mut s = Status::default();
         let mut names = Vec::new();
         unsafe {
             let mut handle = |name: &[u8]| match str::from_utf8(name) {
@@ -541,17 +498,16 @@ impl Db {
                 }
             };
             let (ctx, fp) = util::wrap_string_receiver(&mut handle);
-            tirocks_sys::crocksdb_list_column_families(
+            ffi_call!(crocksdb_list_column_families(
                 db.get_ptr(),
                 path.as_ref().path_to_slice(),
                 ctx,
                 Some(fp),
-                s.as_mut_ptr(),
-            )
+            ))?;
         }
-
-        check_status!(s)?;
-        check_status!(convert_s)?;
+        if !convert_s.ok() {
+            return Err(convert_s);
+        }
         Ok(names)
     }
 
@@ -559,16 +515,13 @@ impl Db {
         if self.is_titan {
             return self.create_cf_titan(name, opt.into());
         }
-        let mut s = Status::default();
         let ptr = unsafe {
-            tirocks_sys::crocksdb_create_column_family(
+            ffi_call!(crocksdb_create_column_family(
                 self.ptr,
                 opt.as_ptr(),
                 r(name.as_ref().as_bytes()),
-                s.as_mut_ptr(),
-            )
-        };
-        check_status!(s)?;
+            ))
+        }?;
         opt.comparator().map(|c| self.comparator.push(c.clone()));
         self.handles
             .push(unsafe { RefCountedColumnFamilyHandle::from_ptr(ptr, true) });
@@ -583,16 +536,13 @@ impl Db {
         if !self.is_titan {
             return self.create_cf(name, opt.into());
         }
-        let mut s = Status::default();
         let ptr = unsafe {
-            tirocks_sys::ctitandb_create_column_family(
+            ffi_call!(ctitandb_create_column_family(
                 self.ptr,
                 opt.as_mut_ptr(),
                 r(name.as_ref().as_bytes()),
-                s.as_mut_ptr(),
-            )
-        };
-        check_status!(s)?;
+            ))
+        }?;
         opt.comparator().map(|c| self.comparator.push(c.clone()));
         self.handles
             .push(unsafe { RefCountedColumnFamilyHandle::from_ptr(ptr, true) });
@@ -717,7 +667,11 @@ impl Db {
                 include_end,
                 s.as_mut_ptr(),
             );
-            check_status!(s)
+            if s.ok() {
+                Ok(())
+            } else {
+                Err(s)
+            }
         }
     }
 
@@ -732,16 +686,13 @@ impl Db {
         }
         unsafe {
             let (_rocks_ranges, range_ptrs) = util::range_to_range_ptr(ranges);
-            let mut s = Status::default();
-            tirocks_sys::ctitandb_delete_blob_files_in_ranges_cf(
+            ffi_call!(ctitandb_delete_blob_files_in_ranges_cf(
                 self.get_ptr(),
                 cf.get_ptr(),
                 range_ptrs.as_ptr(),
                 range_ptrs.len(),
                 include_end,
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 }

@@ -10,7 +10,7 @@ use tirocks_sys::{r, rocksdb_Iterator, s};
 
 use crate::{
     db::RawColumnFamilyHandle, option::ReadOptions, properties::table::user::SequenceNumber,
-    util::check_status, Db, RawDb, Result, Status,
+    util::ffi_call, Db, RawDb, Result, Status,
 };
 
 pub unsafe trait Iterable {
@@ -152,11 +152,7 @@ impl<'a> RawIterator<'a> {
     /// satisfied without doing some IO, then this returns Status::Incomplete().
     #[inline]
     pub fn check(&self) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_iter_get_error(self.ptr, s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_iter_get_error(self.ptr)) }
     }
 
     /// If supported, renew the iterator to represent the latest state. The

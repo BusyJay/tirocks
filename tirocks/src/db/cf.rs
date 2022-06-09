@@ -7,7 +7,7 @@ use std::{
     sync::atomic::{self, AtomicUsize, Ordering},
 };
 
-use crate::{util::check_status, RawDb, Result, Status};
+use crate::{util::ffi_call, RawDb, Result, Status};
 use tirocks_sys::{r, rocksdb_ColumnFamilyHandle, rocksdb_DB, s};
 
 use super::db::DbRef;
@@ -67,19 +67,18 @@ impl RefCountedColumnFamilyHandle {
         }
         // TODO: thread sanitizer doesn't support fence.
         atomic::fence(Ordering::Acquire);
-        let mut s = Status::default();
-        if self.inner.as_ref().managed {
-            tirocks_sys::crocksdb_column_family_handle_destroy(db, self.get_ptr(), s.as_mut_ptr());
-        }
+        let res = if self.inner.as_ref().managed {
+            ffi_call!(crocksdb_column_family_handle_destroy(db, self.get_ptr()))
+        } else {
+            Ok(())
+        };
         drop(Box::from(self.inner.as_ptr()));
-        check_status!(s)?;
+        res?;
         Ok(true)
     }
 
     pub(crate) unsafe fn destroy(&mut self, db: *mut rocksdb_DB) -> Result<()> {
-        let mut s = Status::default();
-        tirocks_sys::crocksdb_drop_column_family(db, self.get_ptr(), s.as_mut_ptr());
-        check_status!(s)
+        ffi_call!(crocksdb_drop_column_family(db, self.get_ptr()))
     }
 
     pub(crate) fn get_ptr(&self) -> *mut rocksdb_ColumnFamilyHandle {

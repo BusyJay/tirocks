@@ -6,7 +6,7 @@ use tirocks_sys::{r, rocksdb_WriteBatch, rocksdb_WriteBatch_Iterator, s};
 
 use crate::{
     db::RawColumnFamilyHandle,
-    util::{self, check_status},
+    util::{self, ffi_call},
     Result, Status,
 };
 
@@ -72,26 +72,19 @@ impl WriteBatch {
     #[inline]
     pub fn put(&mut self, cf: &RawColumnFamilyHandle, key: &[u8], value: &[u8]) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_writebatch_put_cf(
+            ffi_call!(crocksdb_writebatch_put_cf(
                 self.ptr,
                 cf.get_ptr(),
                 r(key),
                 r(value),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
     /// Same as [`put`] but put to default cf and is slightly more efficient.
     #[inline]
     pub fn put_default(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_writebatch_put(self.ptr, r(key), r(value), s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_writebatch_put(self.ptr, r(key), r(value))) }
     }
 
     /// Variant of Put() that gathers output like writev(2).  The key and value
@@ -105,19 +98,16 @@ impl WriteBatch {
         values: &[&[u8]],
     ) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
             let keys = util::array_to_rocks_slice(keys);
             let values = util::array_to_rocks_slice(values);
-            tirocks_sys::crocksdb_writebatch_putv_cf(
+            ffi_call!(crocksdb_writebatch_putv_cf(
                 self.ptr,
                 cf.get_ptr(),
                 keys.len() as i32,
                 keys.as_ptr(),
                 values.len() as i32,
                 values.as_ptr(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -125,18 +115,15 @@ impl WriteBatch {
     #[inline]
     pub fn put_default_vectored(&mut self, keys: &[&[u8]], values: &[&[u8]]) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
             let keys = util::array_to_rocks_slice(keys);
             let values = util::array_to_rocks_slice(values);
-            tirocks_sys::crocksdb_writebatch_putv(
+            ffi_call!(crocksdb_writebatch_putv(
                 self.ptr,
                 keys.len() as i32,
                 keys.as_ptr(),
                 values.len() as i32,
                 values.as_ptr(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -144,55 +131,42 @@ impl WriteBatch {
     #[inline]
     pub fn delete(&mut self, cf: &RawColumnFamilyHandle, key: &[u8]) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_writebatch_delete_cf(
+            ffi_call!(crocksdb_writebatch_delete_cf(
                 self.ptr,
                 cf.get_ptr(),
                 r(key),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
     /// Same as [`delete`] but delete to default cf and is slightly more efficient.
     #[inline]
     pub fn delete_default(&mut self, key: &[u8]) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_writebatch_delete(self.ptr, r(key), s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_writebatch_delete(self.ptr, r(key))) }
     }
 
     #[inline]
     pub fn delete_vectored(&mut self, cf: &RawColumnFamilyHandle, keys: &[&[u8]]) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
             let keys = util::array_to_rocks_slice(keys);
-            tirocks_sys::crocksdb_writebatch_deletev_cf(
+            ffi_call!(crocksdb_writebatch_deletev_cf(
                 self.ptr,
                 cf.get_ptr(),
                 keys.len() as i32,
                 keys.as_ptr(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
     #[inline]
     pub fn delete_default_vectored(&mut self, keys: &[&[u8]]) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
             let keys = util::array_to_rocks_slice(keys);
-            tirocks_sys::crocksdb_writebatch_deletev(
+            ffi_call!(crocksdb_writebatch_deletev(
                 self.ptr,
                 keys.len() as i32,
                 keys.as_ptr(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -201,24 +175,18 @@ impl WriteBatch {
     pub fn single_delete(&mut self, cf: &RawColumnFamilyHandle, key: &[u8]) -> Result<()> {
         unsafe {
             let mut s = Status::default();
-            tirocks_sys::crocksdb_writebatch_single_delete_cf(
+            ffi_call!(crocksdb_writebatch_single_delete_cf(
                 self.ptr,
                 cf.get_ptr(),
                 r(key),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
     /// Same as [`single_delete`] but delete to default cf and is slightly more efficient.
     #[inline]
     pub fn single_delete_default(&mut self, key: &[u8]) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_writebatch_single_delete(self.ptr, r(key), s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_writebatch_single_delete(self.ptr, r(key))) }
     }
 
     #[inline]
@@ -228,31 +196,25 @@ impl WriteBatch {
         keys: &[&[u8]],
     ) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
             let keys = util::array_to_rocks_slice(keys);
-            tirocks_sys::crocksdb_writebatch_single_deletev_cf(
+            ffi_call!(crocksdb_writebatch_single_deletev_cf(
                 self.ptr,
                 cf.get_ptr(),
                 keys.len() as i32,
                 keys.as_ptr(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
     #[inline]
     pub fn delete_single_default_vectored(&mut self, keys: &[&[u8]]) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
             let keys = util::array_to_rocks_slice(keys);
-            tirocks_sys::crocksdb_writebatch_single_deletev(
+            ffi_call!(crocksdb_writebatch_single_deletev(
                 self.ptr,
                 keys.len() as i32,
                 keys.as_ptr(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -265,15 +227,12 @@ impl WriteBatch {
         end_key: &[u8],
     ) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_writebatch_delete_range_cf(
+            ffi_call!(crocksdb_writebatch_delete_range_cf(
                 self.ptr,
                 cf.get_ptr(),
                 r(begin_key),
                 r(end_key),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -281,14 +240,11 @@ impl WriteBatch {
     #[inline]
     pub fn delete_range_default(&mut self, begin_key: &[u8], end_key: &[u8]) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_writebatch_delete_range(
+            ffi_call!(crocksdb_writebatch_delete_range(
                 self.ptr,
                 r(begin_key),
                 r(end_key),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -300,19 +256,16 @@ impl WriteBatch {
         end_keys: &[&[u8]],
     ) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
             let begin_keys = util::array_to_rocks_slice(begin_keys);
             let end_keys = util::array_to_rocks_slice(end_keys);
-            tirocks_sys::crocksdb_writebatch_delete_rangev_cf(
+            ffi_call!(crocksdb_writebatch_delete_rangev_cf(
                 self.ptr,
                 cf.get_ptr(),
                 begin_keys.len() as i32,
                 begin_keys.as_ptr(),
                 end_keys.len() as i32,
                 end_keys.as_ptr(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -323,18 +276,15 @@ impl WriteBatch {
         end_keys: &[&[u8]],
     ) -> Result<()> {
         unsafe {
-            let mut s = Status::default();
             let begin_keys = util::array_to_rocks_slice(begin_keys);
             let end_keys = util::array_to_rocks_slice(end_keys);
-            tirocks_sys::crocksdb_writebatch_delete_rangev(
+            ffi_call!(crocksdb_writebatch_delete_rangev(
                 self.ptr,
                 begin_keys.len() as i32,
                 begin_keys.as_ptr(),
                 end_keys.len() as i32,
                 end_keys.as_ptr(),
-                s.as_mut_ptr(),
-            );
-            check_status!(s)
+            ))
         }
     }
 
@@ -350,11 +300,7 @@ impl WriteBatch {
     /// replication.
     #[inline]
     pub fn put_log_data(&mut self, blob: &[u8]) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_writebatch_put_log_data(self.ptr, r(blob), s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_writebatch_put_log_data(self.ptr, r(blob))) }
     }
 
     /// Clear all updates buffered in this batch.
@@ -381,11 +327,7 @@ impl WriteBatch {
     /// Otherwise returns Status::OK().
     #[inline]
     pub fn rollback_to_save_point(&mut self) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_writebatch_rollback_to_save_point(self.ptr, s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_writebatch_rollback_to_save_point(self.ptr)) }
     }
 
     /// Pop the most recent save point.
@@ -394,11 +336,7 @@ impl WriteBatch {
     /// Otherwise returns Status::OK().
     #[inline]
     pub fn pop_save_point(&mut self) -> Result<()> {
-        unsafe {
-            let mut s = Status::default();
-            tirocks_sys::crocksdb_writebatch_pop_save_point(self.ptr, s.as_mut_ptr());
-            check_status!(s)
-        }
+        unsafe { ffi_call!(crocksdb_writebatch_pop_save_point(self.ptr)) }
     }
 
     /// Retrieve the serialized version of this batch.

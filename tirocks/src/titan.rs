@@ -8,7 +8,7 @@ use std::{
 use tirocks_sys::{ctitandb_blob_index_t, r};
 
 use crate::{
-    util::{self, check_status},
+    util::{self, ffi_call},
     Result, Status,
 };
 
@@ -38,14 +38,11 @@ impl TitanBlobIndex {
 
     pub fn decode(value: &[u8]) -> Result<Self> {
         let mut blob = MaybeUninit::uninit();
-        let mut s = Status::default();
         unsafe {
-            tirocks_sys::ctitandb_decode_blob_index(
+            ffi_call!(ctitandb_decode_blob_index(
                 r(value),
                 blob.as_mut_ptr() as *mut ctitandb_blob_index_t,
-                s.as_mut_ptr(),
-            );
-            check_status!(s)?;
+            ))?;
             Ok(blob.assume_init())
         }
     }
