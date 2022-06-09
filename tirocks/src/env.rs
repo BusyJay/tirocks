@@ -9,7 +9,7 @@ use std::path::Path;
 use self::inspected::SysFileSystemInspector;
 #[cfg(feature = "encryption")]
 use crate::encryption::{KeyManager, SysKeyManager};
-use crate::util::{PathToSlice, ffi_call};
+use crate::util::{ffi_call, PathToSlice};
 use crate::{Code, Result, Status};
 use libc::c_char;
 use tirocks_sys::rocksdb_EnvOptions;
