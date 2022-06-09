@@ -7,6 +7,7 @@ use std::str::Utf8Error;
 use tirocks_sys::rocksdb_Status;
 
 /// A safe wrapper around rocksdb::Status.
+#[derive(PartialEq)]
 #[repr(transparent)]
 pub struct Status(rocksdb_Status);
 
@@ -180,44 +181,6 @@ impl Debug for Status {
 }
 
 pub type Result<T> = std::result::Result<T, Status>;
-
-/// A helper micros for handling FFI calls that need error handling.
-///
-/// It's simply translate the call
-/// ```ignored
-/// ffi_call!(func(...))
-/// ```
-/// to
-/// ```ignored
-/// let res = tirocks_sys::func(..., &mut status);
-/// if status.ok() {
-///     Ok(res)
-/// } else {
-///     Err(status)
-/// }
-/// ```
-macro_rules! ffi_call {
-    ($func:ident($($arg:expr),+)) => ({
-        let mut status = $crate::Status::default();
-        let res = tirocks_sys::$func($($arg),+, status.as_mut_ptr());
-        if status.ok() {
-            Ok(res)
-        } else {
-            Err(status)
-        }
-    });
-    ($func:ident()) => ({
-        let mut status = $crate::Status::default();
-        let res = tirocks_sys::$func(status.as_mut_ptr());
-        if status.ok() {
-            Ok(res)
-        } else {
-            Err(status)
-        }
-    })
-}
-
-pub(crate) use ffi_call;
 
 #[cfg(test)]
 mod tests {

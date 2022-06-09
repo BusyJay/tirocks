@@ -97,11 +97,11 @@ impl Drop for SysFileSystemInspector {
 impl FileSystemInspector for SysFileSystemInspector {
     #[inline]
     fn read(&self, len: usize) -> Result<usize> {
-        unsafe { crate::error::ffi_call!(crocksdb_file_system_inspector_read(self.ptr, len)) }
+        unsafe { crate::util::ffi_call!(crocksdb_file_system_inspector_read(self.ptr, len)) }
     }
 
     #[inline]
     fn write(&self, len: usize) -> Result<usize> {
-        unsafe { crate::error::ffi_call!(crocksdb_file_system_inspector_write(self.ptr, len)) }
+        unsafe { crate::util::ffi_call!(crocksdb_file_system_inspector_write(self.ptr, len)) }
     }
 }

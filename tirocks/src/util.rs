@@ -120,18 +120,49 @@ macro_rules! simple_access {
 
 pub(crate) use simple_access;
 
-/// A helper macro to convert status to Result.
-macro_rules! check_status {
-    ($status:ident) => {
-        if $status.ok() {
-            Ok(())
+/// A helper micros for handling FFI calls that need error handling.
+///
+/// It's simply translate the call
+/// ```ignored
+/// ffi_call!(func(...))
+/// ```
+/// to
+/// ```ignored
+/// let res = tirocks_sys::func(..., &mut status);
+/// if status.ok() {
+///     Ok(res)
+/// } else {
+///     Err(status)
+/// }
+/// ```
+macro_rules! ffi_call {
+    ($func:ident($($arg:expr,)+)) => ({
+        let mut status = $crate::Status::default();
+        let res = tirocks_sys::$func($($arg),+, status.as_mut_ptr());
+        if status.ok() {
+            Ok(res)
         } else {
-            Err($status)
+            Err(status)
         }
+    });
+    ($func:ident($arg:expr, $($extra:expr),*)) => {
+        $crate::util::ffi_call!($func($arg, $($extra,)*))
     };
+    ($func:ident($arg:expr)) => {
+        $crate::util::ffi_call!($func($arg,))
+    };
+    ($func:ident()) => ({
+        let mut status = $crate::Status::default();
+        let res = tirocks_sys::$func(status.as_mut_ptr());
+        if status.ok() {
+            Ok(res)
+        } else {
+            Err(status)
+        }
+    })
 }
 
-pub(crate) use check_status;
+pub(crate) use ffi_call;
 
 // `FnOnce` is a more accurate type, but it will require Unpin.
 unsafe extern "C" fn bytes_receiver<T: FnMut(&[u8])>(ptr: *mut c_void, buf: rocksdb_Slice) {

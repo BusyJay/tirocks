@@ -2,7 +2,7 @@
 
 use std::io::{self, Read};
 
-use crate::{error::ffi_call, Result};
+use crate::{Result, util::ffi_call};
 use tirocks_sys::crocksdb_sequential_file_t;
 
 /// A file abstraction for reading sequentially through a file.
