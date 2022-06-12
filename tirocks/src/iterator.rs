@@ -9,12 +9,12 @@ use std::{
 use tirocks_sys::{r, rocksdb_Iterator, s};
 
 use crate::{
-    db::RawColumnFamilyHandle, option::ReadOptions, properties::table::user::SequenceNumber,
+    db::RawCfHandle, option::ReadOptions, properties::table::user::SequenceNumber,
     util::ffi_call, Db, RawDb, Result, Status,
 };
 
 pub unsafe trait Iterable {
-    fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawColumnFamilyHandle) -> *mut rocksdb_Iterator;
+    fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawCfHandle) -> *mut rocksdb_Iterator;
 }
 
 #[repr(transparent)]
@@ -43,7 +43,7 @@ impl<'a> RawIterator<'a> {
     pub fn new<I: Iterable>(
         i: &'a I,
         opt: &'a mut ReadOptions,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
     ) -> Self {
         unsafe { Self::from_ptr(i.raw_iter(opt, cf)) }
     }
@@ -192,7 +192,7 @@ pub struct Iterator<'a, I: Iterable + 'a> {
 
 impl<'a, I: Iterable + 'a> Iterator<'a, I> {
     #[inline]
-    pub fn new(i: I, mut read: ReadOptions, cf: &RawColumnFamilyHandle) -> Self {
+    pub fn new(i: I, mut read: ReadOptions, cf: &RawCfHandle) -> Self {
         unsafe {
             let ptr = i.raw_iter(&mut read, cf);
             Iterator {
@@ -230,7 +230,7 @@ impl<'a, I: Iterable + 'a> Drop for Iterator<'a, I> {
 }
 
 unsafe impl Iterable for RawDb {
-    fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawColumnFamilyHandle) -> *mut rocksdb_Iterator {
+    fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawCfHandle) -> *mut rocksdb_Iterator {
         unsafe {
             tirocks_sys::crocksdb_create_iterator_cf(
                 self.get_ptr(),
@@ -243,7 +243,7 @@ unsafe impl Iterable for RawDb {
 
 unsafe impl Iterable for Db {
     #[inline]
-    fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawColumnFamilyHandle) -> *mut rocksdb_Iterator {
+    fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawCfHandle) -> *mut rocksdb_Iterator {
         unsafe {
             if !self.is_titan() {
                 tirocks_sys::crocksdb_create_iterator_cf(
@@ -264,7 +264,7 @@ unsafe impl Iterable for Db {
 
 unsafe impl<D: Deref<Target = Db>> Iterable for D {
     #[inline]
-    fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawColumnFamilyHandle) -> *mut rocksdb_Iterator {
+    fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawCfHandle) -> *mut rocksdb_Iterator {
         (**self).raw_iter(opt, cf)
     }
 }

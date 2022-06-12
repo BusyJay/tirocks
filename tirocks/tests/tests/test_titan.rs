@@ -5,7 +5,7 @@ use std::{collections::HashMap, ffi::CStr, ops, time::Duration};
 use rand::Rng;
 use tirocks::{
     cache::LruCacheBuilder,
-    db::{MultiCfTitanBuilder, RawColumnFamilyHandle, DEFAULT_CF_NAME},
+    db::{MultiCfTitanBuilder, RawCfHandle, DEFAULT_CF_NAME},
     option::{
         BottommostLevelCompaction, CompactRangeOptions, CompressionType, FlushOptions, ReadOptions,
         TitanCfOptions, WriteOptions,
@@ -242,7 +242,7 @@ fn test_titan_blob_index() {
 }
 
 // Generates a file with `range` and put it to the bottommost level.
-fn generate_file_bottom_level(db: &Db, handle: &RawColumnFamilyHandle, range: ops::Range<u32>) {
+fn generate_file_bottom_level(db: &Db, handle: &RawCfHandle, range: ops::Range<u32>) {
     let write_opt = WriteOptions::default();
     for i in range {
         let k = format!("key{}", i);

@@ -13,7 +13,7 @@ use crate::{
     RawDb, Result, Status,
 };
 
-use super::cf::RawColumnFamilyHandle;
+use super::cf::RawCfHandle;
 
 impl RawDb {
     /// DB implementations can export properties about their state via this method. If "prop"
@@ -22,7 +22,7 @@ impl RawDb {
     #[inline]
     pub fn property(
         &self,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         prop: &impl Property,
     ) -> std::result::Result<Option<String>, FromUtf8Error> {
         let key = prop.key();
@@ -47,7 +47,7 @@ impl RawDb {
     /// Similar to [`property`], but only works for a subset of properties whose return value
     /// is an integer.
     #[inline]
-    pub fn property_u64(&self, cf: &RawColumnFamilyHandle, prop: &impl IntProperty) -> Option<u64> {
+    pub fn property_u64(&self, cf: &RawCfHandle, prop: &impl IntProperty) -> Option<u64> {
         let key = prop.key();
         unsafe {
             let mut value = 0;
@@ -90,7 +90,7 @@ impl RawDb {
     #[inline]
     pub fn property_map(
         &self,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         prop: &impl MapProperty,
     ) -> Option<PropertyMap> {
         let mut value = PropertyMap::default();
@@ -105,7 +105,7 @@ impl RawDb {
     #[inline]
     pub fn property_map_to(
         &self,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         prop: &impl MapProperty,
         value: &mut PropertyMap,
     ) -> bool {
@@ -123,7 +123,7 @@ impl RawDb {
     #[inline]
     pub fn properties_of_all_tables(
         &self,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         c: &mut OwnedTablePropertiesCollection,
     ) -> Result<()> {
         unsafe {
@@ -138,7 +138,7 @@ impl RawDb {
     #[inline]
     pub fn properties_of_tables_in_range(
         &self,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         ranges: &[(impl AsRef<[u8]>, impl AsRef<[u8]>)],
         c: &mut OwnedTablePropertiesCollection,
     ) -> Result<()> {

@@ -13,7 +13,7 @@ use tirocks_sys::{
 };
 
 use crate::{
-    db::RawColumnFamilyHandle,
+    db::RawCfHandle,
     env::EnvOptions,
     option::{RawOptions, ReadOptions},
     properties::table::{builtin::TableProperties, user::SequenceNumber},
@@ -120,7 +120,7 @@ impl<'a> SstFileWriter<'a> {
     pub fn new(
         env_opt: &'a EnvOptions,
         opt: &'a RawOptions,
-        cf: Option<&'a RawColumnFamilyHandle>,
+        cf: Option<&'a RawCfHandle>,
     ) -> Self {
         let ptr = unsafe {
             tirocks_sys::crocksdb_sstfilewriter_create_cf(

@@ -4,7 +4,7 @@ use std::{ffi::CStr, fs, path::Path};
 
 use crc::crc32::{self, Digest, Hasher32};
 use tirocks::{
-    db::{DefaultCfOnlyBuilder, RawColumnFamilyHandle},
+    db::{DefaultCfOnlyBuilder, RawCfHandle},
     env::EnvOptions,
     option::{
         CompactRangeOptions, FlushOptions, IngestExternalFileOptions, RawOptions, ReadOptions,
@@ -17,7 +17,7 @@ use tirocks::{
 
 use super::tempdir_with_prefix;
 
-fn gen_sst(opt: &RawOptions, cf: Option<&RawColumnFamilyHandle>, path: &Path) {
+fn gen_sst(opt: &RawOptions, cf: Option<&RawCfHandle>, path: &Path) {
     let _ = fs::remove_file(path);
     let env_opt = EnvOptions::default();
     let mut writer = SstFileWriter::new(&env_opt, opt, cf);
@@ -29,7 +29,7 @@ fn gen_sst(opt: &RawOptions, cf: Option<&RawColumnFamilyHandle>, path: &Path) {
     writer.finish(None).unwrap();
 }
 
-pub fn gen_sst_from_db(opt: &RawOptions, cf: &RawColumnFamilyHandle, path: &Path, db: &Db) {
+pub fn gen_sst_from_db(opt: &RawOptions, cf: &RawCfHandle, path: &Path, db: &Db) {
     let _ = fs::remove_file(path);
     let env_opt = EnvOptions::default();
     let mut writer = SstFileWriter::new(&env_opt, opt, Some(cf));
@@ -1019,7 +1019,7 @@ fn test_delete_range_prefix_bloom_case_6() {
     assert_eq!(before, after);
 }
 
-fn check_kv(db: &Db, cf: &RawColumnFamilyHandle, data: &[(&[u8], Option<&[u8]>)]) {
+fn check_kv(db: &Db, cf: &RawCfHandle, data: &[(&[u8], Option<&[u8]>)]) {
     let read_opt = ReadOptions::default();
     for &(k, v) in data {
         assert_eq!(db.get(&read_opt, cf, k), Ok(v.map(|s| s.to_vec())));

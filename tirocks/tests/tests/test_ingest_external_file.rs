@@ -6,7 +6,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use tempfile::TempDir;
-use tirocks::db::{DefaultCfOnlyBuilder, RawColumnFamilyHandle};
+use tirocks::db::{DefaultCfOnlyBuilder, RawCfHandle};
 use tirocks::env::{Env, EnvOptions};
 use tirocks::merge_operator::SysMergeOperator;
 use tirocks::option::{IngestExternalFileOptions, RawOptions, ReadOptions, WriteOptions};
@@ -22,7 +22,7 @@ use super::tempdir_with_prefix;
 
 pub fn gen_sst(
     opt: &RawOptions,
-    cf: Option<&RawColumnFamilyHandle>,
+    cf: Option<&RawCfHandle>,
     path: &Path,
     data: &[(&[u8], &[u8])],
 ) {
@@ -37,7 +37,7 @@ pub fn gen_sst(
     writer.finish(None).unwrap();
 }
 
-fn gen_sst_put(opt: &RawOptions, cf: Option<&RawColumnFamilyHandle>, path: &Path) {
+fn gen_sst_put(opt: &RawOptions, cf: Option<&RawCfHandle>, path: &Path) {
     gen_sst(
         opt,
         cf,
@@ -46,7 +46,7 @@ fn gen_sst_put(opt: &RawOptions, cf: Option<&RawColumnFamilyHandle>, path: &Path
     );
 }
 
-fn gen_sst_merge(opt: &RawOptions, cf: Option<&RawColumnFamilyHandle>, path: &Path) {
+fn gen_sst_merge(opt: &RawOptions, cf: Option<&RawCfHandle>, path: &Path) {
     let _ = fs::remove_file(path);
     let env_opt = EnvOptions::default();
     let mut writer = SstFileWriter::new(&env_opt, opt, cf);
@@ -55,7 +55,7 @@ fn gen_sst_merge(opt: &RawOptions, cf: Option<&RawColumnFamilyHandle>, path: &Pa
     writer.finish(None).unwrap();
 }
 
-fn gen_sst_delete(opt: &RawOptions, cf: Option<&RawColumnFamilyHandle>, path: &Path) {
+fn gen_sst_delete(opt: &RawOptions, cf: Option<&RawCfHandle>, path: &Path) {
     let _ = fs::remove_file(path);
     let env_opt = EnvOptions::default();
     let mut writer = SstFileWriter::new(&env_opt, opt, cf);
@@ -226,7 +226,7 @@ fn test_ingest_external_file_new_cf() {
     assert_eq!(db.get(&read_opt, cf1, b"k3"), Ok(None));
 }
 
-fn check_kv(db: &Db, cf: &RawColumnFamilyHandle, data: &[(&[u8], Option<&[u8]>)]) {
+fn check_kv(db: &Db, cf: &RawCfHandle, data: &[(&[u8], Option<&[u8]>)]) {
     for (k, v) in data {
         assert_eq!(
             db.get(&ReadOptions::default(), cf, k),
@@ -238,7 +238,7 @@ fn check_kv(db: &Db, cf: &RawColumnFamilyHandle, data: &[(&[u8], Option<&[u8]>)]
 fn put_delete_and_generate_sst_cf(
     opt: &RawOptions,
     db: &Db,
-    cf: &RawColumnFamilyHandle,
+    cf: &RawCfHandle,
     path: &Path,
 ) {
     let write_opt = WriteOptions::default();

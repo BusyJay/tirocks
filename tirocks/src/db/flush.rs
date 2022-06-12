@@ -10,10 +10,10 @@ use crate::{
     RawDb, Result, Status,
 };
 
-use super::cf::RawColumnFamilyHandle;
+use super::cf::RawCfHandle;
 
 pub struct IngestExternalFileArg<'a, T: AsRef<Path>> {
-    pub cf: &'a RawColumnFamilyHandle,
+    pub cf: &'a RawCfHandle,
     pub file_list: &'a [T],
     pub opt: &'a IngestExternalFileOptions,
 }
@@ -40,7 +40,7 @@ impl RawDb {
     pub fn compact_range(
         &self,
         opt: &CompactRangeOptions,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         begin: Option<&[u8]>,
         end: Option<&[u8]>,
     ) -> Result<()> {
@@ -64,7 +64,7 @@ impl RawDb {
     pub fn compact_files(
         &self,
         opt: &CompactionOptions,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         input_file_names: &[impl AsRef<Path>],
         output_level: i32,
     ) -> Result<()> {
@@ -100,7 +100,7 @@ impl RawDb {
     /// Flush a single column family, even when atomic flush is enabled. To flush
     /// multiple column families, use [`flush_multi`].
     #[inline]
-    pub fn flush(&self, option: &FlushOptions, cf: &RawColumnFamilyHandle) -> Result<()> {
+    pub fn flush(&self, option: &FlushOptions, cf: &RawCfHandle) -> Result<()> {
         unsafe {
             ffi_call!(crocksdb_flush_cf(
                 self.get_ptr(),
@@ -118,7 +118,7 @@ impl RawDb {
     /// Note that RocksDB 5.15 and earlier may not be able to open later versions with atomic
     /// flush enabled.
     #[inline]
-    pub fn flush_multi(&self, option: &FlushOptions, cfs: &[&RawColumnFamilyHandle]) -> Result<()> {
+    pub fn flush_multi(&self, option: &FlushOptions, cfs: &[&RawCfHandle]) -> Result<()> {
         unsafe {
             let cfs: Vec<_> = cfs.into_iter().map(|c| c.get_ptr()).collect();
             ffi_call!(crocksdb_flush_cfs(
@@ -167,7 +167,7 @@ impl RawDb {
     pub fn ingest_external_file(
         &self,
         opt: &IngestExternalFileOptions,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         files: &[impl AsRef<Path>],
     ) -> Result<()> {
         unsafe {
@@ -187,7 +187,7 @@ impl RawDb {
     pub fn ingest_external_file_optimized(
         &self,
         opt: &IngestExternalFileOptions,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         files: &[impl AsRef<Path>],
     ) -> Result<bool> {
         unsafe {

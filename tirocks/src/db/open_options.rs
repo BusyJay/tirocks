@@ -13,7 +13,7 @@ use crate::{
     Result, Status,
 };
 
-use super::{cf::RefCountedColumnFamilyHandle, db::Db};
+use super::{cf::RefCountedCfHandle, db::Db};
 
 #[derive(Default, Debug)]
 pub struct DefaultCfOnlyBuilder {
@@ -208,12 +208,12 @@ pub trait OpenOptions {
         let handles = if handles.is_empty() {
             vec![unsafe {
                 let ptr = tirocks_sys::crocksdb_get_default_column_family(ptr);
-                RefCountedColumnFamilyHandle::from_ptr(ptr, false)
+                RefCountedCfHandle::from_ptr(ptr, false)
             }]
         } else {
             handles
                 .into_iter()
-                .map(|p| unsafe { RefCountedColumnFamilyHandle::from_ptr(p, true) })
+                .map(|p| unsafe { RefCountedCfHandle::from_ptr(p, true) })
                 .collect()
         };
         Ok(Db::new(ptr, env, comparator, handles, is_titan))

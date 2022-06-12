@@ -16,9 +16,9 @@ pub const DEFAULT_CF_NAME: &str = "default";
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct RawColumnFamilyHandle(rocksdb_ColumnFamilyHandle);
+pub struct RawCfHandle(rocksdb_ColumnFamilyHandle);
 
-impl RawColumnFamilyHandle {
+impl RawCfHandle {
     #[inline]
     pub fn id(&self) -> u32 {
         unsafe { tirocks_sys::crocksdb_column_family_handle_id(self.get_ptr()) }
@@ -50,11 +50,11 @@ struct Inner {
 }
 
 #[derive(Debug)]
-pub struct RefCountedColumnFamilyHandle {
+pub struct RefCountedCfHandle {
     inner: NonNull<Inner>,
 }
 
-impl RefCountedColumnFamilyHandle {
+impl RefCountedCfHandle {
     #[inline]
     pub unsafe fn maybe_drop(&mut self, db: *mut rocksdb_DB) -> Result<bool> {
         let cnt = self
@@ -89,28 +89,28 @@ impl RefCountedColumnFamilyHandle {
     pub(crate) unsafe fn from_ptr(
         ptr: *mut rocksdb_ColumnFamilyHandle,
         managed: bool,
-    ) -> RefCountedColumnFamilyHandle {
+    ) -> RefCountedCfHandle {
         let inner = Box::into_raw(Box::new(Inner {
             ptr,
             managed,
             ref_count: AtomicUsize::new(1),
         }));
-        RefCountedColumnFamilyHandle {
+        RefCountedCfHandle {
             inner: NonNull::new_unchecked(inner),
         }
     }
 }
 
-impl Deref for RefCountedColumnFamilyHandle {
-    type Target = RawColumnFamilyHandle;
+impl Deref for RefCountedCfHandle {
+    type Target = RawCfHandle;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        unsafe { &*(self.inner.as_ref().ptr as *mut RawColumnFamilyHandle) }
+        unsafe { &*(self.inner.as_ref().ptr as *mut RawCfHandle) }
     }
 }
 
-impl Clone for RefCountedColumnFamilyHandle {
+impl Clone for RefCountedCfHandle {
     #[inline]
     fn clone(&self) -> Self {
         unsafe {
@@ -123,13 +123,13 @@ impl Clone for RefCountedColumnFamilyHandle {
     }
 }
 
-pub struct ColumnFamilyHandle<D: DbRef> {
-    handle: RefCountedColumnFamilyHandle,
+pub struct CfHandle<D: DbRef> {
+    handle: RefCountedCfHandle,
     // Make sure handle won't outlive db.
     db: D,
 }
 
-impl<D: DbRef> ColumnFamilyHandle<D> {
+impl<D: DbRef> CfHandle<D> {
     pub fn new(db: D, name: &str) -> Option<Self> {
         unsafe {
             let handle = db.visit(|d| d.cf_raw(name).cloned())?;
@@ -146,8 +146,8 @@ impl<D: DbRef> ColumnFamilyHandle<D> {
     }
 }
 
-impl<D: DbRef> Deref for ColumnFamilyHandle<D> {
-    type Target = RawColumnFamilyHandle;
+impl<D: DbRef> Deref for CfHandle<D> {
+    type Target = RawCfHandle;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -155,7 +155,7 @@ impl<D: DbRef> Deref for ColumnFamilyHandle<D> {
     }
 }
 
-impl<D: DbRef> Drop for ColumnFamilyHandle<D> {
+impl<D: DbRef> Drop for CfHandle<D> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -168,8 +168,8 @@ impl<D: DbRef> Drop for ColumnFamilyHandle<D> {
 }
 
 impl RawDb {
-    pub fn default_cf(&self) -> &RawColumnFamilyHandle {
-        unsafe { &*(self.default_cf_raw() as *mut RawColumnFamilyHandle) }
+    pub fn default_cf(&self) -> &RawCfHandle {
+        unsafe { &*(self.default_cf_raw() as *mut RawCfHandle) }
     }
 
     pub fn default_cf_raw(&self) -> *mut rocksdb_ColumnFamilyHandle {

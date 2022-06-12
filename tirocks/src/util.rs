@@ -164,7 +164,7 @@ macro_rules! ffi_call {
 
 pub(crate) use ffi_call;
 
-use crate::{db::RawColumnFamilyHandle, RawDb};
+use crate::{db::RawCfHandle, RawDb};
 
 pub unsafe fn split_pairs(
     pairs: &[(impl AsRef<[u8]>, impl AsRef<[u8]>)],
@@ -291,7 +291,7 @@ pub unsafe fn range_to_range_ptr(ranges: &[RustRange]) -> (Vec<RocksRange>, Vec<
 #[inline]
 pub fn set_external_sst_file_global_sequence_number(
     db: &RawDb,
-    cf: &RawColumnFamilyHandle,
+    cf: &RawCfHandle,
     file: &Path,
     seq_no: u64,
 ) -> Result<u64> {

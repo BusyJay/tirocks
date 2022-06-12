@@ -17,9 +17,9 @@ use crate::write_batch::WriteBatch;
 use crate::{comparator::SysComparator, env::Env};
 use crate::{Code, PinSlice, RawIterator, Result, Status};
 
-use crate::db::cf::RawColumnFamilyHandle;
+use crate::db::cf::RawCfHandle;
 
-use super::cf::{RefCountedColumnFamilyHandle, DEFAULT_CF_NAME};
+use super::cf::{RefCountedCfHandle, DEFAULT_CF_NAME};
 
 pub trait RawDbRef {
     fn visit<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T;
@@ -86,7 +86,7 @@ impl RawDb {
     pub fn put(
         &self,
         opt: &WriteOptions,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         key: &[u8],
         val: &[u8],
     ) -> Result<()> {
@@ -101,7 +101,7 @@ impl RawDb {
         }
     }
 
-    pub fn delete(&self, opt: &WriteOptions, cf: &RawColumnFamilyHandle, key: &[u8]) -> Result<()> {
+    pub fn delete(&self, opt: &WriteOptions, cf: &RawCfHandle, key: &[u8]) -> Result<()> {
         unsafe {
             ffi_call!(crocksdb_delete_cf(
                 self.get_ptr(),
@@ -115,7 +115,7 @@ impl RawDb {
     pub fn single_delete(
         &self,
         opt: &WriteOptions,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         key: &[u8],
     ) -> Result<()> {
         unsafe {
@@ -131,7 +131,7 @@ impl RawDb {
     pub fn delete_range(
         &self,
         opt: &WriteOptions,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         begin_key: &[u8],
         end_key: &[u8],
     ) -> Result<()> {
@@ -165,7 +165,7 @@ impl RawDb {
     pub fn get(
         &self,
         opt: &ReadOptions,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         key: &[u8],
     ) -> Result<Option<Vec<u8>>> {
         let mut val = None;
@@ -196,7 +196,7 @@ impl RawDb {
     pub fn get_to(
         &self,
         opt: &ReadOptions,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         key: &[u8],
         value: &mut PinSlice,
     ) -> Result<bool> {
@@ -224,14 +224,14 @@ impl RawDb {
     pub fn iter<'a>(
         &'a self,
         read: &'a mut ReadOptions,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
     ) -> RawIterator<'a> {
         RawIterator::new(self, read, cf)
     }
 
     pub fn set_cf_options(
         &self,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         options: &[(impl AsRef<[u8]>, impl AsRef<[u8]>)],
     ) -> Result<()> {
         unsafe {
@@ -263,7 +263,7 @@ impl RawDb {
     /// DB::CreateColumnFamily() will have been "sanitized" and transformed
     /// in an implementation-defined manner.
     #[inline]
-    pub fn cf_options(&self, cf: &RawColumnFamilyHandle) -> RawOptions {
+    pub fn cf_options(&self, cf: &RawCfHandle) -> RawOptions {
         unsafe {
             let ptr = tirocks_sys::crocksdb_get_options_cf(self.get_ptr(), cf.get_ptr());
             RawOptions::from_ptr(ptr)
@@ -322,7 +322,7 @@ impl RawDb {
     ///
     /// Existing data will be cleared first.
     #[inline]
-    pub fn cf_metadata(&self, cf: &RawColumnFamilyHandle, data: &mut CfMetaData) {
+    pub fn cf_metadata(&self, cf: &RawCfHandle, data: &mut CfMetaData) {
         unsafe {
             tirocks_sys::crocksdb_get_column_family_meta_data(
                 self.get_ptr(),
@@ -340,7 +340,7 @@ impl RawDb {
     pub fn approximate_sizes(
         &self,
         opt: &SizeApproximationOptions,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         ranges: &[(impl AsRef<[u8]>, impl AsRef<[u8]>)],
     ) -> Result<Vec<u64>> {
         let mut sizes = Vec::with_capacity(ranges.len());
@@ -366,7 +366,7 @@ impl RawDb {
     /// and size of records in memtables.
     pub fn approximate_mem_table_stats(
         &self,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         start_key: &[u8],
         end_key: &[u8],
     ) -> (u64, u64) {
@@ -440,7 +440,7 @@ pub struct Db {
     ptr: *mut rocksdb_DB,
     _env: Option<Arc<Env>>,
     comparator: Vec<Arc<SysComparator>>,
-    handles: Vec<RefCountedColumnFamilyHandle>,
+    handles: Vec<RefCountedCfHandle>,
     is_titan: bool,
 }
 
@@ -459,7 +459,7 @@ impl Db {
         ptr: *mut rocksdb_DB,
         env: Option<Arc<Env>>,
         comparator: Vec<Arc<SysComparator>>,
-        handles: Vec<RefCountedColumnFamilyHandle>,
+        handles: Vec<RefCountedCfHandle>,
         is_titan: bool,
     ) -> Self {
         Self {
@@ -524,7 +524,7 @@ impl Db {
         }?;
         opt.comparator().map(|c| self.comparator.push(c.clone()));
         self.handles
-            .push(unsafe { RefCountedColumnFamilyHandle::from_ptr(ptr, true) });
+            .push(unsafe { RefCountedCfHandle::from_ptr(ptr, true) });
         Ok(())
     }
 
@@ -545,7 +545,7 @@ impl Db {
         }?;
         opt.comparator().map(|c| self.comparator.push(c.clone()));
         self.handles
-            .push(unsafe { RefCountedColumnFamilyHandle::from_ptr(ptr, true) });
+            .push(unsafe { RefCountedCfHandle::from_ptr(ptr, true) });
         Ok(())
     }
 
@@ -571,15 +571,15 @@ impl Db {
         }
     }
 
-    pub fn cfs(&self) -> impl Iterator<Item = &RawColumnFamilyHandle> {
+    pub fn cfs(&self) -> impl Iterator<Item = &RawCfHandle> {
         self.handles.iter().map(|c| &**c)
     }
 
-    pub fn cf(&self, name: &str) -> Option<&RawColumnFamilyHandle> {
+    pub fn cf(&self, name: &str) -> Option<&RawCfHandle> {
         unsafe { self.cf_raw(name).map(|c| &**c) }
     }
 
-    pub(crate) unsafe fn cf_raw(&self, name: &str) -> Option<&RefCountedColumnFamilyHandle> {
+    pub(crate) unsafe fn cf_raw(&self, name: &str) -> Option<&RefCountedCfHandle> {
         for h in &self.handles {
             if h.name().map_or(false, |n| n == name) {
                 return Some(h);
@@ -590,7 +590,7 @@ impl Db {
 
     // TitanOptions doesn't inherit Options, so we can mix them.
     #[inline]
-    pub fn cf_options_titan(&self, cf: &RawColumnFamilyHandle) -> Option<RawTitanOptions> {
+    pub fn cf_options_titan(&self, cf: &RawCfHandle) -> Option<RawTitanOptions> {
         unsafe {
             if self.is_titan {
                 let ptr = tirocks_sys::ctitandb_get_titan_options_cf(self.get_ptr(), cf.get_ptr());
@@ -622,7 +622,7 @@ impl Db {
     pub fn iter<'a>(
         &'a self,
         read: &'a mut ReadOptions,
-        cf: &'a RawColumnFamilyHandle,
+        cf: &'a RawCfHandle,
     ) -> RawIterator<'a> {
         RawIterator::new(self, read, cf)
     }
@@ -634,7 +634,7 @@ impl Db {
     /// Snapshots before the delete might not see the data in the given range.
     pub fn delete_files_in_range(
         &self,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         begin: Option<&[u8]>,
         end: Option<&[u8]>,
         include_end: bool,
@@ -647,7 +647,7 @@ impl Db {
     /// better performance in that case.
     pub fn delete_files_in_ranges(
         &self,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         ranges: &[(Option<&[u8]>, Option<&[u8]>)],
         include_end: bool,
     ) -> Result<()> {
@@ -677,7 +677,7 @@ impl Db {
 
     pub fn delete_blob_files_in_ranges(
         &self,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         ranges: &[(Option<&[u8]>, Option<&[u8]>)],
         include_end: bool,
     ) -> Result<()> {

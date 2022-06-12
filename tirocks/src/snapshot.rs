@@ -9,7 +9,7 @@ use std::{
 use tirocks_sys::{rocksdb_Iterator, rocksdb_Snapshot};
 
 use crate::{
-    db::{RawColumnFamilyHandle, RawDbRef},
+    db::{RawCfHandle, RawDbRef},
     option::ReadOptions,
     properties::table::user::SequenceNumber,
     Iterable, PinSlice, RawDb, RawIterator, Result,
@@ -99,7 +99,7 @@ impl<'a, D: RawDbRef + 'a> Snapshot<'a, D> {
     pub fn get(
         &self,
         opt: &mut ReadOptions,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         key: &[u8],
     ) -> Result<Option<Vec<u8>>> {
         let opt = WithSnapOpt::new(opt, &self.snap);
@@ -109,7 +109,7 @@ impl<'a, D: RawDbRef + 'a> Snapshot<'a, D> {
     pub fn get_to(
         &self,
         opt: &mut ReadOptions,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         key: &[u8],
         value: &mut PinSlice,
     ) -> Result<bool> {
@@ -120,14 +120,14 @@ impl<'a, D: RawDbRef + 'a> Snapshot<'a, D> {
     pub fn iter<'b>(
         &'b self,
         opt: &'b mut ReadOptions,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
     ) -> RawIterator<'b> {
         RawIterator::new(self, opt, cf)
     }
 }
 
 unsafe impl<'a, D: RawDbRef + 'a> Iterable for Snapshot<'a, D> {
-    fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawColumnFamilyHandle) -> *mut rocksdb_Iterator {
+    fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawCfHandle) -> *mut rocksdb_Iterator {
         let mut opt = WithSnapOpt::new(opt, &self.snap);
         self.db.visit(|d| d.raw_iter(&mut opt, cf))
     }

@@ -1,7 +1,7 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
 use tirocks::{
-    db::{DefaultCfOnlyBuilder, RawColumnFamilyHandle},
+    db::{DefaultCfOnlyBuilder, RawCfHandle},
     metadata::CfMetaData,
     option::{CompactionOptions, CompressionType, FlushOptions, WriteOptions},
     Db, OpenOptions,
@@ -59,7 +59,7 @@ fn test_metadata() {
     }
 }
 
-fn get_files_cf(db: &Db, cf: &RawColumnFamilyHandle, max_level: usize) -> Vec<String> {
+fn get_files_cf(db: &Db, cf: &RawCfHandle, max_level: usize) -> Vec<String> {
     let mut files = Vec::new();
     let mut cf_meta = CfMetaData::default();
     db.cf_metadata(cf, &mut cf_meta);

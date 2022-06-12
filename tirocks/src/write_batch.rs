@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use tirocks_sys::{r, rocksdb_WriteBatch, rocksdb_WriteBatch_Iterator, s};
 
 use crate::{
-    db::RawColumnFamilyHandle,
+    db::RawCfHandle,
     util::{self, ffi_call},
     Result, Status,
 };
@@ -70,7 +70,7 @@ impl WriteBatch {
 
     /// Store the mapping "key->value" in the database.
     #[inline]
-    pub fn put(&mut self, cf: &RawColumnFamilyHandle, key: &[u8], value: &[u8]) -> Result<()> {
+    pub fn put(&mut self, cf: &RawCfHandle, key: &[u8], value: &[u8]) -> Result<()> {
         unsafe {
             ffi_call!(crocksdb_writebatch_put_cf(
                 self.ptr,
@@ -93,7 +93,7 @@ impl WriteBatch {
     #[inline]
     pub fn put_vectored(
         &mut self,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         keys: &[&[u8]],
         values: &[&[u8]],
     ) -> Result<()> {
@@ -129,7 +129,7 @@ impl WriteBatch {
 
     /// If the database contains a mapping for "key", erase it.  Else do nothing.
     #[inline]
-    pub fn delete(&mut self, cf: &RawColumnFamilyHandle, key: &[u8]) -> Result<()> {
+    pub fn delete(&mut self, cf: &RawCfHandle, key: &[u8]) -> Result<()> {
         unsafe {
             ffi_call!(crocksdb_writebatch_delete_cf(
                 self.ptr,
@@ -146,7 +146,7 @@ impl WriteBatch {
     }
 
     #[inline]
-    pub fn delete_vectored(&mut self, cf: &RawColumnFamilyHandle, keys: &[&[u8]]) -> Result<()> {
+    pub fn delete_vectored(&mut self, cf: &RawCfHandle, keys: &[&[u8]]) -> Result<()> {
         unsafe {
             let keys = util::array_to_rocks_slice(keys);
             ffi_call!(crocksdb_writebatch_deletev_cf(
@@ -172,7 +172,7 @@ impl WriteBatch {
 
     // WriteBatch implementation of Db::single_delete().
     #[inline]
-    pub fn single_delete(&mut self, cf: &RawColumnFamilyHandle, key: &[u8]) -> Result<()> {
+    pub fn single_delete(&mut self, cf: &RawCfHandle, key: &[u8]) -> Result<()> {
         unsafe {
             let mut s = Status::default();
             ffi_call!(crocksdb_writebatch_single_delete_cf(
@@ -192,7 +192,7 @@ impl WriteBatch {
     #[inline]
     pub fn single_delete_vectored(
         &mut self,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         keys: &[&[u8]],
     ) -> Result<()> {
         unsafe {
@@ -222,7 +222,7 @@ impl WriteBatch {
     #[inline]
     pub fn delete_range(
         &mut self,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         begin_key: &[u8],
         end_key: &[u8],
     ) -> Result<()> {
@@ -251,7 +251,7 @@ impl WriteBatch {
     #[inline]
     pub fn delete_range_vectored(
         &mut self,
-        cf: &RawColumnFamilyHandle,
+        cf: &RawCfHandle,
         begin_keys: &[&[u8]],
         end_keys: &[&[u8]],
     ) -> Result<()> {
