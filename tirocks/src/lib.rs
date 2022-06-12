@@ -14,20 +14,21 @@ mod error;
 pub mod listener;
 pub mod mem_table;
 pub mod merge_operator;
+pub mod metadata;
 pub mod option;
+pub mod perf_context;
+mod pin_slice;
 pub mod properties;
 pub mod rate_limiter;
 pub mod slice_transform;
 pub mod sst_partitioner;
 pub mod statistics;
-// TODO: remove this when options are all implemented.
-#[allow(unused)]
 pub mod table;
 pub mod table_filter;
 mod util;
 
 pub use error::{Code, Result, Severity, Status, SubCode};
-pub use option::DbOptions;
+pub use pin_slice::PinSlice;
 pub use statistics::Statistics;
 use tirocks_sys::rocksdb_DB;
 pub use util::{CloneFactory, DefaultFactory};
@@ -37,6 +38,10 @@ pub struct RawDb;
 
 impl RawDb {
     pub(crate) unsafe fn from_ptr<'a>(_: *mut rocksdb_DB) -> &'a RawDb {
+        unimplemented!()
+    }
+
+    pub(crate) fn get_ptr(&self) -> *mut rocksdb_DB {
         unimplemented!()
     }
 }
