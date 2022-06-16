@@ -20,14 +20,12 @@ pub mod rate_limiter;
 pub mod slice_transform;
 pub mod sst_partitioner;
 pub mod statistics;
-// TODO: remove this when options are all implemented.
-#[allow(unused)]
 pub mod table;
 pub mod table_filter;
 mod util;
 
 pub use error::{Code, Result, Severity, Status, SubCode};
-pub use option::DbOptions;
+pub use option::{CfOptions, DbOptions, Options};
 pub use statistics::Statistics;
 use tirocks_sys::rocksdb_DB;
 pub use util::{CloneFactory, DefaultFactory};
