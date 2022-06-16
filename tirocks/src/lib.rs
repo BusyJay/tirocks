@@ -28,8 +28,8 @@ pub mod table_filter;
 mod util;
 
 pub use error::{Code, Result, Severity, Status, SubCode};
-pub use pin_slice::PinSlice;
 pub use option::{CfOptions, DbOptions, Options};
+pub use pin_slice::PinSlice;
 pub use statistics::Statistics;
 use tirocks_sys::rocksdb_DB;
 pub use util::{CloneFactory, DefaultFactory};
