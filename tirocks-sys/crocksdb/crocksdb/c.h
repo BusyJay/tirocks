@@ -2211,9 +2211,6 @@ extern C_ROCKSDB_LIBRARY_API void ctitandb_options_set_min_blob_size(
 extern C_ROCKSDB_LIBRARY_API CompressionType
 ctitandb_options_get_blob_file_compression(const TitanCFOptions*);
 
-extern C_ROCKSDB_LIBRARY_API void ctitandb_options_set_gc_merge_rewrite(
-    TitanCFOptions*, bool);
-
 extern C_ROCKSDB_LIBRARY_API void ctitandb_options_set_blob_file_compression(
     TitanCFOptions*, CompressionType type);
 

@@ -5521,12 +5521,6 @@ extern "C" {
     ) -> rocksdb_CompressionType;
 }
 extern "C" {
-    pub fn ctitandb_options_set_gc_merge_rewrite(
-        arg1: *mut rocksdb_titandb_TitanCFOptions,
-        arg2: bool,
-    );
-}
-extern "C" {
     pub fn ctitandb_options_set_blob_file_compression(
         arg1: *mut rocksdb_titandb_TitanCFOptions,
         type_: rocksdb_CompressionType,
