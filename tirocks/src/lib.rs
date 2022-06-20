@@ -33,4 +33,4 @@ pub use error::{Code, Result, Severity, Status, SubCode};
 pub use option::{CfOptions, DbOptions, Options};
 pub use pin_slice::PinSlice;
 pub use statistics::Statistics;
-pub use util::{CloneFactory, DefaultFactory};
+pub use util::{CloneFactory, DefaultFactory, RustRange};

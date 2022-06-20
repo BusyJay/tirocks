@@ -1,7 +1,7 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
 mod cf;
-mod db;
+mod imp;
 
 pub use cf::{CfHandle, RawCfHandle, DEFAULT_CF_NAME};
-pub use db::{Db, RawDb, RawDbRef};
+pub use imp::{Db, RawDb, RawDbRef};

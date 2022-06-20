@@ -10,7 +10,7 @@ use std::{
 use crate::{util::ffi_call, RawDb, Result, Status};
 use tirocks_sys::{r, rocksdb_ColumnFamilyHandle, rocksdb_DB, s};
 
-use super::db::DbRef;
+use super::imp::DbRef;
 
 pub const DEFAULT_CF_NAME: &str = "default";
 

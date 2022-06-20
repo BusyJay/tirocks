@@ -12,7 +12,7 @@ use crate::option::{
     RawOptions, RawTitanOptions, ReadOptions, TitanCfOptions, WriteOptions,
 };
 use crate::properties::table::user::SequenceNumber;
-use crate::util::{self, ffi_call, range_to_rocks, split_pairs, PathToSlice};
+use crate::util::{self, ffi_call, range_to_rocks, split_pairs, PathToSlice, RustRange};
 use crate::{comparator::SysComparator, env::Env};
 use crate::{Code, PinSlice, Result, Status};
 
@@ -351,7 +351,7 @@ impl RawDb {
         let mut sizes = Vec::with_capacity(ranges.len());
         unsafe {
             let raw_ranges: Vec<_> = ranges
-                .into_iter()
+                .iter()
                 .map(|(s, e)| range_to_rocks(s, e))
                 .collect();
             ffi_call!(crocksdb_approximate_sizes_cf(
@@ -540,7 +540,9 @@ impl Db {
                 r(name.as_ref().as_bytes()),
             ))
         }?;
-        opt.comparator().map(|c| self.comparator.push(c.clone()));
+        if let Some(c) = opt.comparator() {
+            self.comparator.push(c.clone());
+        }
         self.handles
             .push(unsafe { RefCountedCfHandle::from_ptr(ptr, true) });
         Ok(())
@@ -565,7 +567,9 @@ impl Db {
                 r(name.as_ref().as_bytes()),
             ))
         }?;
-        opt.comparator().map(|c| self.comparator.push(c.clone()));
+        if let Some(c) = opt.comparator() {
+            self.comparator.push(c.clone());
+        }
         self.handles
             .push(unsafe { RefCountedCfHandle::from_ptr(ptr, true) });
         Ok(())
@@ -663,7 +667,7 @@ impl Db {
     pub fn delete_files_in_ranges(
         &self,
         cf: &RawCfHandle,
-        ranges: &[(Option<&[u8]>, Option<&[u8]>)],
+        ranges: &[RustRange],
         include_end: bool,
     ) -> Result<()> {
         unsafe {
@@ -693,7 +697,7 @@ impl Db {
     pub fn delete_blob_files_in_ranges(
         &self,
         cf: &RawCfHandle,
-        ranges: &[(Option<&[u8]>, Option<&[u8]>)],
+        ranges: &[RustRange],
         include_end: bool,
     ) -> Result<()> {
         if !self.is_titan() {
