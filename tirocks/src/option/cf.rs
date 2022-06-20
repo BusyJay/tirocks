@@ -1193,16 +1193,6 @@ impl RawTitanCfOptions {
         ///
         /// Default: 20
         max_sorted_runs: i32
-
-        /// If set true, Titan will rewrite valid blob index from GC output as merge
-        /// operands back to data store.
-        ///
-        /// With this feature enabled, Titan background GC won't block online write,
-        /// trade-off being read performance slightly reduced compared to normal
-        /// rewrite mode.
-        ///
-        /// Default: false
-        gc_merge_rewrite: bool
     }
 
     pub(crate) unsafe fn from_ptr<'a>(ptr: *const rocksdb_titandb_TitanCFOptions) -> &'a Self {
