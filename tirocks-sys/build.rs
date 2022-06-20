@@ -5,11 +5,6 @@ use cmake::Config;
 use std::path::{Path, PathBuf};
 use std::{env, str};
 
-// On these platforms jemalloc-sys will use a prefixed jemalloc which cannot be linked together
-// with RocksDB.
-// See https://github.com/gnzlbg/jemallocator/blob/bfc89192971e026e6423d9ee5aaa02bc56585c58/jemalloc-sys/build.rs#L45
-const NO_JEMALLOC_TARGETS: &[&str] = &["android", "dragonfly", "musl", "darwin"];
-
 // Generate the bindings to rocksdb C-API.
 // Try to disable the generation of platform-related bindings.
 #[cfg(feature = "update-bindings")]
@@ -238,18 +233,29 @@ fn build_titan(build: &mut Build) {
     build.include(cur_dir.join("titan"));
 }
 
-fn build_rocksdb(build: &mut Build) {
+#[cfg(feature = "jemalloc")]
+fn configure_jemalloc(cfg: &mut Config) {
     let target = env::var("TARGET").expect("TARGET was not set");
+    if tikv_jemalloc_sys::NO_UNPREFIXED_MALLOC_TARGETS
+        .iter()
+        .all(|i| !target.contains(i))
+    {
+        cfg.register_dep("JEMALLOC").define("WITH_JEMALLOC", "ON");
+        println!("cargo:rustc-link-lib=static=jemalloc");
+    }
+}
+
+#[cfg(not(feature = "jemalloc"))]
+fn configure_jemalloc(_: &mut Config) {}
+
+fn build_rocksdb(build: &mut Build) {
     let mut cfg = Config::new("rocksdb");
     cfg.out_dir(format!("{}/rocksdb", env::var("OUT_DIR").unwrap()));
     if cfg!(feature = "encryption") {
         cfg.register_dep("OPENSSL").define("WITH_OPENSSL", "ON");
         println!("cargo:rustc-link-lib=static=crypto");
     }
-    if cfg!(feature = "jemalloc") && NO_JEMALLOC_TARGETS.iter().all(|i| !target.contains(i)) {
-        cfg.register_dep("JEMALLOC").define("WITH_JEMALLOC", "ON");
-        println!("cargo:rustc-link-lib=static=jemalloc");
-    }
+    configure_jemalloc(&mut cfg);
     configure_common_rocksdb_args(&mut cfg, "rocksdb");
     let dst = cfg
         .define("WITH_TESTS", "OFF")

@@ -5156,10 +5156,6 @@ CompressionOptions* ctitandb_options_get_blob_file_compression_options(
   return &opt->blob_file_compression_options;
 }
 
-void ctitandb_options_set_gc_merge_rewrite(TitanCFOptions* opts, bool enable) {
-  opts->gc_merge_rewrite = enable;
-}
-
 void ctitandb_decode_blob_index(Slice value, ctitandb_blob_index_t* index,
                                 Status* s) {
   BlobIndex bi;
