@@ -13,7 +13,9 @@ use crate::{
 pub struct RawCfHandle;
 
 impl RawCfHandle {
-    fn get_ptr(&self) -> *mut tirocks_sys::rocksdb_ColumnFamilyHandle { unimplemented!() }
+    fn get_ptr(&self) -> *mut tirocks_sys::rocksdb_ColumnFamilyHandle {
+        unimplemented!()
+    }
 }
 
 /// WriteBatch holds a collection of updates to apply atomically to a DB.
@@ -196,11 +198,7 @@ impl WriteBatch {
     }
 
     #[inline]
-    pub fn single_delete_vectored(
-        &mut self,
-        cf: &RawCfHandle,
-        keys: &[&[u8]],
-    ) -> Result<()> {
+    pub fn single_delete_vectored(&mut self, cf: &RawCfHandle, keys: &[&[u8]]) -> Result<()> {
         unsafe {
             let keys = util::array_to_rocks_slice(keys);
             ffi_call!(crocksdb_writebatch_single_deletev_cf(
