@@ -350,10 +350,7 @@ impl RawDb {
     ) -> Result<Vec<u64>> {
         let mut sizes = Vec::with_capacity(ranges.len());
         unsafe {
-            let raw_ranges: Vec<_> = ranges
-                .iter()
-                .map(|(s, e)| range_to_rocks(s, e))
-                .collect();
+            let raw_ranges: Vec<_> = ranges.iter().map(|(s, e)| range_to_rocks(s, e)).collect();
             ffi_call!(crocksdb_approximate_sizes_cf(
                 self.get_ptr(),
                 opt.as_ptr(),
