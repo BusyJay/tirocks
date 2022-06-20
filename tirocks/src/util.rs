@@ -164,6 +164,28 @@ macro_rules! ffi_call {
 
 pub(crate) use ffi_call;
 
+use crate::{db::RawCfHandle, RawDb};
+
+pub unsafe fn split_pairs(
+    pairs: &[(impl AsRef<[u8]>, impl AsRef<[u8]>)],
+) -> (Vec<rocksdb_Slice>, Vec<rocksdb_Slice>) {
+    let mut keys = Vec::with_capacity(pairs.len());
+    let mut values = Vec::with_capacity(pairs.len());
+    for (k, v) in pairs {
+        keys.push(r(k.as_ref()));
+        values.push(r(v.as_ref()));
+    }
+    (keys, values)
+}
+
+#[inline]
+pub unsafe fn range_to_rocks(start: &impl AsRef<[u8]>, end: &impl AsRef<[u8]>) -> rocksdb_Range {
+    rocksdb_Range {
+        start: r(start.as_ref()),
+        limit: r(end.as_ref()),
+    }
+}
+
 // `FnOnce` is a more accurate type, but it will require Unpin.
 unsafe extern "C" fn bytes_receiver<T: FnMut(&[u8])>(ptr: *mut c_void, buf: rocksdb_Slice) {
     (*(ptr as *mut T))(s(buf))
