@@ -27,6 +27,7 @@ pub mod statistics;
 pub mod table;
 pub mod table_filter;
 mod util;
+pub mod write_batch;
 
 pub use db::{Db, RawDb};
 pub use error::{Code, Result, Severity, Status, SubCode};
@@ -34,3 +35,4 @@ pub use option::{CfOptions, DbOptions, Options};
 pub use pin_slice::PinSlice;
 pub use statistics::Statistics;
 pub use util::{CloneFactory, DefaultFactory, RustRange};
+pub use write_batch::{WriteBatch, WriteBatchIter};
