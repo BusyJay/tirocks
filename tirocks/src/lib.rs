@@ -26,6 +26,7 @@ pub mod statistics;
 pub mod table;
 pub mod table_filter;
 mod util;
+mod write_batch;
 
 pub use error::{Code, Result, Severity, Status, SubCode};
 pub use option::{CfOptions, DbOptions, Options};
@@ -33,6 +34,7 @@ pub use pin_slice::PinSlice;
 pub use statistics::Statistics;
 use tirocks_sys::rocksdb_DB;
 pub use util::{CloneFactory, DefaultFactory};
+pub use write_batch::{WriteBatch, WriteBatchIter};
 
 // TODO: define later.
 pub struct RawDb;
