@@ -136,7 +136,7 @@ impl<D: DbRef> CfHandle<D> {
     /// Get the handle of given cf.
     pub fn new(db: D, name: &str) -> Option<Self> {
         unsafe {
-            let handle = db.visit(|d| d.cf_raw(name).cloned())?;
+            let handle = db.with(|d| d.cf_raw(name).cloned())?;
             Some(Self { handle, db })
         }
     }
@@ -145,7 +145,7 @@ impl<D: DbRef> CfHandle<D> {
     pub fn default(db: D) -> Self {
         unsafe {
             // Search instead of using raw pointer to avoid allocation.
-            let handle = db.visit(|d| d.cf_raw(DEFAULT_CF_NAME).cloned()).unwrap();
+            let handle = db.with(|d| d.cf_raw(DEFAULT_CF_NAME).cloned()).unwrap();
             Self { handle, db }
         }
     }
@@ -165,7 +165,7 @@ impl<D: DbRef> Drop for CfHandle<D> {
     fn drop(&mut self) {
         unsafe {
             let handle = &mut self.handle;
-            self.db.visit(|d| {
+            self.db.with(|d| {
                 let _ = handle.maybe_drop(d.get_ptr());
             });
         }

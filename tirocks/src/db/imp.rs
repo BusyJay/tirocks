@@ -22,41 +22,41 @@ use super::cf::{RefCountedCfHandle, DEFAULT_CF_NAME};
 
 /// A helper trait that makes it possible to safely access `RawDb` reference.
 pub trait RawDbRef {
-    fn visit<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T;
+    fn with<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T;
 }
 
 impl<'a> RawDbRef for &'a RawDb {
     #[inline]
-    fn visit<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T {
+    fn with<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T {
         f(self)
     }
 }
 
 /// A helper trait that makes it possible to safely access `Db` reference.
 pub trait DbRef {
-    fn visit<T>(&self, f: impl FnOnce(&Db) -> T) -> T;
+    fn with<T>(&self, f: impl FnOnce(&Db) -> T) -> T;
 }
 
 impl<'a> DbRef for &'a Db {
     #[inline]
-    fn visit<T>(&self, f: impl FnOnce(&Db) -> T) -> T {
+    fn with<T>(&self, f: impl FnOnce(&Db) -> T) -> T {
         f(self)
     }
 }
 impl DbRef for Db {
     #[inline]
-    fn visit<T>(&self, f: impl FnOnce(&Db) -> T) -> T {
+    fn with<T>(&self, f: impl FnOnce(&Db) -> T) -> T {
         f(self)
     }
 }
 impl DbRef for Arc<Db> {
     #[inline]
-    fn visit<T>(&self, f: impl FnOnce(&Db) -> T) -> T {
+    fn with<T>(&self, f: impl FnOnce(&Db) -> T) -> T {
         f(self)
     }
 }
 impl DbRef for Arc<Mutex<Db>> {
-    fn visit<T>(&self, f: impl FnOnce(&Db) -> T) -> T {
+    fn with<T>(&self, f: impl FnOnce(&Db) -> T) -> T {
         f(&self.lock().unwrap())
     }
 }
@@ -66,8 +66,8 @@ where
     R: DbRef,
 {
     #[inline]
-    fn visit<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T {
-        DbRef::visit(self, |db| unsafe { f(RawDb::from_ptr(db.get_ptr())) })
+    fn with<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T {
+        DbRef::with(self, |db| unsafe { f(RawDb::from_ptr(db.get_ptr())) })
     }
 }
 
