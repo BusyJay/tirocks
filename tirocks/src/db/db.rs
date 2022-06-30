@@ -549,6 +549,13 @@ impl Db {
         Ok(())
     }
 
+    /// Destroy the cf.
+    ///
+    /// Destroying the default cf is a no-op. After calling this method on other cf, no matter
+    /// what value is returned, you will not be able to access the cf by `cf(name)` or similar
+    /// method anymore. If a handle to the cf is holded when calling `destroy_cf`, you can still
+    /// access the column family data via the handle. Such handle can be created by
+    /// `CfHandle::new(db, name)`.
     pub fn destroy_cf(&mut self, name: &str) -> Result<bool> {
         if name == DEFAULT_CF_NAME {
             return Err(Status::with_invalid_argument(
