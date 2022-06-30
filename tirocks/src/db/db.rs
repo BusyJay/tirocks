@@ -12,51 +12,50 @@ use crate::option::{
     RawOptions, RawTitanOptions, ReadOptions, TitanCfOptions, WriteOptions,
 };
 use crate::properties::table::user::SequenceNumber;
-use crate::util::{self, ffi_call, range_to_rocks, split_pairs, PathToSlice, RustRange};
+use crate::util::{self, ffi_call, range_to_rocks, split_pairs, PathToSlice};
+use crate::write_batch::WriteBatch;
 use crate::{comparator::SysComparator, env::Env};
-use crate::{Code, PinSlice, Result, Status};
+use crate::{Code, PinSlice, RawIterator, Result, Status};
 
 use crate::db::cf::RawCfHandle;
 
 use super::cf::{RefCountedCfHandle, DEFAULT_CF_NAME};
 
-/// A helper trait that makes it possible to safely access `RawDb` reference.
 pub trait RawDbRef {
-    fn with<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T;
+    fn visit<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T;
 }
 
 impl<'a> RawDbRef for &'a RawDb {
     #[inline]
-    fn with<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T {
+    fn visit<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T {
         f(self)
     }
 }
 
-/// A helper trait that makes it possible to safely access `Db` reference.
 pub trait DbRef {
-    fn with<T>(&self, f: impl FnOnce(&Db) -> T) -> T;
+    fn visit<T>(&self, f: impl FnOnce(&Db) -> T) -> T;
 }
 
 impl<'a> DbRef for &'a Db {
     #[inline]
-    fn with<T>(&self, f: impl FnOnce(&Db) -> T) -> T {
+    fn visit<T>(&self, f: impl FnOnce(&Db) -> T) -> T {
         f(self)
     }
 }
 impl DbRef for Db {
     #[inline]
-    fn with<T>(&self, f: impl FnOnce(&Db) -> T) -> T {
+    fn visit<T>(&self, f: impl FnOnce(&Db) -> T) -> T {
         f(self)
     }
 }
 impl DbRef for Arc<Db> {
     #[inline]
-    fn with<T>(&self, f: impl FnOnce(&Db) -> T) -> T {
+    fn visit<T>(&self, f: impl FnOnce(&Db) -> T) -> T {
         f(self)
     }
 }
 impl DbRef for Arc<Mutex<Db>> {
-    fn with<T>(&self, f: impl FnOnce(&Db) -> T) -> T {
+    fn visit<T>(&self, f: impl FnOnce(&Db) -> T) -> T {
         f(&self.lock().unwrap())
     }
 }
@@ -66,12 +65,11 @@ where
     R: DbRef,
 {
     #[inline]
-    fn with<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T {
-        DbRef::with(self, |db| unsafe { f(RawDb::from_ptr(db.get_ptr())) })
+    fn visit<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T {
+        DbRef::visit(self, |db| unsafe { f(RawDb::from_ptr(db.get_ptr())) })
     }
 }
 
-/// A struct representing rocksdb::DB.
 #[repr(transparent)]
 pub struct RawDb(rocksdb_DB);
 
@@ -85,10 +83,13 @@ impl RawDb {
         &*(ptr as *const RawDb)
     }
 
-    /// Set the database entry for "key" to "value". If "key" already exists, it will be
-    /// overwritten. Returns OK on success, and a non-OK status on error.
-    /// Note: consider setting options.sync = true.
-    pub fn put(&self, opt: &WriteOptions, cf: &RawCfHandle, key: &[u8], val: &[u8]) -> Result<()> {
+    pub fn put(
+        &self,
+        opt: &WriteOptions,
+        cf: &RawCfHandle,
+        key: &[u8],
+        val: &[u8],
+    ) -> Result<()> {
         unsafe {
             ffi_call!(crocksdb_put_cf(
                 self.get_ptr(),
@@ -100,9 +101,6 @@ impl RawDb {
         }
     }
 
-    /// Remove the database entry (if any) for "key".  Returns OK on success, and a non-OK status
-    /// on error.  It is not an error if "key" did not exist in the database.
-    /// Note: consider setting options.sync = true.
     pub fn delete(&self, opt: &WriteOptions, cf: &RawCfHandle, key: &[u8]) -> Result<()> {
         unsafe {
             ffi_call!(crocksdb_delete_cf(
@@ -114,22 +112,12 @@ impl RawDb {
         }
     }
 
-    /// Remove the database entry for "key". Requires that the key exists and was not overwritten.
-    /// Returns OK on success, and a non-OK status on error.  It is not an error if "key" did not
-    /// exist in the database.
-    ///
-    /// If a key is overwritten (by calling Put() multiple times), then the result of calling
-    /// SingleDelete() on this key is undefined.  SingleDelete() only behaves correctly if there
-    /// has been only one Put() for this key since the previous call to SingleDelete() for this
-    /// key.
-    ///
-    /// This feature is currently an experimental performance optimization for a very specific
-    /// workload.  It is up to the caller to ensure that SingleDelete is only used for a key that
-    /// is not deleted using Delete() or written using Merge().  Mixing SingleDelete operations
-    /// with Deletes and Merges can result in undefined behavior.
-    ///
-    /// Note: consider setting options.sync = true.
-    pub fn single_delete(&self, opt: &WriteOptions, cf: &RawCfHandle, key: &[u8]) -> Result<()> {
+    pub fn single_delete(
+        &self,
+        opt: &WriteOptions,
+        cf: &RawCfHandle,
+        key: &[u8],
+    ) -> Result<()> {
         unsafe {
             ffi_call!(crocksdb_single_delete_cf(
                 self.get_ptr(),
@@ -140,20 +128,6 @@ impl RawDb {
         }
     }
 
-    /// Removes the database entries in the range ["begin_key", "end_key"), i.e., including
-    /// "begin_key" and excluding "end_key". Returns OK on success, and a non-OK status on
-    /// error. It is not an error if the database does not contain any existing data in the range
-    /// ["begin_key", "end_key").
-    ///
-    /// If "end_key" comes before "start_key" according to the user's comparator, a
-    /// `Status::InvalidArgument` is returned.
-    ///
-    /// This feature is now usable in production, with the following caveats:
-    /// 1) Accumulating many range tombstones in the memtable will degrade read performance; this
-    /// can be avoided by manually flushing occasionally.
-    /// 2) Limiting the maximum number of open files in the presence of range tombstones can
-    /// degrade read performance. To avoid this problem, set max_open_files to -1 whenever
-    /// possible.
     pub fn delete_range(
         &self,
         opt: &WriteOptions,
@@ -172,14 +146,28 @@ impl RawDb {
         }
     }
 
-    /// If the database contains an entry for "key" store the corresponding value in *value and
-    /// return OK.
-    ///
-    /// If there is no entry for "key" leave *value unchanged and return a status for which
-    /// Status::IsNotFound() returns true.
-    ///
-    /// May return some other Status on an error.
-    pub fn get(&self, opt: &ReadOptions, cf: &RawCfHandle, key: &[u8]) -> Result<Option<Vec<u8>>> {
+    /// Apply the specified updates to the database.
+    /// If `updates` contains no update, WAL will still be synced if
+    /// options.sync=true.
+    /// Returns OK on success, non-OK on failure.
+    /// Note: consider setting options.sync = true.
+    #[inline]
+    pub fn write(&self, opt: &WriteOptions, updates: &mut WriteBatch) -> Result<()> {
+        unsafe {
+            ffi_call!(crocksdb_write(
+                self.get_ptr(),
+                opt.get_ptr(),
+                updates.as_mut_ptr(),
+            ))
+        }
+    }
+
+    pub fn get(
+        &self,
+        opt: &ReadOptions,
+        cf: &RawCfHandle,
+        key: &[u8],
+    ) -> Result<Option<Vec<u8>>> {
         let mut val = None;
         let res = unsafe {
             let mut f = |r: &[u8]| val = Some(r.to_vec());
@@ -205,7 +193,6 @@ impl RawDb {
         }
     }
 
-    /// Same as [`get`] but may allocate less.
     pub fn get_to(
         &self,
         opt: &ReadOptions,
@@ -232,6 +219,14 @@ impl RawDb {
                 }
             }
         }
+    }
+
+    pub fn iter<'a>(
+        &'a self,
+        read: &'a mut ReadOptions,
+        cf: &RawCfHandle,
+    ) -> RawIterator<'a> {
+        RawIterator::new(self, read, cf)
     }
 
     pub fn set_cf_options(
@@ -350,7 +345,10 @@ impl RawDb {
     ) -> Result<Vec<u64>> {
         let mut sizes = Vec::with_capacity(ranges.len());
         unsafe {
-            let raw_ranges: Vec<_> = ranges.iter().map(|(s, e)| range_to_rocks(s, e)).collect();
+            let raw_ranges: Vec<_> = ranges
+                .into_iter()
+                .map(|(s, e)| range_to_rocks(s, e))
+                .collect();
             ffi_call!(crocksdb_approximate_sizes_cf(
                 self.get_ptr(),
                 opt.as_ptr(),
@@ -437,7 +435,6 @@ impl RawDb {
 unsafe impl Sync for RawDb {}
 unsafe impl Send for RawDb {}
 
-/// The safe wrapper of `rocksdb::DB` that manages the required lifetime of resources.
 #[derive(Debug)]
 pub struct Db {
     ptr: *mut rocksdb_DB,
@@ -483,12 +480,6 @@ impl Db {
         Ok(())
     }
 
-    /// Close the DB by releasing resources, closing files etc. This will not fsync the WAL files.
-    /// If syncing is required, the caller must first call SyncWAL(), or Write() using an empty
-    /// write batch with WriteOptions.sync=true.
-    ///
-    /// Unlike C++ API, if the close is aborted due to unreleased snapshot, the DB will be dropped
-    /// any way as part of its resource has been freed already.
     pub fn close(mut self) -> Result<()> {
         unsafe {
             self.clear_handles()?;
@@ -496,9 +487,7 @@ impl Db {
         }
     }
 
-    /// ListColumnFamilies will open the DB specified by argument name and return the list of all
-    /// column families in that DB. The ordering of returned column families is unspecified.
-    pub fn list_cfs(db: DbOptions, path: impl AsRef<Path>) -> Result<Vec<String>> {
+    pub fn list_column_families(db: DbOptions, path: impl AsRef<Path>) -> Result<Vec<String>> {
         let mut convert_s = Status::default();
         let mut names = Vec::new();
         unsafe {
@@ -522,10 +511,6 @@ impl Db {
         Ok(names)
     }
 
-    /// Create a column_family.
-    ///
-    /// If it's a titan db, it's the same as calling `create_cf_titan` with the titan specific
-    /// options set to default.
     pub fn create_cf(&mut self, name: impl AsRef<str>, opt: CfOptions) -> Result<()> {
         if self.is_titan {
             return self.create_cf_titan(name, opt.into());
@@ -537,18 +522,12 @@ impl Db {
                 r(name.as_ref().as_bytes()),
             ))
         }?;
-        if let Some(c) = opt.comparator() {
-            self.comparator.push(c.clone());
-        }
+        opt.comparator().map(|c| self.comparator.push(c.clone()));
         self.handles
             .push(unsafe { RefCountedCfHandle::from_ptr(ptr, true) });
         Ok(())
     }
 
-    /// Create a column_family.
-    ///
-    /// If it's not titan, it's the same as calling `create_cf`. Titan specific options will be
-    /// ignored.
     pub fn create_cf_titan(
         &mut self,
         name: impl AsRef<str>,
@@ -564,16 +543,13 @@ impl Db {
                 r(name.as_ref().as_bytes()),
             ))
         }?;
-        if let Some(c) = opt.comparator() {
-            self.comparator.push(c.clone());
-        }
+        opt.comparator().map(|c| self.comparator.push(c.clone()));
         self.handles
             .push(unsafe { RefCountedCfHandle::from_ptr(ptr, true) });
         Ok(())
     }
 
-    /// Destroy a column family specified by name. This call records a drop record in the
-    /// manifest and prevents the column family from flushing and compacting.
+    /// Destroy the cf.
     ///
     /// Destroying the default cf is a no-op. After calling this method on other cf, no matter
     /// what value is returned, you will not be able to access the cf by `cf(name)` or similar
@@ -583,7 +559,7 @@ impl Db {
     pub fn destroy_cf(&mut self, name: &str) -> Result<bool> {
         if name == DEFAULT_CF_NAME {
             return Err(Status::with_invalid_argument(
-                "default cf can't be dropped.",
+                "Can't drop default column family",
             ));
         }
         let pos = self
@@ -649,6 +625,15 @@ impl Db {
         self.is_titan
     }
 
+    #[inline]
+    pub fn iter<'a>(
+        &'a self,
+        read: &'a mut ReadOptions,
+        cf: &'a RawCfHandle,
+    ) -> RawIterator<'a> {
+        RawIterator::new(self, read, cf)
+    }
+
     /// Delete files which are entirely in the given range
     /// Could leave some keys in the range which are in files which are not
     /// entirely in the range. Also leaves L0 files regardless of whether they're
@@ -670,7 +655,7 @@ impl Db {
     pub fn delete_files_in_ranges(
         &self,
         cf: &RawCfHandle,
-        ranges: &[RustRange],
+        ranges: &[(Option<&[u8]>, Option<&[u8]>)],
         include_end: bool,
     ) -> Result<()> {
         unsafe {
@@ -700,7 +685,7 @@ impl Db {
     pub fn delete_blob_files_in_ranges(
         &self,
         cf: &RawCfHandle,
-        ranges: &[RustRange],
+        ranges: &[(Option<&[u8]>, Option<&[u8]>)],
         include_end: bool,
     ) -> Result<()> {
         if !self.is_titan() {
