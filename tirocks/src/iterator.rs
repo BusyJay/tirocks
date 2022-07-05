@@ -9,8 +9,8 @@ use std::{
 use tirocks_sys::{r, rocksdb_Iterator, s};
 
 use crate::{
-    db::RawCfHandle, option::ReadOptions, properties::table::user::SequenceNumber,
-    util::ffi_call, Db, RawDb, Result, Status,
+    db::RawCfHandle, option::ReadOptions, properties::table::user::SequenceNumber, util::ffi_call,
+    Db, RawDb, Result, Status,
 };
 
 pub unsafe trait Iterable {
@@ -40,11 +40,7 @@ impl<'a> RawIterator<'a> {
         }
     }
 
-    pub fn new<I: Iterable>(
-        i: &'a I,
-        opt: &'a mut ReadOptions,
-        cf: &RawCfHandle,
-    ) -> Self {
+    pub fn new<I: Iterable>(i: &'a I, opt: &'a mut ReadOptions, cf: &RawCfHandle) -> Self {
         unsafe { Self::from_ptr(i.raw_iter(opt, cf)) }
     }
 

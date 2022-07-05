@@ -88,11 +88,7 @@ impl RawDb {
     /// Similar to [`property`], but only works for a subset of properties whose return value
     /// is a map.
     #[inline]
-    pub fn property_map(
-        &self,
-        cf: &RawCfHandle,
-        prop: &impl MapProperty,
-    ) -> Option<PropertyMap> {
+    pub fn property_map(&self, cf: &RawCfHandle, prop: &impl MapProperty) -> Option<PropertyMap> {
         let mut value = PropertyMap::default();
         if self.property_map_to(cf, prop, &mut value) {
             Some(value)

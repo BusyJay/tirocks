@@ -30,7 +30,7 @@ pub mod table;
 pub mod table_filter;
 pub mod titan;
 mod util;
-mod write_batch;
+pub mod write_batch;
 
 pub use db::{Db, OpenOptions, RawDb};
 pub use error::{Code, Result, Severity, Status, SubCode};
@@ -39,5 +39,7 @@ pub use option::{CfOptions, DbOptions, Options};
 pub use pin_slice::PinSlice;
 pub use snapshot::{RawSnapshot, Snapshot};
 pub use statistics::Statistics;
-pub use util::{set_external_sst_file_global_sequence_number, CloneFactory, DefaultFactory};
+pub use util::{
+    set_external_sst_file_global_sequence_number, CloneFactory, DefaultFactory, RustRange,
+};
 pub use write_batch::{WriteBatch, WriteBatchIter};

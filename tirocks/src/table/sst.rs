@@ -117,11 +117,7 @@ impl<'a> SstFileWriter<'a> {
     /// Create a writer that writes SST file that will be ingested into specified column family.
     /// `None` means the CF is unknown.
     #[inline]
-    pub fn new(
-        env_opt: &'a EnvOptions,
-        opt: &'a RawOptions,
-        cf: Option<&'a RawCfHandle>,
-    ) -> Self {
+    pub fn new(env_opt: &'a EnvOptions, opt: &'a RawOptions, cf: Option<&'a RawCfHandle>) -> Self {
         let ptr = unsafe {
             tirocks_sys::crocksdb_sstfilewriter_create_cf(
                 env_opt.get_ptr(),

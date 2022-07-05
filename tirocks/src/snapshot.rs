@@ -88,7 +88,7 @@ pub struct Snapshot<'a, D: RawDbRef + 'a> {
 impl<'a, D: RawDbRef + 'a> Snapshot<'a, D> {
     pub fn new(db: D) -> Self {
         unsafe {
-            let ptr = db.visit(|d| tirocks_sys::crocksdb_create_snapshot(d.get_ptr()));
+            let ptr = db.with(|d| tirocks_sys::crocksdb_create_snapshot(d.get_ptr()));
             Snapshot {
                 snap: ManuallyDrop::new(RawSnapshot::from_ptr(ptr)),
                 db,
@@ -103,7 +103,7 @@ impl<'a, D: RawDbRef + 'a> Snapshot<'a, D> {
         key: &[u8],
     ) -> Result<Option<Vec<u8>>> {
         let opt = WithSnapOpt::new(opt, &self.snap);
-        self.db.visit(|d| d.get(&opt, cf, key))
+        self.db.with(|d| d.get(&opt, cf, key))
     }
 
     pub fn get_to(
@@ -114,14 +114,10 @@ impl<'a, D: RawDbRef + 'a> Snapshot<'a, D> {
         value: &mut PinSlice,
     ) -> Result<bool> {
         let opt = WithSnapOpt::new(opt, &self.snap);
-        self.db.visit(|d| d.get_to(&opt, cf, key, value))
+        self.db.with(|d| d.get_to(&opt, cf, key, value))
     }
 
-    pub fn iter<'b>(
-        &'b self,
-        opt: &'b mut ReadOptions,
-        cf: &RawCfHandle,
-    ) -> RawIterator<'b> {
+    pub fn iter<'b>(&'b self, opt: &'b mut ReadOptions, cf: &RawCfHandle) -> RawIterator<'b> {
         RawIterator::new(self, opt, cf)
     }
 }
@@ -129,7 +125,7 @@ impl<'a, D: RawDbRef + 'a> Snapshot<'a, D> {
 unsafe impl<'a, D: RawDbRef + 'a> Iterable for Snapshot<'a, D> {
     fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawCfHandle) -> *mut rocksdb_Iterator {
         let mut opt = WithSnapOpt::new(opt, &self.snap);
-        self.db.visit(|d| d.raw_iter(&mut opt, cf))
+        self.db.with(|d| d.raw_iter(&mut opt, cf))
     }
 }
 
@@ -153,7 +149,7 @@ impl<'a, D: RawDbRef + 'a> Drop for Snapshot<'a, D> {
     #[inline]
     fn drop(&mut self) {
         let snap = unsafe { ManuallyDrop::take(&mut self.snap) };
-        self.db.visit(|d| d.release_raw_snapshot(snap))
+        self.db.with(|d| d.release_raw_snapshot(snap))
     }
 }
 

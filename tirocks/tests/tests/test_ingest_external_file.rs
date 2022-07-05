@@ -20,12 +20,7 @@ use crate::test_delete_range::gen_sst_from_db;
 
 use super::tempdir_with_prefix;
 
-pub fn gen_sst(
-    opt: &RawOptions,
-    cf: Option<&RawCfHandle>,
-    path: &Path,
-    data: &[(&[u8], &[u8])],
-) {
+pub fn gen_sst(opt: &RawOptions, cf: Option<&RawCfHandle>, path: &Path, data: &[(&[u8], &[u8])]) {
     let _ = fs::remove_file(path);
     let env_opt = EnvOptions::default();
     let mut writer = SstFileWriter::new(&env_opt, opt, cf);
@@ -235,12 +230,7 @@ fn check_kv(db: &Db, cf: &RawCfHandle, data: &[(&[u8], Option<&[u8]>)]) {
     }
 }
 
-fn put_delete_and_generate_sst_cf(
-    opt: &RawOptions,
-    db: &Db,
-    cf: &RawCfHandle,
-    path: &Path,
-) {
+fn put_delete_and_generate_sst_cf(opt: &RawOptions, db: &Db, cf: &RawCfHandle, path: &Path) {
     let write_opt = WriteOptions::default();
     db.put(&write_opt, cf, b"k1", b"v1").unwrap();
     db.put(&write_opt, cf, b"k2", b"v2").unwrap();

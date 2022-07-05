@@ -13,7 +13,7 @@ use crate::{
     Result, Status,
 };
 
-use super::{cf::RefCountedCfHandle, db::Db};
+use super::{cf::RefCountedCfHandle, imp::Db};
 
 #[derive(Default, Debug)]
 pub struct DefaultCfOnlyBuilder {
@@ -115,10 +115,8 @@ impl MultiCfBuilder {
                 panic!("ttl should be specified for all cf.");
             }
             self.ttl.push(ttl);
-        } else {
-            if !self.ttl.is_empty() {
-                panic!("ttl is missing for {}", name);
-            }
+        } else if !self.ttl.is_empty() {
+            panic!("ttl is missing for {}", name);
         }
         self.cfs.push((name, cf));
         self
