@@ -69,10 +69,8 @@ impl RawDb {
         output_level: i32,
     ) -> Result<()> {
         unsafe {
-            let input_file_names: Vec<_> = input_file_names
-                .into_iter()
-                .map(|n| n.path_to_slice())
-                .collect();
+            let input_file_names: Vec<_> =
+                input_file_names.iter().map(|n| n.path_to_slice()).collect();
             ffi_call!(crocksdb_compact_files_cf(
                 self.get_ptr(),
                 opt.as_ptr(),
@@ -120,7 +118,7 @@ impl RawDb {
     #[inline]
     pub fn flush_multi(&self, option: &FlushOptions, cfs: &[&RawCfHandle]) -> Result<()> {
         unsafe {
-            let cfs: Vec<_> = cfs.into_iter().map(|c| c.get_ptr()).collect();
+            let cfs: Vec<_> = cfs.iter().map(|c| c.get_ptr()).collect();
             ffi_call!(crocksdb_flush_cfs(
                 self.get_ptr(),
                 option.as_ptr(),
@@ -171,7 +169,7 @@ impl RawDb {
         files: &[impl AsRef<Path>],
     ) -> Result<()> {
         unsafe {
-            let files: Vec<_> = files.into_iter().map(|p| p.path_to_slice()).collect();
+            let files: Vec<_> = files.iter().map(|p| p.path_to_slice()).collect();
             ffi_call!(crocksdb_ingest_external_file_cf(
                 self.get_ptr(),
                 cf.get_ptr(),
@@ -191,7 +189,7 @@ impl RawDb {
         files: &[impl AsRef<Path>],
     ) -> Result<bool> {
         unsafe {
-            let files: Vec<_> = files.into_iter().map(|p| p.path_to_slice()).collect();
+            let files: Vec<_> = files.iter().map(|p| p.path_to_slice()).collect();
             ffi_call!(crocksdb_ingest_external_file_optimized(
                 self.get_ptr(),
                 cf.get_ptr(),
