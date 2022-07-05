@@ -5,18 +5,10 @@ use std::marker::PhantomData;
 use tirocks_sys::{r, rocksdb_WriteBatch, rocksdb_WriteBatch_Iterator, s};
 
 use crate::{
+    db::RawCfHandle,
     util::{self, ffi_call},
     Result, Status,
 };
-
-// TODO: use actual definition from db/cf.rs.
-pub struct RawCfHandle;
-
-impl RawCfHandle {
-    fn get_ptr(&self) -> *mut tirocks_sys::rocksdb_ColumnFamilyHandle {
-        unimplemented!()
-    }
-}
 
 /// WriteBatch holds a collection of updates to apply atomically to a DB.
 ///

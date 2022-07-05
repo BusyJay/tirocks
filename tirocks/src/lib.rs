@@ -7,6 +7,7 @@
 pub mod cache;
 pub mod compaction_filter;
 pub mod comparator;
+pub mod db;
 #[cfg(feature = "encryption")]
 pub mod encryption;
 pub mod env;
@@ -26,25 +27,12 @@ pub mod statistics;
 pub mod table;
 pub mod table_filter;
 mod util;
-mod write_batch;
+pub mod write_batch;
 
+pub use db::{Db, RawDb};
 pub use error::{Code, Result, Severity, Status, SubCode};
 pub use option::{CfOptions, DbOptions, Options};
 pub use pin_slice::PinSlice;
 pub use statistics::Statistics;
-use tirocks_sys::rocksdb_DB;
-pub use util::{CloneFactory, DefaultFactory};
+pub use util::{CloneFactory, DefaultFactory, RustRange};
 pub use write_batch::{WriteBatch, WriteBatchIter};
-
-// TODO: define later.
-pub struct RawDb;
-
-impl RawDb {
-    pub(crate) unsafe fn from_ptr<'a>(_: *mut rocksdb_DB) -> &'a RawDb {
-        unimplemented!()
-    }
-
-    pub(crate) fn get_ptr(&self) -> *mut rocksdb_DB {
-        unimplemented!()
-    }
-}
