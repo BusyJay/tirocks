@@ -13,7 +13,7 @@ use crate::{
     Result, Status,
 };
 
-use super::{cf::RefCountedCfHandle, db::Db};
+use super::{cf::RefCountedCfHandle, imp::Db};
 
 #[derive(Default, Debug)]
 pub struct DefaultCfOnlyBuilder {
@@ -115,10 +115,8 @@ impl MultiCfBuilder {
                 panic!("ttl should be specified for all cf.");
             }
             self.ttl.push(ttl);
-        } else {
-            if !self.ttl.is_empty() {
-                panic!("ttl is missing for {}", name);
-            }
+        } else if !self.ttl.is_empty() {
+            panic!("ttl is missing for {}", name);
         }
         self.cfs.push((name, cf));
         self
@@ -190,7 +188,12 @@ impl MultiCfTitanBuilder {
 }
 
 pub trait OpenOptions {
-    // Open the db and check if it's titan.
+    /// Open the db and check if it's titan.
+    ///
+    /// # Safety
+    ///
+    /// Opened cf will be pushed to `handles`. And they must be used while db pointer
+    /// is still alive.
     unsafe fn open_raw(
         &self,
         comparator: &mut Vec<Arc<SysComparator>>,
@@ -231,7 +234,9 @@ impl OpenOptions for DefaultCfOnlyBuilder {
         *env = self.opt.env().cloned();
         let mut s = Status::default();
         let p = path.path_to_slice();
-        self.opt.comparator().map(|c| comparator.push(c.clone()));
+        if let Some(c) = self.opt.comparator() {
+            comparator.push(c.clone());
+        }
         let ptr = if let Some(ttl) = self.ttl {
             ffi_call!(crocksdb_open_with_ttl(
                 self.opt.get_ptr(),
@@ -266,7 +271,9 @@ impl OpenOptions for MultiCfBuilder {
         for (name, opt) in &self.cfs {
             names.push(r(name.as_bytes()));
             opts.push(opt.as_ptr());
-            opt.comparator().map(|c| comparator.push(c.clone()));
+            if let Some(c) = opt.comparator() {
+                comparator.push(c.clone());
+            }
         }
         handles.reserve_exact(self.cfs.len());
         let p = path.path_to_slice();
@@ -321,7 +328,9 @@ impl OpenOptions for MultiCfTitanBuilder {
         for (name, opt) in &self.cfs {
             names.push(r(name.as_bytes()));
             opts.push(opt.as_ptr());
-            opt.comparator().map(|c| comparator.push(c.clone()));
+            if let Some(c) = opt.comparator() {
+                comparator.push(c.clone());
+            }
         }
         let p = path.path_to_slice();
         let ptr = ffi_call!(ctitandb_open_column_families(
