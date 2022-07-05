@@ -117,11 +117,7 @@ impl<'a, D: RawDbRef + 'a> Snapshot<'a, D> {
         self.db.with(|d| d.get_to(&opt, cf, key, value))
     }
 
-    pub fn iter<'b>(
-        &'b self,
-        opt: &'b mut ReadOptions,
-        cf: &RawCfHandle,
-    ) -> RawIterator<'b> {
+    pub fn iter<'b>(&'b self, opt: &'b mut ReadOptions, cf: &RawCfHandle) -> RawIterator<'b> {
         RawIterator::new(self, opt, cf)
     }
 }

@@ -9,10 +9,16 @@ use std::{
 use tirocks_sys::{r, rocksdb_Iterator, s};
 
 use crate::{
-    db::RawCfHandle, option::ReadOptions, properties::table::user::SequenceNumber,
-    util::ffi_call, Db, RawDb, Result, Status,
+    db::RawCfHandle, option::ReadOptions, properties::table::user::SequenceNumber, util::ffi_call,
+    Db, RawDb, Result, Status,
 };
 
+/// A trait for types that can create a raw iterator.
+///
+/// # Safety
+///
+/// Implementation should make sure the returned pointer can be used forever as long as
+/// `self` alives.
 pub unsafe trait Iterable {
     fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawCfHandle) -> *mut rocksdb_Iterator;
 }
@@ -40,11 +46,7 @@ impl<'a> RawIterator<'a> {
         }
     }
 
-    pub fn new<I: Iterable>(
-        i: &'a I,
-        opt: &'a mut ReadOptions,
-        cf: &RawCfHandle,
-    ) -> Self {
+    pub fn new<I: Iterable>(i: &'a I, opt: &'a mut ReadOptions, cf: &RawCfHandle) -> Self {
         unsafe { Self::from_ptr(i.raw_iter(opt, cf)) }
     }
 
