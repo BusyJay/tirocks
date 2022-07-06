@@ -1609,6 +1609,11 @@ void crocksdb_writebatch_append_content(WriteBatch* dest, Slice data,
   *s = rocksdb::WriteBatchInternal::AppendContents(dest, data);
 }
 
+void crocksdb_writebatch_append(WriteBatch* dest, const WriteBatch* src,
+                                Status* s) {
+  *s = rocksdb::WriteBatchInternal::Append(dest, src);
+}
+
 int crocksdb_writebatch_ref_count(Slice data) {
   rocksdb::WriteBatch::WriteBatchRef ref(data);
   return ref.Count();

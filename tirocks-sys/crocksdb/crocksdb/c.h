@@ -643,6 +643,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_set_content(WriteBatch* b,
                                                                   Slice data);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_append_content(
     WriteBatch* dest, Slice data, Status*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_append(
+    WriteBatch* dest, const WriteBatch* src, Status* s);
 extern C_ROCKSDB_LIBRARY_API int crocksdb_writebatch_ref_count(Slice data);
 extern C_ROCKSDB_LIBRARY_API WriteBatch::Iterator*
 crocksdb_writebatch_ref_iterator_create(Slice data);

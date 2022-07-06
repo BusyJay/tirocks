@@ -376,6 +376,11 @@ impl WriteBatch {
     }
 
     #[inline]
+    pub fn append(&mut self, other: &WriteBatch) -> Result<()> {
+        unsafe { ffi_call!(crocksdb_writebatch_append(self.ptr, other.ptr)) }
+    }
+
+    #[inline]
     pub(crate) fn as_mut_ptr(&mut self) -> *mut rocksdb_WriteBatch {
         self.ptr
     }

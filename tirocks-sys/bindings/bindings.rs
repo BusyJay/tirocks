@@ -2372,6 +2372,13 @@ extern "C" {
     );
 }
 extern "C" {
+    pub fn crocksdb_writebatch_append(
+        dest: *mut rocksdb_WriteBatch,
+        src: *const rocksdb_WriteBatch,
+        s: *mut rocksdb_Status,
+    );
+}
+extern "C" {
     pub fn crocksdb_writebatch_ref_count(data: rocksdb_Slice) -> libc::c_int;
 }
 extern "C" {
