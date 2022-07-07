@@ -18,7 +18,7 @@ use super::cf::RawCfHandle;
 impl RawDb {
     /// DB implementations can export properties about their state via this method. If "prop"
     /// is a valid property understood by this DB implementation (see struct inherits `Property`
-    /// trait for valid options), returns true. Otherwise, returns false.
+    /// trait for valid options), returns the property value. Otherwise, returns None.
     #[inline]
     pub fn property(
         &self,

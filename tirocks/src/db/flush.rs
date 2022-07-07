@@ -84,7 +84,7 @@ impl RawDb {
 
     /// This function will wait until all currently running background processes
     /// finish. After it returns, no background process will be run until
-    /// [`continue_background_work`] is called
+    /// [`continue_background_work`] is called.
     #[inline]
     pub fn pause_background_work(&self) -> Result<()> {
         unsafe { ffi_call!(crocksdb_pause_bg_work(self.get_ptr())) }
@@ -96,7 +96,7 @@ impl RawDb {
     }
 
     /// Flush a single column family, even when atomic flush is enabled. To flush
-    /// multiple column families, use [`flush_multi`].
+    /// multiple column families, use [`flush_cfs`].
     #[inline]
     pub fn flush(&self, option: &FlushOptions, cf: &RawCfHandle) -> Result<()> {
         unsafe {
@@ -110,13 +110,13 @@ impl RawDb {
 
     /// Flushes multiple column families.
     ///
-    /// If atomic flush is not enabled, `flush_multi` is equivalent to calling [`flush`] multiple
-    /// times. If atomic flush is enabled, `flush_multi` will flush all column families specified
+    /// If atomic flush is not enabled, `flush_cfs` is equivalent to calling [`flush`] multiple
+    /// times. If atomic flush is enabled, `flush_cfs` will flush all column families specified
     /// in 'cfs' up to the latest sequence number at the time when flush is requested.
     /// Note that RocksDB 5.15 and earlier may not be able to open later versions with atomic
     /// flush enabled.
     #[inline]
-    pub fn flush_multi(&self, option: &FlushOptions, cfs: &[&RawCfHandle]) -> Result<()> {
+    pub fn flush_cfs(&self, option: &FlushOptions, cfs: &[&RawCfHandle]) -> Result<()> {
         unsafe {
             let cfs: Vec<_> = cfs.iter().map(|c| c.get_ptr()).collect();
             ffi_call!(crocksdb_flush_cfs(
