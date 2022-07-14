@@ -96,6 +96,12 @@ impl<'a, D: RawDbRef + 'a> Snapshot<'a, D> {
         }
     }
 
+    /// If the database contains an entry for "key" that is visible in the snapshot,
+    /// return the corresponding value.
+    ///
+    /// If there is no entry for "key" or the entry is invisable, returns `Ok(None)`.
+    ///
+    /// May return some other Status on an error.
     pub fn get(
         &self,
         opt: &mut ReadOptions,
@@ -106,6 +112,9 @@ impl<'a, D: RawDbRef + 'a> Snapshot<'a, D> {
         self.db.with(|d| d.get(&opt, cf, key))
     }
 
+    /// Same as [`get`] but store the value in `value`, so it may allocate less.
+    ///
+    /// If such entry is found, value is updated and `Ok(true)` is returned.
     pub fn get_to(
         &self,
         opt: &mut ReadOptions,

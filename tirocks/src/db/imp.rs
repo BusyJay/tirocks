@@ -172,11 +172,9 @@ impl RawDb {
         }
     }
 
-    /// If the database contains an entry for "key" store the corresponding value in *value and
-    /// return OK.
+    /// If the database contains an entry for "key" return the corresponding value.
     ///
-    /// If there is no entry for "key" leave *value unchanged and return a status for which
-    /// Status::IsNotFound() returns true.
+    /// If there is no entry for "key", returns `Ok(None)`.
     ///
     /// May return some other Status on an error.
     pub fn get(&self, opt: &ReadOptions, cf: &RawCfHandle, key: &[u8]) -> Result<Option<Vec<u8>>> {
@@ -205,7 +203,9 @@ impl RawDb {
         }
     }
 
-    /// Same as [`get`] but may allocate less.
+    /// Same as [`get`] but store the value in `value`, so it may allocate less.
+    ///
+    /// If such entry is found, value is updated and `Ok(true)` is returned.
     pub fn get_to(
         &self,
         opt: &ReadOptions,

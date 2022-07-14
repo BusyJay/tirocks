@@ -18,8 +18,12 @@ use crate::{
 /// # Safety
 ///
 /// Implementation should make sure the returned pointer can be used forever as long as
-/// `self` alives.
+/// `self` is alive.
 pub unsafe trait Iterable {
+    /// Creates a raw iterator.
+    ///
+    /// A mutable reference to `ReadOptions` is required to make it possible for setting snapshot
+    /// at runtime.
     fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawCfHandle) -> *mut rocksdb_Iterator;
 }
 
