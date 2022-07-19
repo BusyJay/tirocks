@@ -172,11 +172,9 @@ impl RawDb {
         }
     }
 
-    /// If the database contains an entry for "key" store the corresponding value in *value and
-    /// return OK.
+    /// If the database contains an entry for "key" return the corresponding value.
     ///
-    /// If there is no entry for "key" leave *value unchanged and return a status for which
-    /// Status::IsNotFound() returns true.
+    /// If there is no entry for "key", returns `Ok(None)`.
     ///
     /// May return some other Status on an error.
     pub fn get(&self, opt: &ReadOptions, cf: &RawCfHandle, key: &[u8]) -> Result<Option<Vec<u8>>> {
@@ -205,8 +203,10 @@ impl RawDb {
         }
     }
 
-    /// Same as [`get`] but may allocate less.
-    pub fn get_to(
+    /// Same as [`get`] but avoid allocations and memcpy for most cases.
+    ///
+    /// If such entry is found, value is updated and `Ok(true)` is returned.
+    pub fn get_pinned(
         &self,
         opt: &ReadOptions,
         cf: &RawCfHandle,
