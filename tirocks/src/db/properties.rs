@@ -18,7 +18,7 @@ use super::cf::RawCfHandle;
 impl RawDb {
     /// DB implementations can export properties about their state via this method. If "prop"
     /// is a valid property understood by this DB implementation (see struct inherits `Property`
-    /// trait for valid options), returns true. Otherwise, returns false.
+    /// trait for valid options), returns the property value. Otherwise, returns None.
     #[inline]
     pub fn property(
         &self,
@@ -139,10 +139,7 @@ impl RawDb {
         c: &mut OwnedTablePropertiesCollection,
     ) -> Result<()> {
         unsafe {
-            let ranges: Vec<_> = ranges
-                .into_iter()
-                .map(|(s, e)| range_to_rocks(s, e))
-                .collect();
+            let ranges: Vec<_> = ranges.iter().map(|(s, e)| range_to_rocks(s, e)).collect();
             ffi_call!(crocksdb_get_properties_of_tables_in_range(
                 self.get_ptr(),
                 cf.get_ptr(),

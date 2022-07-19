@@ -6,7 +6,7 @@ use tirocks_sys::{r, rocksdb_PinnableSlice, s};
 
 /// A Slice that can be pinned with some cleanup tasks, which will be run upon
 /// `reset()` or object destruction, whichever is invoked first. This can be used
-/// to avoid memcpy by having the PinnableSlice object referring to the data
+/// to avoid memcpy by having the PinSlice object referring to the data
 /// that is locked in the memory and release them after the data is consumed.
 pub struct PinSlice {
     ptr: *mut rocksdb_PinnableSlice,
