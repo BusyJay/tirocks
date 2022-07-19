@@ -112,10 +112,10 @@ impl<'a, D: RawDbRef + 'a> Snapshot<'a, D> {
         self.db.with(|d| d.get(&opt, cf, key))
     }
 
-    /// Same as [`get`] but store the value in `value`, so it may allocate less.
+    /// Same as [`get`] but avoid allocations and memcpy for most cases.
     ///
     /// If such entry is found, value is updated and `Ok(true)` is returned.
-    pub fn get_to(
+    pub fn get_pinned(
         &self,
         opt: &mut ReadOptions,
         cf: &RawCfHandle,
@@ -123,7 +123,7 @@ impl<'a, D: RawDbRef + 'a> Snapshot<'a, D> {
         value: &mut PinSlice,
     ) -> Result<bool> {
         let opt = WithSnapOpt::new(opt, &self.snap);
-        self.db.with(|d| d.get_to(&opt, cf, key, value))
+        self.db.with(|d| d.get_pinned(&opt, cf, key, value))
     }
 
     pub fn iter<'b>(&'b self, opt: &'b mut ReadOptions, cf: &RawCfHandle) -> RawIterator<'b> {

@@ -203,10 +203,10 @@ impl RawDb {
         }
     }
 
-    /// Same as [`get`] but store the value in `value`, so it may allocate less.
+    /// Same as [`get`] but avoid allocations and memcpy for most cases.
     ///
     /// If such entry is found, value is updated and `Ok(true)` is returned.
-    pub fn get_to(
+    pub fn get_pinned(
         &self,
         opt: &ReadOptions,
         cf: &RawCfHandle,
