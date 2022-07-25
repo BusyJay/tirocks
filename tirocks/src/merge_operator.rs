@@ -5,13 +5,10 @@ use std::{borrow::Cow, ffi::CStr, marker::PhantomData, os::raw::c_char, ptr, sli
 use libc::c_void;
 use tirocks_sys::{
     crocksdb_mergeoperator_t, r, rocksdb_MergeOperator_MergeOperationInput,
-    rocksdb_MergeOperator_MergeOperationOutput, rocksdb_MergeOperator_MergeValueType,
-    rocksdb_Slice, s,
+    rocksdb_MergeOperator_MergeOperationOutput, rocksdb_Slice, s,
 };
 
 use crate::util;
-
-pub type MergeValueType = rocksdb_MergeOperator_MergeValueType;
 
 #[repr(transparent)]
 pub struct MergeOperationInput(rocksdb_MergeOperator_MergeOperationInput);
@@ -29,13 +26,6 @@ impl MergeOperationInput {
             tirocks_sys::crocksdb_mergeoperationinput_key(self.as_ptr(), &mut buf);
             s(buf)
         }
-    }
-
-    /// The value type associated with the existing_value, ignore this field
-    /// if existing_value is None.
-    #[inline]
-    pub fn value_type(&self) -> MergeValueType {
-        unsafe { tirocks_sys::crocksdb_mergeoperationinput_value_type(self.as_ptr()) }
     }
 
     /// The existing value of the current key, None means that the value doesn't exist.
@@ -120,15 +110,6 @@ impl MergeOperationOutput {
                 self.as_mut_ptr(),
                 input.as_ptr(),
             )
-        }
-        self
-    }
-
-    /// new value type of merge result.
-    #[inline]
-    pub fn set_new_type(&mut self, new_type: MergeValueType) -> &mut Self {
-        unsafe {
-            tirocks_sys::crocksdb_mergeoperationoutput_set_new_type(self.as_mut_ptr(), new_type);
         }
         self
     }

@@ -14,7 +14,7 @@ use crate::option::{
 use crate::properties::table::user::SequenceNumber;
 use crate::util::{self, ffi_call, range_to_rocks, split_pairs, PathToSlice, RustRange};
 use crate::{comparator::SysComparator, env::Env};
-use crate::{Code, PinSlice, Result, Status};
+use crate::{Code, PinSlice, RawIterator, Result, Status, WriteBatch};
 
 use crate::db::cf::RawCfHandle;
 
@@ -172,6 +172,35 @@ impl RawDb {
         }
     }
 
+    /// Apply the specified updates to the database.
+    /// If `updates` contains no update, WAL will still be synced if
+    /// options.sync=true.
+    /// Returns OK on success, non-OK on failure.
+    /// Note: consider setting options.sync = true.
+    #[inline]
+    pub fn write(&self, opt: &WriteOptions, updates: &mut WriteBatch) -> Result<()> {
+        unsafe {
+            ffi_call!(crocksdb_write(
+                self.get_ptr(),
+                opt.get_ptr(),
+                updates.as_mut_ptr(),
+            ))
+        }
+    }
+
+    #[inline]
+    pub fn write_multi(&self, opt: &WriteOptions, updates: &mut [&mut WriteBatch]) -> Result<()> {
+        unsafe {
+            ffi_call!(crocksdb_write_multi_batch(
+                self.get_ptr(),
+                opt.get_ptr(),
+                // &mut T is the same as *mut T
+                updates.as_mut_ptr() as _,
+                updates.len(),
+            ))
+        }
+    }
+
     /// If the database contains an entry for "key" return the corresponding value.
     ///
     /// If there is no entry for "key", returns `Ok(None)`.
@@ -232,6 +261,10 @@ impl RawDb {
                 }
             }
         }
+    }
+
+    pub fn iter<'a>(&'a self, read: &'a mut ReadOptions, cf: &RawCfHandle) -> RawIterator<'a> {
+        RawIterator::new(self, read, cf)
     }
 
     pub fn set_cf_options(
@@ -647,6 +680,11 @@ impl Db {
     #[inline]
     pub fn is_titan(&self) -> bool {
         self.is_titan
+    }
+
+    #[inline]
+    pub fn iter<'a>(&'a self, read: &'a mut ReadOptions, cf: &'a RawCfHandle) -> RawIterator<'a> {
+        RawIterator::new(self, read, cf)
     }
 
     /// Delete files which are entirely in the given range

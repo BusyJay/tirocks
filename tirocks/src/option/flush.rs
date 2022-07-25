@@ -1,13 +1,18 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::mem::MaybeUninit;
+use std::{
+    fmt::{self, Debug, Formatter},
+    mem::MaybeUninit,
+};
 
 use tirocks_sys::{
     rocksdb_BottommostLevelCompaction, rocksdb_CompactRangeOptions, rocksdb_CompactionOptions,
     rocksdb_FlushOptions, rocksdb_IngestExternalFileOptions,
 };
 
-use super::CompressionType;
+use crate::util::simple_access;
+
+use super::{CompressionType, OwnedSlice};
 
 /// Options that control flush operations
 #[derive(Debug)]
@@ -110,11 +115,21 @@ impl CompactionOptions {
 
 pub type BottommostLevelCompaction = rocksdb_BottommostLevelCompaction;
 
+#[derive(Default)]
+struct CompactRangeOptionsStorage {
+    full_history_ts_low: OwnedSlice,
+}
+
 // CompactRangeOptions is used by CompactRange() call.
-#[derive(Debug)]
-#[repr(transparent)]
 pub struct CompactRangeOptions {
     raw: rocksdb_CompactRangeOptions,
+    slice_store: Option<Box<CompactRangeOptionsStorage>>,
+}
+
+impl Debug for CompactRangeOptions {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "CompactRangeOptions")
+    }
 }
 
 impl Default for CompactRangeOptions {
@@ -125,73 +140,90 @@ impl Default for CompactRangeOptions {
             tirocks_sys::crocksdb_compactrangeoptions_init(opt.as_mut_ptr());
             Self {
                 raw: opt.assume_init(),
+                slice_store: None,
             }
         }
     }
 }
 
 impl CompactRangeOptions {
-    /// If true, no other compaction will run at the same time as this
-    /// manual compaction
     #[inline]
-    pub fn set_exclusive_manual_compaction(&mut self, exclusive: bool) -> &mut Self {
-        self.raw.exclusive_manual_compaction = exclusive;
-        self
+    fn init_slice_store(&mut self) {
+        if self.slice_store.is_none() {
+            self.slice_store = Some(Box::new(Default::default()));
+        }
     }
 
-    /// If true, compacted files will be moved to the minimum level capable
-    /// of holding the data or given level (specified non-negative target_level).
-    #[inline]
-    pub fn set_change_level(&mut self, change_level: bool) -> &mut Self {
-        self.raw.change_level = change_level;
-        self
+    simple_access! {
+        crocksdb_compactrangeoptions
+
+        /// If true, no other compaction will run at the same time as this
+        /// manual compaction
+        exclusive_manual_compaction: bool
+
+        /// If true, compacted files will be moved to the minimum level capable
+        /// of holding the data or given level (specified non-negative target_level).
+        change_level: bool
+
+        /// If change_level is true and target_level have non-negative value, compacted
+        /// files will be moved to target_level.
+        target_level: i32
+
+        /// Compaction outputs will be placed in options.db_paths[target_path_id].
+        /// Behavior is undefined if target_path_id is out of range.
+        target_path_id: u32
+
+        /// By default level based compaction will only compact the bottommost level
+        /// if there is a compaction filter
+        bottommost_level_compaction: BottommostLevelCompaction
+
+        /// If true, will execute immediately even if doing so would cause the DB to
+        /// enter write stall mode. Otherwise, it'll sleep until load is low enough.
+        allow_write_stall: bool
+
+        /// If > 0, it will replace the option in the DBOptions for this compaction.
+        max_subcompactions: u32
     }
 
-    /// If change_level is true and target_level have non-negative value, compacted
-    /// files will be moved to target_level.
+    /// Allows cancellation of an in-progress manual compaction.
+    ///
+    /// Cancellation can be delayed waiting on automatic compactions when used
+    /// together with `exclusive_manual_compaction == true`.
     #[inline]
-    pub fn set_target_level(&mut self, target_level: i32) -> &mut Self {
-        self.raw.target_level = target_level;
-        self
+    pub fn cancel(&self) {
+        unsafe {
+            // Hack: In C++, mut means mutable. However, in Rust, mut actually means exclusive
+            // reference.
+            tirocks_sys::crocksdb_compactrangeoptions_set_canceled(
+                (&self.raw) as *const _ as *mut _,
+                true,
+            );
+        }
     }
 
-    /// Compaction outputs will be placed in options.db_paths[target_path_id].
-    /// Behavior is undefined if target_path_id is out of range.
+    /// Set user-defined timestamp low bound, the data with older timestamp than
+    /// low bound maybe GCed by compaction. Default: nullptr
     #[inline]
-    pub fn set_target_path_id(&mut self, path_id: u32) -> &mut Self {
-        self.raw.target_path_id = path_id;
-        self
-    }
-
-    /// By default level based compaction will only compact the bottommost level
-    /// if there is a compaction filter
-    #[inline]
-    pub fn set_bottommost_level_compaction(
-        &mut self,
-        compaction: BottommostLevelCompaction,
-    ) -> &mut Self {
-        self.raw.bottommost_level_compaction = compaction;
-        self
-    }
-
-    /// If true, will execute immediately even if doing so would cause the DB to
-    /// enter write stall mode. Otherwise, it'll sleep until load is low enough.
-    #[inline]
-    pub fn set_allow_write_stall(&mut self, allow: bool) -> &mut Self {
-        self.raw.allow_write_stall = allow;
-        self
-    }
-
-    /// If > 0, it will replace the option in the DBOptions for this compaction.
-    #[inline]
-    pub fn set_max_subcompactions(&mut self, subcompaction: u32) -> &mut Self {
-        self.raw.max_subcompactions = subcompaction;
+    pub fn set_full_history_ts_low(&mut self, timestamp: impl Into<Option<Vec<u8>>>) -> &mut Self {
+        self.init_slice_store();
+        let store = self.slice_store.as_mut().unwrap();
+        let ptr = store.full_history_ts_low.set_data(timestamp.into());
+        unsafe {
+            tirocks_sys::crocksdb_compactrangeoptions_set_full_history_ts_low(
+                self.as_mut_ptr(),
+                ptr,
+            );
+        }
         self
     }
 
     #[inline]
     pub(crate) fn as_ptr(&self) -> *const rocksdb_CompactRangeOptions {
         &self.raw
+    }
+
+    fn as_mut_ptr(&mut self) -> *mut rocksdb_CompactRangeOptions {
+        &mut self.raw
     }
 }
 
