@@ -14,6 +14,7 @@ pub enum rocksdb_Options {}
 pub enum rocksdb_titandb_TitanDBOptions {}
 pub enum rocksdb_titandb_TitanCFOptions {}
 pub enum rocksdb_titandb_TitanOptions {}
+pub enum rocksdb_CompactionFilter {}
 pub enum rocksdb_CompactionFilter_Context {}
 pub enum rocksdb_LRUCacheOptions {}
 pub enum rocksdb_BlockBasedTableOptions {}
@@ -30,3 +31,4 @@ pub enum rocksdb_MergeOperator_MergeOperationOutput {}
 pub enum rocksdb_SstFileReader {}
 pub enum rocksdb_SstFileWriter {}
 pub enum rocksdb_ExternalSstFileInfo {}
+pub enum rocksdb_RateLimiter {}

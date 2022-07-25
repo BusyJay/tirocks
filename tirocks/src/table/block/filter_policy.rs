@@ -11,7 +11,7 @@ unsafe impl Sync for SysFilterPolicy {}
 
 impl SysFilterPolicy {
     #[inline]
-    pub fn new_bloom_filter_policy(bits_per_key: i32, use_block_based_builder: bool) -> Self {
+    pub fn new_bloom_filter_policy(bits_per_key: f64, use_block_based_builder: bool) -> Self {
         let ptr = unsafe {
             tirocks_sys::crocksdb_filterpolicy_create_bloom_format(
                 bits_per_key,

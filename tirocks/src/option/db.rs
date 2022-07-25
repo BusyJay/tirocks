@@ -579,11 +579,14 @@ impl RawDbOptions {
         /// to the head of the queue becomes write batch group leader and responsible
         /// for writing to WAL.
         ///
-        /// If enable_pipelined_commit is true, RocksDB will apply WriteBatch to
+        /// If enable_multi_batch_write is true, RocksDB will apply WriteBatch to
         /// memtable out of order but commit them in order.
         ///
         /// Default: false
-        enable_pipelined_commit: bool
+        multi_batch_write: bool
+
+        /// Check [`set_multi_batch_write`].
+        (<) multi_batch_write: bool
 
         /// If true, allow multi-writers to update mem tables in parallel.
         /// Only some memtable_factory-s support concurrent writes; currently it

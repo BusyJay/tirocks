@@ -1149,11 +1149,6 @@ impl RawTitanCfOptions {
         /// Default: 0.5
         blob_file_discardable_ratio: f64
 
-        /// The ratio of how much size of a blob file need to be sample before GC.
-        ///
-        /// Default: 0.1
-        sample_file_size_ratio: f64
-
         /// The blob file size less than this option will be mark GC.
         ///
         /// Default: 8MB

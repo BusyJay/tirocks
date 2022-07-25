@@ -101,21 +101,16 @@ impl WriteOptions {
         self
     }
 
-    /// Timestamp of write operation, e.g. Put. All timestamps of the same
-    /// database must share the same length and format. The user is also
-    /// responsible for providing a customized compare function via Comparator to
-    /// order <key, timestamp> tuples. If the user wants to enable timestamp, then
-    /// all write operations must be associated with timestamp because RocksDB, as
-    /// a single-node storage engine currently has no knowledge of global time,
-    /// thus has to rely on the application.
-    /// The user-specified timestamp feature is still under active development,
-    /// and the API is subject to change.
+    /// If true, this writebatch will maintain the last insert positions of each
+    /// memtable as hints in concurrent write. It can improve write performance
+    /// in concurrent writes if keys in one writebatch are sequential. In
+    /// non-concurrent writes (when concurrent_memtable_writes is false) this
+    /// option will be ignored.
+    ///
+    /// Default: false
     #[inline]
-    pub fn set_timestamp(&mut self, timestamp: impl Into<Option<Vec<u8>>>) -> &mut Self {
-        let ts = self
-            .slice_store
-            .get_or_insert_with(|| Box::new(Default::default()));
-        self.raw.timestamp = ts.set_data(timestamp.into());
+    pub fn set_memtable_insert_hint_per_batch(&mut self, hint_per_batch: bool) -> &mut Self {
+        self.raw.memtable_insert_hint_per_batch = hint_per_batch;
         self
     }
 
