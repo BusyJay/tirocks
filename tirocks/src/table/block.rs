@@ -10,6 +10,8 @@ use crate::util::simple_access;
 use self::filter_policy::SysFilterPolicy;
 
 pub type IndexType = tirocks_sys::rocksdb_BlockBasedTableOptions_IndexType;
+pub type PrepopulateBlockCache = tirocks_sys::rocksdb_BlockBasedTableOptions_PrepopulateBlockCache;
+pub type ChecksumType = tirocks_sys::rocksdb_ChecksumType;
 
 pub struct BlockBasedTableOptions {
     ptr: *mut rocksdb_BlockBasedTableOptions,
@@ -49,6 +51,11 @@ impl BlockBasedTableOptions {
         /// This option is now deprecated. No matter what value it is set to,
         /// it will behave as if hash_index_allow_collision=true.
         hash_index_allow_collision: bool
+
+        /// Use the specified checksum type. Newly created table files will be
+        /// protected with this checksum type. Old table files will still be readable,
+        /// even though they have different checksum type.
+        checksum: ChecksumType
 
         /// Disable block cache. If this is set to true,
         /// then no block cache should be used, and the block_cache should
@@ -158,6 +165,16 @@ impl BlockBasedTableOptions {
         /// This option only affects newly written tables. When reading existing
         /// tables, the information about version is read from the footer.
         format_version: u32
+
+        /// If enabled, prepopulate warm/hot blocks (data, uncompressed dict, index and
+        /// filter blocks) which are already in memory into block cache at the time of
+        /// flush. On a flush, the block that is in memory (in memtables) get flushed
+        /// to the device. If using Direct IO, additional IO is incurred to read this
+        /// data back into memory again, which is avoided by enabling this option. This
+        /// further helps if the workload exhibits high temporal locality, where most
+        /// of the reads go to recently written data. This also helps in case of
+        /// Distributed FileSystem.
+        prepopulate_block_cache: PrepopulateBlockCache
     }
 
     #[inline]

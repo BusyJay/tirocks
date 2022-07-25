@@ -1,11 +1,47 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
 use std::str::FromStr;
+use std::marker::PhantomData;
 
 use serde::{de::Visitor, Deserialize, Serialize};
 
 type CompressionType = crate::rocksdb_CompressionType;
 type TitanBlobRunMode = crate::rocksdb_titandb_TitanBlobRunMode;
+type LogLevel = crate::rocksdb_InfoLogLevel;
+type PrepopulateBlockCache = crate::rocksdb_BlockBasedTableOptions_PrepopulateBlockCache;
+type ChecksumType = crate::rocksdb_ChecksumType;
+
+struct FromStrVisitor<Item> {
+    candidate: &'static str,
+    _phantom: PhantomData<Item>,
+}
+
+impl<Item> FromStrVisitor<Item> {
+    #[inline]
+    fn new(candidate: &'static str) -> Self {
+        Self {
+            candidate,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'de, Item: FromStr<Err=String>> Visitor<'de> for FromStrVisitor<Item> {
+    type Value = Item;
+
+    #[inline]
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        v.parse().map_err(E::custom)
+    }
+
+    #[inline]
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(formatter, "an one of string {{ {} }}", self.candidate)
+    }
+}
 
 impl Serialize for CompressionType {
     #[inline]
@@ -29,17 +65,12 @@ impl Serialize for CompressionType {
     }
 }
 
-struct CompressionTypeVisitor;
-
-impl<'de> Visitor<'de> for CompressionTypeVisitor {
-    type Value = CompressionType;
+impl FromStr for CompressionType {
+    type Err = String;
 
     #[inline]
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        let c = match v {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let c = match s {
             "no" => CompressionType::kNoCompression,
             "snappy" => CompressionType::kSnappyCompression,
             "zlib" => CompressionType::kZlibCompression,
@@ -50,14 +81,9 @@ impl<'de> Visitor<'de> for CompressionTypeVisitor {
             "zstd" => CompressionType::kZSTD,
             "zstd-not-final" => CompressionType::kZSTDNotFinalCompression,
             "disable" => CompressionType::kDisableCompressionOption,
-            _ => return Err(E::custom(format!("unknown compression: {}", v))),
+            _ => return Err(format!("unknown compression type: {}", s)),
         };
         Ok(c)
-    }
-
-    #[inline]
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("an one of string { \"no\", \"snappy\", \"zlib\", \"bz2\", \"lz4\", \"lz4hc\", \"xpress\", \"zstd\", \"zstd-not-final\" }")
     }
 }
 
@@ -67,7 +93,7 @@ impl<'de> Deserialize<'de> for CompressionType {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(CompressionTypeVisitor)
+        deserializer.deserialize_str(FromStrVisitor::<CompressionType>::new("\"no\", \"snappy\", \"zlib\", \"bz2\", \"lz4\", \"lz4hc\", \"xpress\", \"zstd\", \"zstd-not-final\""))
     }
 }
 
@@ -91,31 +117,13 @@ impl FromStr for TitanBlobRunMode {
 
     #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "normal" => Ok(TitanBlobRunMode::kNormal),
-            "read-only" => Ok(TitanBlobRunMode::kReadOnly),
-            "fallback" => Ok(TitanBlobRunMode::kFallback),
+        let m = match s {
+            "normal" => TitanBlobRunMode::kNormal,
+            "read-only" => TitanBlobRunMode::kReadOnly,
+            "fallback" => TitanBlobRunMode::kFallback,
             _ => return Err(format!("unknown run mode: {}", s)),
-        }
-    }
-}
-
-struct TitanBlobRunModeVisitor;
-
-impl<'de> Visitor<'de> for TitanBlobRunModeVisitor {
-    type Value = TitanBlobRunMode;
-
-    #[inline]
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        v.parse().map_err(E::custom)
-    }
-
-    #[inline]
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("an one of string { \"normal\", \"read-only\", \"fallback\" }")
+        };
+        Ok(m)
     }
 }
 
@@ -125,7 +133,135 @@ impl<'de> Deserialize<'de> for TitanBlobRunMode {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(TitanBlobRunModeVisitor)
+        deserializer.deserialize_str(FromStrVisitor::<TitanBlobRunMode>::new("\"normal\", \"read-only\", \"fallback\""))
+    }
+}
+
+impl Serialize for LogLevel {
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let s = match self {
+            LogLevel::DEBUG_LEVEL => "debug",
+            LogLevel::INFO_LEVEL => "info",
+            LogLevel::WARN_LEVEL => "warn",
+            LogLevel::ERROR_LEVEL => "error",
+            LogLevel::FATAL_LEVEL => "fatal",
+            LogLevel::HEADER_LEVEL => "header",
+            LogLevel::NUM_INFO_LOG_LEVELS => "num-info-log-levels",
+        };
+        serializer.serialize_str(s)
+    }
+}
+
+impl FromStr for LogLevel {
+    type Err = String;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let c = match s {
+            "debug" => LogLevel::DEBUG_LEVEL,
+            "info" => LogLevel::INFO_LEVEL,
+            "warn" => LogLevel::WARN_LEVEL,
+            "error" => LogLevel::ERROR_LEVEL,
+            "fatal" => LogLevel::FATAL_LEVEL,
+            _ => return Err(format!("unknown LogLevel: {}", s)),
+        };
+        Ok(c)
+    }
+}
+
+impl<'de> Deserialize<'de> for LogLevel {
+    #[inline]
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(FromStrVisitor::<LogLevel>::new("\"debug\", \"info\", \"warn\", \"error\", \"fatal\""))
+    }
+}
+
+impl Serialize for PrepopulateBlockCache {
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let s = match self {
+            PrepopulateBlockCache::kDisable => "disable",
+            PrepopulateBlockCache::kFlushOnly => "flush-only",
+        };
+        serializer.serialize_str(s)
+    }
+}
+
+impl FromStr for PrepopulateBlockCache {
+    type Err = String;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let c = match s {
+            "disabled" | "disable" => PrepopulateBlockCache::kDisable,
+            "flush-only" => PrepopulateBlockCache::kFlushOnly,
+            _ => return Err(format!("unknown PrepopulateBlockCache: {}", s)),
+        };
+        Ok(c)
+    }
+}
+
+impl<'de> Deserialize<'de> for PrepopulateBlockCache {
+    #[inline]
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(FromStrVisitor::<PrepopulateBlockCache>::new("\"disabled\", \"flush-only\""))
+    }
+}
+
+impl Serialize for ChecksumType {
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let s = match self {
+            ChecksumType::kNoChecksum => "no",
+            ChecksumType::kCRC32c => "crc32c",
+            ChecksumType::kxxHash => "xxhash",
+            ChecksumType::kxxHash64 => "xxhash64",
+            ChecksumType::kXXH3 => "xxh3",
+        };
+        serializer.serialize_str(s)
+    }
+}
+
+impl FromStr for ChecksumType {
+    type Err = String;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let c = match s {
+            "no" => ChecksumType::kNoChecksum,
+            "crc32c" => ChecksumType::kCRC32c,
+            "xxhash" => ChecksumType::kxxHash,
+            "xxhash64" => ChecksumType::kxxHash64,
+            "xxh3" => ChecksumType::kXXH3,
+            _ => return Err(format!("unknown checksumtype: {}", s)),
+        };
+        Ok(c)
+    }
+}
+
+impl<'de> Deserialize<'de> for ChecksumType {
+    #[inline]
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(FromStrVisitor::<ChecksumType>::new("\"no\", \"crc32c\", \"xxhash\", \"xxhash64\", \"xxh3\""))
     }
 }
 
@@ -233,12 +369,15 @@ mod tests {
         rocksdb_WALRecoveryMode,
     };
 
-    use super::{CompressionType, TitanBlobRunMode};
+    use super::*;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct Config {
         compressions: [CompressionType; 10],
         titan_blob_run_mode: [TitanBlobRunMode; 3],
+        log_level: [LogLevel; 5],
+        prepopulate_block_cache: [PrepopulateBlockCache; 2],
+        checksum_type: [ChecksumType; 5],
         compaction_pri: [rocksdb_CompactionPri; 4],
         rate_limiter_mode: [rocksdb_RateLimiter_Mode; 3],
         compaction_style: [rocksdb_CompactionStyle; 4],
@@ -264,6 +403,24 @@ mod tests {
                 TitanBlobRunMode::kNormal,
                 TitanBlobRunMode::kReadOnly,
                 TitanBlobRunMode::kFallback,
+            ],
+            log_level: [
+                LogLevel::ERROR_LEVEL,
+                LogLevel::INFO_LEVEL,
+                LogLevel::WARN_LEVEL,
+                LogLevel::ERROR_LEVEL,
+                LogLevel::FATAL_LEVEL,
+            ],
+            prepopulate_block_cache: [
+                PrepopulateBlockCache::kDisable,
+                PrepopulateBlockCache::kFlushOnly,
+            ],
+            checksum_type: [
+                ChecksumType::kNoChecksum,
+                ChecksumType::kCRC32c,
+                ChecksumType::kxxHash,
+                ChecksumType::kxxHash64,
+                ChecksumType::kXXH3,
             ],
             compaction_pri: [
                 rocksdb_CompactionPri::kByCompensatedSize,
@@ -291,6 +448,9 @@ mod tests {
         };
         let cfg_str = r#"compressions = ["no", "snappy", "zlib", "bz2", "lz4", "lz4hc", "xpress", "zstd", "zstd-not-final", "disable"]
 titan_blob_run_mode = ["normal", "read-only", "fallback"]
+log_level = ["error", "info", "warn", "error", "fatal"]
+prepopulate_block_cache = ["disable", "flush-only"]
+checksum_type = ["no", "crc32c", "xxhash", "xxhash64", "xxh3"]
 compaction_pri = ["by-compensated-size", "oldest-largest-seq-first", "oldest-smallest-seq-first", "min-overlapping-ratio"]
 rate_limiter_mode = ["read-only", "write-only", "all-io"]
 compaction_style = ["level", "universal", "fifo", "none"]
@@ -303,6 +463,9 @@ wal_recover_mode = ["tolerate-corrupted-tail-records", "absolute-consistency", "
         let cfg_str_num = r#"
 compressions = ["no", "snappy", "zlib", "bz2", "lz4", "lz4hc", "xpress", "zstd", "zstd-not-final", "disable"]
 titan_blob_run_mode = ["normal", "read-only", "fallback"]
+log_level = ["error", "info", "warn", "error", "fatal"]
+prepopulate_block_cache = ["disable", "flush-only"]
+checksum_type = ["no", "crc32c", "xxhash", "xxhash64", "xxh3"]
 compaction_pri = [0, 1, 2, 3]
 rate_limiter_mode = [0, 1, 2]
 compaction_style = [0, 1, 2, 3]
