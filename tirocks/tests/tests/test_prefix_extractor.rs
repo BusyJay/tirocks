@@ -59,7 +59,7 @@ fn test_prefix_extractor_compatibility() {
 
     // open db with prefix extractor, and insert data
     let mut bbto = BlockBasedTableOptions::default();
-    let filter = SysFilterPolicy::new_bloom_filter_policy(10, false);
+    let filter = SysFilterPolicy::new_bloom_filter_policy(10., false);
     bbto.set_filter_policy(&filter)
         .set_whole_key_filtering(false);
     let mut builder = DefaultCfOnlyBuilder::default();

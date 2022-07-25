@@ -251,7 +251,7 @@ fn test_partitioned_index_filters() {
     let mut bbto = BlockBasedTableOptions::default();
     bbto.set_index_type(IndexType::kTwoLevelIndexSearch)
         .set_partition_filters(true)
-        .set_filter_policy(&SysFilterPolicy::new_bloom_filter_policy(10, false))
+        .set_filter_policy(&SysFilterPolicy::new_bloom_filter_policy(10., false))
         .set_metadata_block_size(4096)
         .set_cache_index_and_filter_blocks(true)
         .set_pin_top_level_index_and_filter(true)
@@ -672,12 +672,16 @@ fn test_compact_on_deletion() {
     }
     db.flush(FlushOptions::default().set_wait(true), cf)
         .unwrap();
-    std::thread::sleep(std::time::Duration::from_millis(100));
 
-    assert_eq!(
-        db.property(cf, &PropNumFilesAtLevel::new(0)),
-        Ok(Some("0".to_string()))
-    );
+    let max_retry = 1000;
+    for _ in 0..max_retry {
+        if db.property(cf, &PropNumFilesAtLevel::new(0)) == Ok(Some("0".to_string())) {
+            break;
+        } else {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+    }
+    assert_eq!(db.property(cf, &PropNumFilesAtLevel::new(0)), Ok(Some("0".to_string())));
     assert_eq!(
         db.property(cf, &PropNumFilesAtLevel::new(1)),
         Ok(Some("1".to_string()))

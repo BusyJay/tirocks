@@ -57,7 +57,6 @@
 #include "titan/db.h"
 #include "titan/options.h"
 #include "util/coding.h"
-#include "util/file_reader_writer.h"
 
 #if !defined(ROCKSDB_MAJOR) || !defined(ROCKSDB_MINOR) || \
     !defined(ROCKSDB_PATCH)
@@ -87,7 +86,6 @@ using rocksdb::CompactionStyle;
 using rocksdb::CompactRangeOptions;
 using rocksdb::Comparator;
 using rocksdb::CompressionType;
-using rocksdb::CTREncryptionProvider;
 using rocksdb::CuckooTableOptions;
 using rocksdb::DB;
 using rocksdb::DBOptions;
@@ -157,7 +155,6 @@ using rocksdb::WriteStallCondition;
 using rocksdb::WriteStallInfo;
 
 using rocksdb::BlockBasedTableFactory;
-using rocksdb::BottommostLevelCompaction;
 using rocksdb::ColumnFamilyData;
 using rocksdb::ColumnFamilyHandleImpl;
 using rocksdb::ColumnFamilyMetaData;
@@ -674,23 +671,6 @@ struct crocksdb_mergeoperator_t {
   std::shared_ptr<MergeOperator> rep;
 };
 
-/// An Env that free resources when being deleted.
-struct EncryptedEnvWrapper : EnvWrapper {
-  EncryptedEnvWrapper(Env* env, EncryptionProvider* provider,
-                      BlockCipher* block_cipher)
-      : EnvWrapper(env),
-        encryption_provider_(provider),
-        block_cipher_(block_cipher) {}
-
-  ~EncryptedEnvWrapper() {
-    delete encryption_provider_;
-    delete block_cipher_;
-  }
-
-  EncryptionProvider* encryption_provider_;
-  BlockCipher* block_cipher_;
-};
-
 struct CRocksDBSliceTransform : public SliceTransform {
   void* state_;
   void (*destructor_)(void*);
@@ -1059,6 +1039,16 @@ void crocksdb_merge_cf(DB* db, const WriteOptions* options,
 void crocksdb_write(DB* db, const WriteOptions* options, WriteBatch* batch,
                     Status* s) {
   *s = db->Write(*options, batch);
+}
+
+void crocksdb_write_multi_batch(DB* db, const WriteOptions* options,
+                                WriteBatch** batches, size_t batch_size,
+                                Status* s) {
+  std::vector<WriteBatch*> ws;
+  for (size_t i = 0; i < batch_size; i++) {
+    ws.push_back(batches[i]);
+  }
+  *s = db->MultiBatchWrite(*options, std::move(ws));
 }
 
 void crocksdb_get(DB* db, const ReadOptions* options, Slice key, void* ctx,
@@ -1754,6 +1744,17 @@ void crocksdb_block_based_options_set_read_amp_bytes_per_bit(
   options->read_amp_bytes_per_bit = v;
 }
 
+void crocksdb_block_based_options_set_prepopulate_block_cache(
+    BlockBasedTableOptions* options,
+    BlockBasedTableOptions::PrepopulateBlockCache v) {
+  options->prepopulate_block_cache = v;
+}
+
+void crocksdb_block_based_options_set_checksum(BlockBasedTableOptions* options,
+                                               ChecksumType v) {
+  options->checksum = v;
+}
+
 struct crocksdb_tablefactory_t {
   shared_ptr<TableFactory> factory;
 };
@@ -1791,10 +1792,8 @@ void crocksdb_options_set_wal_bytes_per_sync(DBOptions* opt, uint64_t v) {
 static BlockBasedTableOptions* get_block_based_table_options(
     const ColumnFamilyOptions* opt) {
   if (opt->table_factory != nullptr) {
-    void* table_opt = opt->table_factory->GetOptions();
-    if (table_opt &&
-        strcmp(opt->table_factory->Name(), block_base_table_str) == 0) {
-      return static_cast<BlockBasedTableOptions*>(table_opt);
+    if (strcmp(opt->table_factory->Name(), block_base_table_str) == 0) {
+      return opt->table_factory->GetOptions<BlockBasedTableOptions>();
     }
   }
   return nullptr;
@@ -2542,8 +2541,12 @@ void crocksdb_options_set_enable_pipelined_write(DBOptions* opt, bool v) {
   opt->enable_pipelined_write = v;
 }
 
-void crocksdb_options_set_enable_pipelined_commit(DBOptions* opt, bool v) {
-  opt->enable_pipelined_commit = v;
+void crocksdb_options_set_multi_batch_write(DBOptions* opt, bool v) {
+  opt->enable_multi_batch_write = v;
+}
+
+bool crocksdb_options_multi_batch_write(const DBOptions* opt) {
+  return opt->enable_multi_batch_write;
 }
 
 void crocksdb_options_set_unordered_write(DBOptions* opt, bool v) {
@@ -3117,7 +3120,7 @@ void crocksdb_filterpolicy_destroy(crocksdb_filterpolicy_t* filter) {
 }
 
 crocksdb_filterpolicy_t* crocksdb_filterpolicy_create_bloom_format(
-    int bits_per_key, bool use_block_based_builder) {
+    double bits_per_key, bool use_block_based_builder) {
   auto result = new crocksdb_filterpolicy_t;
   result->policy.reset(
       NewBloomFilterPolicy(bits_per_key, use_block_based_builder));
@@ -3149,11 +3152,6 @@ void crocksdb_mergeoperator_destroy(crocksdb_mergeoperator_t* merge_operator) {
 void crocksdb_mergeoperationinput_key(
     const MergeOperator::MergeOperationInput* input, Slice* key) {
   *key = input->key;
-}
-
-MergeOperator::MergeValueType crocksdb_mergeoperationinput_value_type(
-    const MergeOperator::MergeOperationInput* input) {
-  return input->value_type;
 }
 
 void crocksdb_mergeoperationinput_existing_value(
@@ -3191,10 +3189,80 @@ void crocksdb_mergeoperationoutput_set_existing_operand_to_value(
   output->existing_operand = *input->existing_value;
 }
 
-void crocksdb_mergeoperationoutput_set_new_type(
-    MergeOperator::MergeOperationOutput* output,
-    MergeOperator::MergeValueType ty) {
-  output->new_type = ty;
+void crocksdb_readoptions_set_snapshot(ReadOptions* opt, const Snapshot* v) {
+  opt->snapshot = v;
+}
+
+const Snapshot* crocksdb_readoptions_snapshot(const ReadOptions* opt) {
+  return opt->snapshot;
+}
+
+void crocksdb_readoptions_set_iterate_lower_bound(ReadOptions* opt,
+                                                  const Slice* v) {
+  opt->iterate_lower_bound = v;
+}
+
+const Slice* crocksdb_readoptions_iterate_lower_bound(const ReadOptions* opt) {
+  return opt->iterate_lower_bound;
+}
+
+void crocksdb_readoptions_set_iterate_upper_bound(ReadOptions* opt,
+                                                  const Slice* v) {
+  opt->iterate_upper_bound = v;
+}
+
+const Slice* crocksdb_readoptions_iterate_upper_bound(const ReadOptions* opt) {
+  return opt->iterate_upper_bound;
+}
+
+void crocksdb_readoptions_set_readahead_size(ReadOptions* opt, size_t v) {
+  opt->readahead_size = v;
+}
+
+void crocksdb_readoptions_set_max_skippable_internal_keys(ReadOptions* opt,
+                                                          uint64_t v) {
+  opt->max_skippable_internal_keys = v;
+}
+
+void crocksdb_readoptions_set_read_tier(ReadOptions* opt, ReadTier v) {
+  opt->read_tier = v;
+}
+
+void crocksdb_readoptions_set_verify_checksums(ReadOptions* opt, bool v) {
+  opt->verify_checksums = v;
+}
+
+void crocksdb_readoptions_set_fill_cache(ReadOptions* opt, bool v) {
+  opt->fill_cache = v;
+}
+
+void crocksdb_readoptions_set_tailing(ReadOptions* opt, bool v) {
+  opt->tailing = v;
+}
+
+void crocksdb_readoptions_set_total_order_seek(ReadOptions* opt, bool v) {
+  opt->total_order_seek = v;
+}
+
+void crocksdb_readoptions_set_auto_prefix_mode(ReadOptions* opt, bool v) {
+  opt->auto_prefix_mode = v;
+}
+
+void crocksdb_readoptions_set_prefix_same_as_start(ReadOptions* opt, bool v) {
+  opt->prefix_same_as_start = v;
+}
+
+void crocksdb_readoptions_set_pin_data(ReadOptions* opt, bool v) {
+  opt->pin_data = v;
+}
+
+void crocksdb_readoptions_set_background_purge_on_iterator_cleanup(
+    ReadOptions* opt, bool v) {
+  opt->background_purge_on_iterator_cleanup = v;
+}
+
+void crocksdb_readoptions_set_ignore_range_deletions(ReadOptions* opt, bool v) {
+  opt->ignore_range_deletions = v;
 }
 
 struct TableFilterCtx {
@@ -3236,10 +3304,76 @@ void crocksdb_readoptions_set_table_filter(
   opt->table_filter = TableFilter(ctx, table_filter, destroy);
 }
 
+void crocksdb_readoptions_set_timestamp(ReadOptions* opt, const Slice* v) {
+  opt->timestamp = v;
+}
+
+void crocksdb_readoptions_set_iter_start_ts(ReadOptions* opt, const Slice* v) {
+  opt->iter_start_ts = v;
+}
+
+void crocksdb_readoptions_set_value_size_soft_limit(ReadOptions* opt,
+                                                    uint64_t v) {
+  opt->value_size_soft_limit = v;
+}
+
+void crocksdb_readoptions_set_adaptive_readahead(ReadOptions* opt, bool v) {
+  opt->adaptive_readahead = v;
+}
+
 void crocksdb_writeoptions_init(WriteOptions* opt) { *opt = WriteOptions(); }
 
 void crocksdb_compactrangeoptions_init(CompactRangeOptions* opt) {
-  *opt = CompactRangeOptions();
+  new (opt) CompactRangeOptions();
+}
+
+void crocksdb_compactrangeoptions_inplace_destroy(CompactRangeOptions* opt) {
+  opt->~CompactRangeOptions();
+}
+
+void crocksdb_compactrangeoptions_set_exclusive_manual_compaction(
+    CompactRangeOptions* opt, bool v) {
+  opt->exclusive_manual_compaction = v;
+}
+
+void crocksdb_compactrangeoptions_set_change_level(CompactRangeOptions* opt,
+                                                   bool v) {
+  opt->change_level = v;
+}
+
+void crocksdb_compactrangeoptions_set_target_level(CompactRangeOptions* opt,
+                                                   int v) {
+  opt->target_level = v;
+}
+
+void crocksdb_compactrangeoptions_set_target_path_id(CompactRangeOptions* opt,
+                                                     uint32_t v) {
+  opt->target_path_id = v;
+}
+
+void crocksdb_compactrangeoptions_set_bottommost_level_compaction(
+    CompactRangeOptions* opt, BottommostLevelCompaction v) {
+  opt->bottommost_level_compaction = v;
+}
+
+void crocksdb_compactrangeoptions_set_allow_write_stall(
+    CompactRangeOptions* opt, bool v) {
+  opt->allow_write_stall = v;
+}
+
+void crocksdb_compactrangeoptions_set_max_subcompactions(
+    CompactRangeOptions* opt, uint32_t v) {
+  opt->max_subcompactions = v;
+}
+
+void crocksdb_compactrangeoptions_set_full_history_ts_low(
+    CompactRangeOptions* opt, const Slice* v) {
+  opt->full_history_ts_low = v;
+}
+
+void crocksdb_compactrangeoptions_set_canceled(CompactRangeOptions* opt,
+                                               bool v) {
+  opt->canceled->store(v, std::memory_order_release);
 }
 
 void crocksdb_flushoptions_init(FlushOptions* opt) { *opt = FlushOptions(); }
@@ -3309,9 +3443,11 @@ struct CTRBlockCipher : public BlockCipher {
     assert(block_size == cipertext.size());
   }
 
-  virtual size_t BlockSize() { return block_size_; }
+  const char* Name() const override { return "CTRBlockCipher"; }
 
-  virtual Status Encrypt(char* data) {
+  virtual size_t BlockSize() override { return block_size_; }
+
+  virtual Status Encrypt(char* data) override {
     const char* ciper_ptr = cipertext_.c_str();
     for (size_t i = 0; i < block_size_; i++) {
       data[i] = data[i] ^ ciper_ptr[i];
@@ -3320,7 +3456,7 @@ struct CTRBlockCipher : public BlockCipher {
     return Status::OK();
   }
 
-  virtual Status Decrypt(char* data) {
+  virtual Status Decrypt(char* data) override {
     Encrypt(data);
     return Status::OK();
   }
@@ -3332,11 +3468,10 @@ struct CTRBlockCipher : public BlockCipher {
 
 Env* crocksdb_ctr_encrypted_env_create(Env* base_env, const char* ciphertext,
                                        size_t ciphertext_len) {
-  auto block_cipher = new CTRBlockCipher(
+  auto block_cipher = std::make_shared<CTRBlockCipher>(
       ciphertext_len, std::string(ciphertext, ciphertext_len));
-  auto encryption_provider = new CTREncryptionProvider(*block_cipher);
-  Env* env = NewEncryptedEnv(base_env, encryption_provider);
-  return new EncryptedEnvWrapper(env, encryption_provider, block_cipher);
+  auto encryption_provider = EncryptionProvider::NewCTRProvider(block_cipher);
+  return NewEncryptedEnv(base_env, encryption_provider);
 }
 
 void crocksdb_env_set_background_threads(Env* env, int n, Env::Priority pri) {
@@ -3755,55 +3890,6 @@ crocksdb_slicetransform_t* crocksdb_slicetransform_create_noop() {
   auto t = new crocksdb_slicetransform_t;
   t->rep = shared_ptr<const SliceTransform>(rocksdb::NewNoopTransform());
   return t;
-}
-
-crocksdb_universal_compaction_options_t*
-crocksdb_universal_compaction_options_create() {
-  crocksdb_universal_compaction_options_t* result =
-      new crocksdb_universal_compaction_options_t;
-  result->rep = new rocksdb::CompactionOptionsUniversal;
-  return result;
-}
-
-void crocksdb_universal_compaction_options_set_size_ratio(
-    crocksdb_universal_compaction_options_t* uco, int ratio) {
-  uco->rep->size_ratio = ratio;
-}
-
-void crocksdb_universal_compaction_options_set_min_merge_width(
-    crocksdb_universal_compaction_options_t* uco, int w) {
-  uco->rep->min_merge_width = w;
-}
-
-void crocksdb_universal_compaction_options_set_max_merge_width(
-    crocksdb_universal_compaction_options_t* uco, int w) {
-  uco->rep->max_merge_width = w;
-}
-
-void crocksdb_universal_compaction_options_set_max_size_amplification_percent(
-    crocksdb_universal_compaction_options_t* uco, int p) {
-  uco->rep->max_size_amplification_percent = p;
-}
-
-void crocksdb_universal_compaction_options_set_compression_size_percent(
-    crocksdb_universal_compaction_options_t* uco, int p) {
-  uco->rep->compression_size_percent = p;
-}
-
-void crocksdb_universal_compaction_options_set_stop_style(
-    crocksdb_universal_compaction_options_t* uco,
-    rocksdb::CompactionStopStyle style) {
-  uco->rep->stop_style = style;
-}
-
-void crocksdb_universal_compaction_options_destroy(
-    crocksdb_universal_compaction_options_t* uco) {
-  delete uco->rep;
-  delete uco;
-}
-
-void crocksdb_fifo_compaction_options_init(CompactionOptionsFIFO* opt) {
-  *opt = CompactionOptionsFIFO();
 }
 
 void crocksdb_options_set_min_level_to_compress(ColumnFamilyOptions* opt,
@@ -4363,9 +4449,10 @@ struct ExternalSstFileModifier {
     }
 
     // Open External Sst File
-    std::unique_ptr<RandomAccessFile> sst_file;
+    std::unique_ptr<FSRandomAccessFile> sst_file;
     std::unique_ptr<RandomAccessFileReader> sst_file_reader;
-    status = env_->NewRandomAccessFile(file_, &sst_file, env_options_);
+    status = env_->GetFileSystem()->NewRandomAccessFile(
+        file_, FileOptions(env_options_), &sst_file, nullptr);
     if (!status.ok()) {
       return status;
     }
@@ -4378,7 +4465,7 @@ struct ExternalSstFileModifier {
     auto cfd = reinterpret_cast<ColumnFamilyHandleImpl*>(handle_)->cfd();
     auto ioptions = *cfd->ioptions();
     auto table_opt =
-        TableReaderOptions(ioptions, desc.options.prefix_extractor.get(),
+        TableReaderOptions(ioptions, desc.options.prefix_extractor,
                            env_options_, cfd->internal_comparator());
     // Get around global seqno check.
     table_opt.largest_seqno = kMaxSequenceNumber;
@@ -4411,8 +4498,7 @@ struct ExternalSstFileModifier {
           "External file global sequence number not found");
     }
     *pre_seq_no = DecodeFixed64(seqno_iter->second.c_str());
-    uint64_t offset = props->properties_offsets.at(
-        ExternalSstFilePropertyNames::kGlobalSeqno);
+    uint64_t offset = props->external_sst_file_global_seqno_offset;
     if (offset == 0) {
       return Status::Corruption("Was not able to find file global seqno field");
     }
@@ -5216,11 +5302,6 @@ void ctitandb_options_set_blob_file_discardable_ratio(TitanCFOptions* options,
   options->blob_file_discardable_ratio = ratio;
 }
 
-void ctitandb_options_set_sample_file_size_ratio(TitanCFOptions* options,
-                                                 double ratio) {
-  options->sample_file_size_ratio = ratio;
-}
-
 void ctitandb_options_set_merge_small_file_threshold(TitanCFOptions* options,
                                                      uint64_t size) {
   options->merge_small_file_threshold = size;
@@ -5270,10 +5351,6 @@ void ctitandb_options_set_discardable_ratio(TitanCFOptions* options,
   options->blob_file_discardable_ratio = ratio;
 }
 
-void ctitandb_options_set_sample_ratio(TitanCFOptions* options, double ratio) {
-  options->sample_file_size_ratio = ratio;
-}
-
 void ctitandb_options_set_blob_run_mode(TitanCFOptions* options,
                                         TitanBlobRunMode mode) {
   options->blob_run_mode = mode;
@@ -5287,6 +5364,10 @@ void ctitandb_readoptions_init(TitanReadOptions* opt) {
 
 void ctitandb_readoptions_inplace_destroy(TitanReadOptions* opt) {
   opt->~TitanReadOptions();
+}
+
+void ctitandb_readoptions_set_key_only(TitanReadOptions* opt, bool v) {
+  opt->key_only = v;
 }
 
 Iterator* ctitandb_create_iterator(DB* db,

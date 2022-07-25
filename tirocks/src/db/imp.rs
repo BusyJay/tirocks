@@ -188,6 +188,19 @@ impl RawDb {
         }
     }
 
+    #[inline]
+    pub fn write_multi(&self, opt: &WriteOptions, updates: &mut [&mut WriteBatch]) -> Result<()> {
+        unsafe {
+            ffi_call!(crocksdb_write_multi_batch(
+                self.get_ptr(),
+                opt.get_ptr(),
+                // &mut T is the same as *mut T
+                updates.as_mut_ptr() as _,
+                updates.len(),
+            ))
+        }
+    }
+
     /// If the database contains an entry for "key" return the corresponding value.
     ///
     /// If there is no entry for "key", returns `Ok(None)`.

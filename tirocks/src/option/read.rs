@@ -6,9 +6,12 @@ use std::{
 };
 
 use libc::c_void;
-use tirocks_sys::{rocksdb_Snapshot, rocksdb_titandb_TitanReadOptions, s};
+use tirocks_sys::{rocksdb_ReadOptions, rocksdb_Snapshot, rocksdb_titandb_TitanReadOptions, s};
 
-use crate::table_filter::{self, TableFilter};
+use crate::{
+    table_filter::{self, TableFilter},
+    util::simple_access,
+};
 
 use super::OwnedSlice;
 
@@ -20,6 +23,7 @@ struct ReadOptionsStorage {
     iterate_lower_bound: OwnedSlice,
     iterate_upper_bound: OwnedSlice,
     timestamp: OwnedSlice,
+    iterate_start_ts: OwnedSlice,
 }
 
 /// Options that control read operations
@@ -44,7 +48,7 @@ impl Default for ReadOptions {
 
 impl Debug for ReadOptions {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.raw)
+        write!(f, "ReadOptions")
     }
 }
 
@@ -56,6 +60,14 @@ impl ReadOptions {
         }
     }
 
+    fn as_mut_ptr(&mut self) -> *mut rocksdb_ReadOptions {
+        &mut self.raw as *mut _ as _
+    }
+
+    fn as_ptr(&self) -> *const rocksdb_ReadOptions {
+        &self.raw as *const _ as _
+    }
+
     /// If "snapshot" is set, read as of the supplied snapshot
     /// (which must belong to the DB that is being read and which must
     /// not have been released).  If "snapshot" is nullptr, use an implicit
@@ -64,13 +76,13 @@ impl ReadOptions {
     /// If set, caller should guarantee the snapshot outlives the read operation.
     #[inline]
     pub(crate) unsafe fn set_snapshot(&mut self, snapshot: *const rocksdb_Snapshot) -> &mut Self {
-        self.raw._base.snapshot = snapshot;
+        tirocks_sys::crocksdb_readoptions_set_snapshot(self.as_mut_ptr(), snapshot);
         self
     }
 
     #[inline]
     pub(crate) fn snapshot(&self) -> *const rocksdb_Snapshot {
-        self.raw._base.snapshot
+        unsafe { tirocks_sys::crocksdb_readoptions_snapshot(self.as_ptr()) }
     }
 
     /// Sets the smallest key at which the backward iterator can return an
@@ -87,8 +99,24 @@ impl ReadOptions {
     ) -> &mut Self {
         self.init_slice_store();
         let store = self.slice_store.as_mut().unwrap();
-        self.raw._base.iterate_lower_bound = store.iterate_lower_bound.set_data(lower_bound.into());
+        let ptr = store.iterate_lower_bound.set_data(lower_bound.into());
+        unsafe {
+            tirocks_sys::crocksdb_readoptions_set_iterate_lower_bound(self.as_mut_ptr(), ptr);
+        }
         self
+    }
+
+    /// Check [`set_iterate_lower_bound`].
+    #[inline]
+    pub fn iterate_lower_bound(&self) -> Option<&[u8]> {
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_readoptions_iterate_lower_bound(self.as_ptr());
+            if !ptr.is_null() {
+                Some(s(*ptr))
+            } else {
+                None
+            }
+        }
     }
 
     /// Sets the extent upto which the forward iterator can returns entries.
@@ -105,145 +133,108 @@ impl ReadOptions {
     ) -> &mut Self {
         self.init_slice_store();
         let store = self.slice_store.as_mut().unwrap();
-        self.raw._base.iterate_upper_bound = store.iterate_upper_bound.set_data(upper_bound.into());
+        let ptr = store.iterate_upper_bound.set_data(upper_bound.into());
+        unsafe {
+            tirocks_sys::crocksdb_readoptions_set_iterate_upper_bound(self.as_mut_ptr(), ptr);
+        }
         self
     }
 
     /// Check [`set_iterate_upper_bound`].
     #[inline]
     pub fn iterate_upper_bound(&self) -> Option<&[u8]> {
-        if !self.raw._base.iterate_upper_bound.is_null() {
-            Some(unsafe { s(*self.raw._base.iterate_upper_bound) })
-        } else {
-            None
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_readoptions_iterate_upper_bound(self.as_ptr());
+            if !ptr.is_null() {
+                Some(s(*ptr))
+            } else {
+                None
+            }
         }
     }
 
-    /// RocksDB does auto-readahead for iterators on noticing more than two reads
-    /// for a table file. The readahead starts at 8KB and doubles on every
-    /// additional read upto 256KB.
-    /// This option can help if most of the range scans are large, and if it is
-    /// determined that a larger readahead than that enabled by auto-readahead is
-    /// needed.
-    /// Using a large readahead size (> 2MB) can typically improve the performance
-    /// of forward iteration on spinning disks.
-    /// Default is 0.
-    #[inline]
-    pub fn set_readahead_size(&mut self, size: usize) -> &mut Self {
-        self.raw._base.readahead_size = size;
-        self
-    }
+    simple_access! {
+        crocksdb_readoptions
 
-    /// A threshold for the number of keys that can be skipped before failing an
-    /// iterator seek as incomplete. The default value of 0 should be used to
-    /// never fail a request as incomplete, even on skipping too many keys.
-    /// Default: 0
-    #[inline]
-    pub fn set_max_skippable_internal_keys(&mut self, keys: u64) -> &mut Self {
-        self.raw._base.max_skippable_internal_keys = keys;
-        self
-    }
+        /// RocksDB does auto-readahead for iterators on noticing more than two reads
+        /// for a table file. The readahead starts at 8KB and doubles on every
+        /// additional read upto 256KB.
+        /// This option can help if most of the range scans are large, and if it is
+        /// determined that a larger readahead than that enabled by auto-readahead is
+        /// needed.
+        /// Using a large readahead size (> 2MB) can typically improve the performance
+        /// of forward iteration on spinning disks.
+        /// Default is 0.
+        readahead_size: usize
 
-    /// Specify if this read request should process data that ALREADY
-    /// resides on a particular cache. If the required data is not
-    /// found at the specified cache, then Status::Incomplete is returned.
-    /// Default: kReadAllTier
-    #[inline]
-    pub fn set_read_tier(&mut self, read_tier: ReadTier) -> &mut Self {
-        self.raw._base.read_tier = read_tier;
-        self
-    }
+        /// A threshold for the number of keys that can be skipped before failing an
+        /// iterator seek as incomplete. The default value of 0 should be used to
+        /// never fail a request as incomplete, even on skipping too many keys.
+        /// Default: 0
+        max_skippable_internal_keys: u64
 
-    /// If true, all data read from underlying storage will be
-    /// verified against corresponding checksums.
-    /// Default: true
-    #[inline]
-    pub fn set_verify_checksums(&mut self, check: bool) -> &mut Self {
-        self.raw._base.verify_checksums = check;
-        self
-    }
+        /// Specify if this read request should process data that ALREADY
+        /// resides on a particular cache. If the required data is not
+        /// found at the specified cache, then Status::Incomplete is returned.
+        /// Default: kReadAllTier
+        read_tier: ReadTier
 
-    /// Set whether the "data block"/"index block"" read for this iteration be
-    /// placed in block cache.
-    ///
-    /// Callers may wish to set this field to false for bulk scans. This would
-    /// help not to the change eviction order of existing items in the block
-    /// cache.
-    /// Default: true
-    #[inline]
-    pub fn set_fill_cache(&mut self, fill: bool) -> &mut Self {
-        self.raw._base.fill_cache = fill;
-        self
-    }
+        /// If true, all data read from underlying storage will be
+        /// verified against corresponding checksums.
+        /// Default: true
+        verify_checksums: bool
 
-    /// Specify to create a tailing iterator -- a special iterator that has a
-    /// view of the complete database (i.e. it can also be used to read newly
-    /// added data) and is optimized for sequential reads. It will return records
-    /// that were inserted into the database after the creation of the iterator.
-    /// Default: false
-    #[inline]
-    pub fn set_tailing(&mut self, tailing: bool) -> &mut Self {
-        self.raw._base.tailing = tailing;
-        self
-    }
+        /// Set whether the "data block"/"index block"" read for this iteration be
+        /// placed in block cache.
+        ///
+        /// Callers may wish to set this field to false for bulk scans. This would
+        /// help not to the change eviction order of existing items in the block
+        /// cache.
+        /// Default: true
+        fill_cache: bool
 
-    /// Enable a total order seek regardless of index format (e.g. hash index)
-    /// used in the table. Some table format (e.g. plain table) may not support
-    /// this option.
-    /// If true when calling Get(), we also skip prefix bloom when reading from
-    /// block based table. It provides a way to read existing data after
-    /// changing implementation of prefix extractor.
-    #[inline]
-    pub fn set_total_order_seek(&mut self, total_order_seek: bool) -> &mut Self {
-        self.raw._base.total_order_seek = total_order_seek;
-        self
-    }
+        /// Specify to create a tailing iterator -- a special iterator that has a
+        /// view of the complete database (i.e. it can also be used to read newly
+        /// added data) and is optimized for sequential reads. It will return records
+        /// that were inserted into the database after the creation of the iterator.
+        /// Default: false
+        tailing: bool
 
-    /// Enforce that the iterator only iterates over the same prefix as the seek.
-    /// This option is effective only for prefix seeks, i.e. prefix_extractor is
-    /// non-null for the column family and total_order_seek is false.  Unlike
-    /// iterate_upper_bound, prefix_same_as_start only works within a prefix
-    /// but in both directions.
-    /// Default: false
-    #[inline]
-    pub fn set_prefix_same_as_start(&mut self, same_as_start: bool) -> &mut Self {
-        self.raw._base.prefix_same_as_start = same_as_start;
-        self
-    }
+        /// Enable a total order seek regardless of index format (e.g. hash index)
+        /// used in the table. Some table format (e.g. plain table) may not support
+        /// this option.
+        /// If true when calling Get(), we also skip prefix bloom when reading from
+        /// block based table. It provides a way to read existing data after
+        /// changing implementation of prefix extractor.
+        total_order_seek: bool
 
-    /// Keep the blocks loaded by the iterator pinned in memory as long as the
-    /// iterator is not deleted, If used when reading from tables created with
-    /// BlockBasedTableOptions::use_delta_encoding = false,
-    /// Iterator's property "rocksdb.iterator.is-key-pinned" is guaranteed to
-    /// return 1.
-    /// Default: false
-    #[inline]
-    pub fn set_pin_data(&mut self, pin_data: bool) -> &mut Self {
-        self.raw._base.pin_data = pin_data;
-        self
-    }
+        /// Enforce that the iterator only iterates over the same prefix as the seek.
+        /// This option is effective only for prefix seeks, i.e. prefix_extractor is
+        /// non-null for the column family and total_order_seek is false.  Unlike
+        /// iterate_upper_bound, prefix_same_as_start only works within a prefix
+        /// but in both directions.
+        /// Default: false
+        prefix_same_as_start: bool
 
-    /// If true, when PurgeObsoleteFile is called in CleanupIteratorState, we
-    /// schedule a background job in the flush job queue and delete obsolete files
-    /// in background.
-    /// Default: false
-    #[inline]
-    pub fn set_background_purge_on_iterator_cleanup(
-        &mut self,
-        background_purge: bool,
-    ) -> &mut Self {
-        self.raw._base.background_purge_on_iterator_cleanup = background_purge;
-        self
-    }
+        /// Keep the blocks loaded by the iterator pinned in memory as long as the
+        /// iterator is not deleted, If used when reading from tables created with
+        /// BlockBasedTableOptions::use_delta_encoding = false,
+        /// Iterator's property "rocksdb.iterator.is-key-pinned" is guaranteed to
+        /// return 1.
+        /// Default: false
+        pin_data: bool
 
-    /// If true, keys deleted using the DeleteRange() API will be visible to
-    /// readers until they are naturally deleted during compaction. This improves
-    /// read performance in DBs with many range deletions.
-    /// Default: false
-    #[inline]
-    pub fn set_ignore_range_deletions(&mut self, ignore: bool) -> &mut Self {
-        self.raw._base.ignore_range_deletions = ignore;
-        self
+        /// If true, when PurgeObsoleteFile is called in CleanupIteratorState, we
+        /// schedule a background job in the flush job queue and delete obsolete files
+        /// in background.
+        /// Default: false
+        background_purge_on_iterator_cleanup: bool
+
+        /// If true, keys deleted using the DeleteRange() API will be visible to
+        /// readers until they are naturally deleted during compaction. This improves
+        /// read performance in DBs with many range deletions.
+        /// Default: false
+        ignore_range_deletions: bool
     }
 
     /// A callback to determine whether relevant keys for this scan exist in a
@@ -257,23 +248,12 @@ impl ReadOptions {
         unsafe {
             let filter = Box::into_raw(Box::new(f));
             tirocks_sys::crocksdb_readoptions_set_table_filter(
-                &mut self.raw._base,
+                self.as_mut_ptr(),
                 filter as *mut c_void,
                 Some(table_filter::filter::<T>),
                 Some(table_filter::destroy::<T>),
             )
         }
-        self
-    }
-
-    /// Needed to support differential snapshots. Has 2 effects:
-    /// 1) Iterator will skip all internal keys with seq < iter_start_seqnum
-    /// 2) if this param > 0 iterator will return INTERNAL keys instead of
-    ///    user keys; e.g. return tombstones as well.
-    /// Default: 0 (don't filter by seq, return user keys)
-    #[inline]
-    pub fn set_iter_start_sequence_number(&mut self, seq: SequenceNumber) -> &mut Self {
-        self.raw._base.iter_start_seqnum = seq;
         self
     }
 
@@ -287,8 +267,52 @@ impl ReadOptions {
     pub fn set_timestamp(&mut self, timestamp: impl Into<Option<Vec<u8>>>) -> &mut Self {
         self.init_slice_store();
         let store = self.slice_store.as_mut().unwrap();
-        self.raw._base.timestamp = store.timestamp.set_data(timestamp.into());
+        let ptr = store.timestamp.set_data(timestamp.into());
+        unsafe {
+            tirocks_sys::crocksdb_readoptions_set_timestamp(self.as_mut_ptr(), ptr);
+        }
         self
+    }
+
+    /// Set the lower bound (older) and timestamp serves as the upper bound for iterator.
+    /// Versions of the same record that fall in the timestamp range will be returned. If
+    /// iter_start_ts is None, only the most recent version visible to timestamp is returned.
+    /// The user-specified timestamp feature is still under active development,
+    /// and the API is subject to change.
+    /// Default: None
+    #[inline]
+    pub fn set_iterate_start_ts(&mut self, timestamp: impl Into<Option<Vec<u8>>>) -> &mut Self {
+        self.init_slice_store();
+        let store = self.slice_store.as_mut().unwrap();
+        let ptr = store.iterate_start_ts.set_data(timestamp.into());
+        unsafe {
+            tirocks_sys::crocksdb_readoptions_set_iter_start_ts(self.as_mut_ptr(), ptr);
+        }
+        self
+    }
+
+    simple_access! {
+        crocksdb_readoptions
+
+        /// It limits the maximum cumulative value size of the keys in batch while
+        /// reading through MultiGet. Once the cumulative value size exceeds this
+        /// soft limit then all the remaining keys are returned with status Aborted.
+        ///
+        /// Default: u64::MAX
+        value_size_soft_limit: u64
+
+        /// For iterators, RocksDB does auto-readahead on noticing more than two
+        /// sequential reads for a table file if user doesn't provide readahead_size.
+        /// The readahead starts at 8KB and doubles on every additional read upto
+        /// max_auto_readahead_size only when reads are sequential. However at each
+        /// level, if iterator moves over next file, readahead_size starts again from
+        /// 8KB.
+        ///
+        /// By enabling this option, RocksDB will do some enhancements for
+        /// prefetching the data.
+        ///
+        /// Default: false
+        adaptive_readahead: bool
     }
 
     /// If true, it will just return keys without indexing value from blob files.
@@ -299,7 +323,9 @@ impl ReadOptions {
     /// Default: false
     #[inline]
     pub fn set_key_only(&mut self, key_only: bool) -> &mut Self {
-        self.raw.key_only = key_only;
+        unsafe {
+            tirocks_sys::ctitandb_readoptions_set_key_only(&mut self.raw, key_only);
+        }
         self
     }
     // TODO: support table filter.

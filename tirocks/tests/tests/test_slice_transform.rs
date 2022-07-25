@@ -38,7 +38,7 @@ impl SliceTransform for FixedPostfixTransform {
 fn test_slice_transform() {
     let path = tempdir_with_prefix("_rust_rocksdb_slice_transform_test");
     let mut bbto = BlockBasedTableOptions::default();
-    bbto.set_filter_policy(&SysFilterPolicy::new_bloom_filter_policy(10, false))
+    bbto.set_filter_policy(&SysFilterPolicy::new_bloom_filter_policy(10., false))
         .set_whole_key_filtering(false);
     let mut builder = DefaultCfOnlyBuilder::default();
     builder

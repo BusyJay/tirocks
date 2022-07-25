@@ -30,7 +30,7 @@ pub fn test_cf() {
     assert_eq!(err.code(), Code::kInvalidArgument);
     let msg = err.message().unwrap().unwrap();
     assert!(
-        msg.starts_with("You have to open all column families."),
+        msg.starts_with("Column families not opened:"),
         "{}",
         msg
     );

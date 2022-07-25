@@ -61,7 +61,12 @@ pub enum rocksdb_Status_SubCode {
     kMemoryLimit = 7,
     kSpaceLimit = 8,
     kPathNotFound = 9,
-    kMaxSubCode = 10,
+    KMergeOperandsInsufficientCapacity = 10,
+    kManualCompactionPaused = 11,
+    kOverwritten = 12,
+    kTxnNotPrepared = 13,
+    kIOFenced = 14,
+    kMaxSubCode = 15,
 }
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -91,14 +96,8 @@ pub enum rocksdb_EntryType {
     kEntryMerge = 3,
     kEntryRangeDeletion = 4,
     kEntryBlobIndex = 5,
-    kEntryOther = 6,
-}
-#[repr(C)]
-pub struct rocksdb_CompactionFilter__bindgen_vtable(libc::c_void);
-#[repr(C)]
-#[derive(Debug)]
-pub struct rocksdb_CompactionFilter {
-    pub vtable_: *const rocksdb_CompactionFilter__bindgen_vtable,
+    kEntryDeleteWithTimestamp = 6,
+    kEntryOther = 7,
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -114,6 +113,9 @@ pub enum rocksdb_CompactionFilter_Decision {
     kRemove = 1,
     kChangeValue = 2,
     kRemoveAndSkipUntil = 3,
+    kChangeBlobIndex = 4,
+    kIOError = 5,
+    kUndetermined = 6,
 }
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -144,7 +146,7 @@ pub struct rocksdb_EnvOptions {
 #[repr(align(8))]
 #[derive(Debug, Copy, Clone)]
 pub struct rocksdb_Env {
-    pub _bindgen_opaque_blob: [u64; 2usize],
+    pub _bindgen_opaque_blob: [u64; 9usize],
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -169,9 +171,12 @@ pub enum rocksdb_Env_Priority {
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_Env_IOPriority {
     IO_LOW = 0,
-    IO_HIGH = 1,
-    IO_TOTAL = 2,
+    IO_MID = 1,
+    IO_HIGH = 2,
+    IO_USER = 3,
+    IO_TOTAL = 4,
 }
+pub const rocksdb_Env_kMaxHostNameLen: usize = 256;
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_InfoLogLevel {
@@ -191,6 +196,7 @@ pub enum rocksdb_encryption_EncryptionMethod {
     kAES128_CTR = 2,
     kAES192_CTR = 3,
     kAES256_CTR = 4,
+    kSM4_CTR = 5,
 }
 #[repr(C)]
 pub struct rocksdb_encryption_KeyManager__bindgen_vtable(libc::c_void);
@@ -212,6 +218,16 @@ pub enum rocksdb_PerfLevel {
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
+pub struct rocksdb_FileIOByTemperature {
+    pub hot_file_bytes_read: u64,
+    pub warm_file_bytes_read: u64,
+    pub cold_file_bytes_read: u64,
+    pub hot_file_read_count: u64,
+    pub warm_file_read_count: u64,
+    pub cold_file_read_count: u64,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
 pub struct rocksdb_IOStatsContext {
     pub thread_pool_id: u64,
     pub bytes_written: u64,
@@ -226,6 +242,21 @@ pub struct rocksdb_IOStatsContext {
     pub logger_nanos: u64,
     pub cpu_write_nanos: u64,
     pub cpu_read_nanos: u64,
+    pub file_io_stats_by_temperature: rocksdb_FileIOByTemperature,
+}
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_CompressionType {
+    kNoCompression = 0,
+    kSnappyCompression = 1,
+    kZlibCompression = 2,
+    kBZip2Compression = 3,
+    kLZ4Compression = 4,
+    kLZ4HCCompression = 5,
+    kXpressCompression = 6,
+    kZSTD = 7,
+    kZSTDNotFinalCompression = 64,
+    kDisableCompressionOption = 255,
 }
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -246,7 +277,9 @@ pub enum rocksdb_CompactionReason {
     kFlush = 13,
     kExternalSstIngestion = 14,
     kPeriodicCompaction = 15,
-    kNumOfReasons = 16,
+    kChangeTemperature = 16,
+    kForcedBlobGC = 17,
+    kNumOfReasons = 18,
 }
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -255,6 +288,9 @@ pub enum rocksdb_BackgroundErrorReason {
     kCompaction = 1,
     kWriteCallback = 2,
     kMemTable = 3,
+    kManifestWrite = 4,
+    kFlushNoWAL = 5,
+    kManifestWriteNoWAL = 6,
 }
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -268,13 +304,6 @@ pub enum rocksdb_WriteStallCondition {
 pub struct rocksdb_WriteStallInfo__bindgen_ty_1 {
     pub cur: rocksdb_WriteStallCondition,
     pub prev: rocksdb_WriteStallCondition,
-}
-#[repr(u8)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum rocksdb_MergeOperator_MergeValueType {
-    kDeletion = 0,
-    kValue = 1,
-    kBlobIndex = 2,
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -292,6 +321,7 @@ pub struct rocksdb_CompactionOptionsUniversal {
     pub compression_size_percent: libc::c_int,
     pub stop_style: rocksdb_CompactionStopStyle,
     pub allow_trivial_move: bool,
+    pub incremental: bool,
 }
 #[repr(i8)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -314,6 +344,7 @@ pub enum rocksdb_CompactionPri {
 pub struct rocksdb_CompactionOptionsFIFO {
     pub max_table_files_size: u64,
     pub allow_compaction: bool,
+    pub age_for_warm: u64,
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -323,7 +354,9 @@ pub struct rocksdb_CompressionOptions {
     pub strategy: libc::c_int,
     pub max_dict_bytes: u32,
     pub zstd_max_train_bytes: u32,
+    pub parallel_threads: u32,
     pub enabled: bool,
+    pub max_dict_buffer_bytes: u64,
 }
 pub const rocksdb_CompressionOptions_kDefaultCompressionLevel: libc::c_int = 32767;
 #[repr(i8)]
@@ -363,12 +396,13 @@ pub struct rocksdb_JemallocAllocatorOptions {
     pub tcache_size_upper_bound: usize,
 }
 #[repr(u32)]
-#[doc = " Keep adding ticker's here."]
-#[doc = "  1. Any ticker should be added before TICKER_ENUM_MAX."]
+#[doc = " Keep adding tickers here."]
+#[doc = "  1. Any ticker should be added immediately before TICKER_ENUM_MAX, taking"]
+#[doc = "     over its old value."]
 #[doc = "  2. Add a readable string in TickersNameMap below for the newly added ticker."]
 #[doc = "  3. Add a corresponding enum value to TickerType.java in the java API"]
 #[doc = "  4. Add the enum conversions from Java and C++ to portal.h's toJavaTickerType"]
-#[doc = " and toCppTickers"]
+#[doc = "     and toCppTickers"]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_Tickers {
     BLOCK_CACHE_MISS = 0,
@@ -559,74 +593,120 @@ pub enum rocksdb_Tickers {
     FLUSH_WRITE_BYTES = 83,
     #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
     #[doc = " There are 4 reasons currently."]
-    NUMBER_DIRECT_LOAD_TABLE_PROPERTIES = 84,
+    COMPACT_READ_BYTES_MARKED = 84,
     #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
     #[doc = " There are 4 reasons currently."]
-    NUMBER_SUPERVERSION_ACQUIRES = 85,
+    COMPACT_READ_BYTES_PERIODIC = 85,
     #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
     #[doc = " There are 4 reasons currently."]
-    NUMBER_SUPERVERSION_RELEASES = 86,
+    COMPACT_READ_BYTES_TTL = 86,
     #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
     #[doc = " There are 4 reasons currently."]
-    NUMBER_SUPERVERSION_CLEANUPS = 87,
-    NUMBER_BLOCK_COMPRESSED = 88,
-    NUMBER_BLOCK_DECOMPRESSED = 89,
-    NUMBER_BLOCK_NOT_COMPRESSED = 90,
-    MERGE_OPERATION_TOTAL_TIME = 91,
-    FILTER_OPERATION_TOTAL_TIME = 92,
-    ROW_CACHE_HIT = 93,
-    ROW_CACHE_MISS = 94,
-    READ_AMP_ESTIMATE_USEFUL_BYTES = 95,
-    READ_AMP_TOTAL_READ_BYTES = 96,
-    NUMBER_RATE_LIMITER_DRAINS = 97,
-    NUMBER_ITER_SKIP = 98,
-    BLOB_DB_NUM_PUT = 99,
-    BLOB_DB_NUM_WRITE = 100,
-    BLOB_DB_NUM_GET = 101,
-    BLOB_DB_NUM_MULTIGET = 102,
-    BLOB_DB_NUM_SEEK = 103,
-    BLOB_DB_NUM_NEXT = 104,
-    BLOB_DB_NUM_PREV = 105,
-    BLOB_DB_NUM_KEYS_WRITTEN = 106,
-    BLOB_DB_NUM_KEYS_READ = 107,
-    BLOB_DB_BYTES_WRITTEN = 108,
-    BLOB_DB_BYTES_READ = 109,
-    BLOB_DB_WRITE_INLINED = 110,
-    BLOB_DB_WRITE_INLINED_TTL = 111,
-    BLOB_DB_WRITE_BLOB = 112,
-    BLOB_DB_WRITE_BLOB_TTL = 113,
-    BLOB_DB_BLOB_FILE_BYTES_WRITTEN = 114,
-    BLOB_DB_BLOB_FILE_BYTES_READ = 115,
-    BLOB_DB_BLOB_FILE_SYNCED = 116,
-    BLOB_DB_BLOB_INDEX_EXPIRED_COUNT = 117,
-    BLOB_DB_BLOB_INDEX_EXPIRED_SIZE = 118,
-    BLOB_DB_BLOB_INDEX_EVICTED_COUNT = 119,
-    BLOB_DB_BLOB_INDEX_EVICTED_SIZE = 120,
-    BLOB_DB_GC_NUM_FILES = 121,
-    BLOB_DB_GC_NUM_NEW_FILES = 122,
-    BLOB_DB_GC_FAILURES = 123,
-    BLOB_DB_GC_NUM_KEYS_OVERWRITTEN = 124,
-    BLOB_DB_GC_NUM_KEYS_EXPIRED = 125,
-    BLOB_DB_GC_NUM_KEYS_RELOCATED = 126,
-    BLOB_DB_GC_BYTES_OVERWRITTEN = 127,
-    BLOB_DB_GC_BYTES_EXPIRED = 128,
-    BLOB_DB_GC_BYTES_RELOCATED = 129,
-    BLOB_DB_FIFO_NUM_FILES_EVICTED = 130,
-    BLOB_DB_FIFO_NUM_KEYS_EVICTED = 131,
-    BLOB_DB_FIFO_BYTES_EVICTED = 132,
-    TXN_PREPARE_MUTEX_OVERHEAD = 133,
-    TXN_OLD_COMMIT_MAP_MUTEX_OVERHEAD = 134,
-    TXN_DUPLICATE_KEY_OVERHEAD = 135,
-    TXN_SNAPSHOT_MUTEX_OVERHEAD = 136,
-    NUMBER_MULTIGET_KEYS_FOUND = 137,
-    NO_ITERATOR_CREATED = 138,
-    NO_ITERATOR_DELETED = 139,
-    BLOCK_CACHE_COMPRESSION_DICT_MISS = 140,
-    BLOCK_CACHE_COMPRESSION_DICT_HIT = 141,
-    BLOCK_CACHE_COMPRESSION_DICT_ADD = 142,
-    BLOCK_CACHE_COMPRESSION_DICT_BYTES_INSERT = 143,
-    BLOCK_CACHE_COMPRESSION_DICT_BYTES_EVICT = 144,
-    TICKER_ENUM_MAX = 145,
+    COMPACT_WRITE_BYTES_MARKED = 87,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    COMPACT_WRITE_BYTES_PERIODIC = 88,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    COMPACT_WRITE_BYTES_TTL = 89,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_DIRECT_LOAD_TABLE_PROPERTIES = 90,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_SUPERVERSION_ACQUIRES = 91,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_SUPERVERSION_RELEASES = 92,
+    #[doc = " COMPACTION_KEY_DROP_* count the reasons for key drop during compaction"]
+    #[doc = " There are 4 reasons currently."]
+    NUMBER_SUPERVERSION_CLEANUPS = 93,
+    NUMBER_BLOCK_COMPRESSED = 94,
+    NUMBER_BLOCK_DECOMPRESSED = 95,
+    NUMBER_BLOCK_NOT_COMPRESSED = 96,
+    MERGE_OPERATION_TOTAL_TIME = 97,
+    FILTER_OPERATION_TOTAL_TIME = 98,
+    ROW_CACHE_HIT = 99,
+    ROW_CACHE_MISS = 100,
+    READ_AMP_ESTIMATE_USEFUL_BYTES = 101,
+    READ_AMP_TOTAL_READ_BYTES = 102,
+    NUMBER_RATE_LIMITER_DRAINS = 103,
+    NUMBER_ITER_SKIP = 104,
+    BLOB_DB_NUM_PUT = 105,
+    BLOB_DB_NUM_WRITE = 106,
+    BLOB_DB_NUM_GET = 107,
+    BLOB_DB_NUM_MULTIGET = 108,
+    BLOB_DB_NUM_SEEK = 109,
+    BLOB_DB_NUM_NEXT = 110,
+    BLOB_DB_NUM_PREV = 111,
+    BLOB_DB_NUM_KEYS_WRITTEN = 112,
+    BLOB_DB_NUM_KEYS_READ = 113,
+    BLOB_DB_BYTES_WRITTEN = 114,
+    BLOB_DB_BYTES_READ = 115,
+    BLOB_DB_WRITE_INLINED = 116,
+    BLOB_DB_WRITE_INLINED_TTL = 117,
+    BLOB_DB_WRITE_BLOB = 118,
+    BLOB_DB_WRITE_BLOB_TTL = 119,
+    BLOB_DB_BLOB_FILE_BYTES_WRITTEN = 120,
+    BLOB_DB_BLOB_FILE_BYTES_READ = 121,
+    BLOB_DB_BLOB_FILE_SYNCED = 122,
+    BLOB_DB_BLOB_INDEX_EXPIRED_COUNT = 123,
+    BLOB_DB_BLOB_INDEX_EXPIRED_SIZE = 124,
+    BLOB_DB_BLOB_INDEX_EVICTED_COUNT = 125,
+    BLOB_DB_BLOB_INDEX_EVICTED_SIZE = 126,
+    BLOB_DB_GC_NUM_FILES = 127,
+    BLOB_DB_GC_NUM_NEW_FILES = 128,
+    BLOB_DB_GC_FAILURES = 129,
+    BLOB_DB_GC_NUM_KEYS_OVERWRITTEN = 130,
+    BLOB_DB_GC_NUM_KEYS_EXPIRED = 131,
+    BLOB_DB_GC_NUM_KEYS_RELOCATED = 132,
+    BLOB_DB_GC_BYTES_OVERWRITTEN = 133,
+    BLOB_DB_GC_BYTES_EXPIRED = 134,
+    BLOB_DB_GC_BYTES_RELOCATED = 135,
+    BLOB_DB_FIFO_NUM_FILES_EVICTED = 136,
+    BLOB_DB_FIFO_NUM_KEYS_EVICTED = 137,
+    BLOB_DB_FIFO_BYTES_EVICTED = 138,
+    TXN_PREPARE_MUTEX_OVERHEAD = 139,
+    TXN_OLD_COMMIT_MAP_MUTEX_OVERHEAD = 140,
+    TXN_DUPLICATE_KEY_OVERHEAD = 141,
+    TXN_SNAPSHOT_MUTEX_OVERHEAD = 142,
+    TXN_GET_TRY_AGAIN = 143,
+    NUMBER_MULTIGET_KEYS_FOUND = 144,
+    NO_ITERATOR_CREATED = 145,
+    NO_ITERATOR_DELETED = 146,
+    BLOCK_CACHE_COMPRESSION_DICT_MISS = 147,
+    BLOCK_CACHE_COMPRESSION_DICT_HIT = 148,
+    BLOCK_CACHE_COMPRESSION_DICT_ADD = 149,
+    BLOCK_CACHE_COMPRESSION_DICT_BYTES_INSERT = 150,
+    BLOCK_CACHE_COMPRESSION_DICT_BYTES_EVICT = 151,
+    BLOCK_CACHE_ADD_REDUNDANT = 152,
+    BLOCK_CACHE_INDEX_ADD_REDUNDANT = 153,
+    BLOCK_CACHE_FILTER_ADD_REDUNDANT = 154,
+    BLOCK_CACHE_DATA_ADD_REDUNDANT = 155,
+    BLOCK_CACHE_COMPRESSION_DICT_ADD_REDUNDANT = 156,
+    FILES_MARKED_TRASH = 157,
+    FILES_DELETED_IMMEDIATELY = 158,
+    ERROR_HANDLER_BG_ERROR_COUNT = 159,
+    ERROR_HANDLER_BG_IO_ERROR_COUNT = 160,
+    ERROR_HANDLER_BG_RETRYABLE_IO_ERROR_COUNT = 161,
+    ERROR_HANDLER_AUTORESUME_COUNT = 162,
+    ERROR_HANDLER_AUTORESUME_RETRY_TOTAL_COUNT = 163,
+    ERROR_HANDLER_AUTORESUME_SUCCESS_COUNT = 164,
+    MEMTABLE_PAYLOAD_BYTES_AT_FLUSH = 165,
+    MEMTABLE_GARBAGE_BYTES_AT_FLUSH = 166,
+    SECONDARY_CACHE_HITS = 167,
+    VERIFY_CHECKSUM_READ_BYTES = 168,
+    BACKUP_READ_BYTES = 169,
+    BACKUP_WRITE_BYTES = 170,
+    REMOTE_COMPACT_READ_BYTES = 171,
+    REMOTE_COMPACT_WRITE_BYTES = 172,
+    HOT_FILE_READ_BYTES = 173,
+    WARM_FILE_READ_BYTES = 174,
+    COLD_FILE_READ_BYTES = 175,
+    HOT_FILE_READ_COUNT = 176,
+    WARM_FILE_READ_COUNT = 177,
+    COLD_FILE_READ_COUNT = 178,
+    TICKER_ENUM_MAX = 179,
 }
 #[repr(u32)]
 #[doc = " Keep adding histogram's here."]
@@ -686,7 +766,11 @@ pub enum rocksdb_Histograms {
     FLUSH_TIME = 46,
     SST_BATCH_SIZE = 47,
     DB_WRITE_WAL_TIME = 48,
-    HISTOGRAM_ENUM_MAX = 49,
+    NUM_INDEX_AND_FILTER_BLOCKS_READ_PER_LEVEL = 49,
+    NUM_DATA_BLOCKS_READ_PER_LEVEL = 50,
+    NUM_SST_READ_PER_LEVEL = 51,
+    ERROR_HANDLER_AUTORESUME_RETRY_COUNT = 52,
+    HISTOGRAM_ENUM_MAX = 53,
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -700,20 +784,6 @@ pub struct rocksdb_HistogramData {
     pub count: u64,
     pub sum: u64,
     pub min: f64,
-}
-#[repr(u8)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum rocksdb_CompressionType {
-    kNoCompression = 0,
-    kSnappyCompression = 1,
-    kZlibCompression = 2,
-    kBZip2Compression = 3,
-    kLZ4Compression = 4,
-    kLZ4HCCompression = 5,
-    kXpressCompression = 6,
-    kZSTD = 7,
-    kZSTDNotFinalCompression = 64,
-    kDisableCompressionOption = 255,
 }
 #[repr(i8)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -740,26 +810,10 @@ pub enum rocksdb_ReadTier {
     kMemtableTier = 3,
 }
 #[repr(C)]
+#[repr(align(8))]
 #[derive(Debug, Copy, Clone)]
 pub struct rocksdb_ReadOptions {
-    pub snapshot: *const rocksdb_Snapshot,
-    pub iterate_lower_bound: *const rocksdb_Slice,
-    pub iterate_upper_bound: *const rocksdb_Slice,
-    pub readahead_size: usize,
-    pub max_skippable_internal_keys: u64,
-    pub read_tier: rocksdb_ReadTier,
-    pub verify_checksums: bool,
-    pub fill_cache: bool,
-    pub tailing: bool,
-    pub managed: bool,
-    pub total_order_seek: bool,
-    pub prefix_same_as_start: bool,
-    pub pin_data: bool,
-    pub background_purge_on_iterator_cleanup: bool,
-    pub ignore_range_deletions: bool,
-    pub table_filter: [u64; 4usize],
-    pub iter_start_seqnum: rocksdb_SequenceNumber,
-    pub timestamp: *const rocksdb_Slice,
+    pub _bindgen_opaque_blob: [u64; 17usize],
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -769,7 +823,7 @@ pub struct rocksdb_WriteOptions {
     pub ignore_missing_column_families: bool,
     pub no_slowdown: bool,
     pub low_pri: bool,
-    pub timestamp: *const rocksdb_Slice,
+    pub memtable_insert_hint_per_batch: bool,
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -793,15 +847,10 @@ pub enum rocksdb_BottommostLevelCompaction {
     kForceOptimized = 3,
 }
 #[repr(C)]
+#[repr(align(8))]
 #[derive(Debug, Copy, Clone)]
 pub struct rocksdb_CompactRangeOptions {
-    pub exclusive_manual_compaction: bool,
-    pub change_level: bool,
-    pub target_level: libc::c_int,
-    pub target_path_id: u32,
-    pub bottommost_level_compaction: rocksdb_BottommostLevelCompaction,
-    pub allow_write_stall: bool,
-    pub max_subcompactions: u32,
+    pub _bindgen_opaque_blob: [u64; 5usize],
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -814,12 +863,15 @@ pub struct rocksdb_IngestExternalFileOptions {
     pub ingest_behind: bool,
     pub write_global_seqno: bool,
     pub verify_checksums_before_ingest: bool,
+    pub verify_checksums_readahead_size: usize,
+    pub verify_file_checksum: bool,
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct rocksdb_SizeApproximationOptions {
     pub include_memtabtles: bool,
     pub include_files: bool,
+    pub files_size_error_margin: f64,
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -834,104 +886,97 @@ pub enum rocksdb_PerfFlag {
     block_cache_filter_hit_count = 7,
     filter_block_read_count = 8,
     compression_dict_block_read_count = 9,
-    block_checksum_time = 10,
-    block_decompress_time = 11,
-    get_read_bytes = 12,
-    multiget_read_bytes = 13,
-    iter_read_bytes = 14,
-    internal_key_skipped_count = 15,
-    internal_delete_skipped_count = 16,
-    internal_recent_skipped_count = 17,
-    internal_merge_count = 18,
-    get_snapshot_time = 19,
-    get_from_memtable_time = 20,
-    get_from_memtable_count = 21,
-    get_post_process_time = 22,
-    get_from_output_files_time = 23,
-    seek_on_memtable_time = 24,
-    seek_on_memtable_count = 25,
-    next_on_memtable_count = 26,
-    prev_on_memtable_count = 27,
-    seek_child_seek_time = 28,
-    seek_child_seek_count = 29,
-    seek_min_heap_time = 30,
-    seek_max_heap_time = 31,
-    seek_internal_seek_time = 32,
-    find_next_user_entry_time = 33,
-    write_wal_time = 34,
-    write_memtable_time = 35,
-    write_delay_time = 36,
-    write_scheduling_flushes_compactions_time = 37,
-    write_pre_and_post_process_time = 38,
-    write_thread_wait_nanos = 39,
-    db_mutex_lock_nanos = 40,
-    db_condition_wait_nanos = 41,
-    merge_operator_time_nanos = 42,
-    read_index_block_nanos = 43,
-    read_filter_block_nanos = 44,
-    new_table_block_iter_nanos = 45,
-    new_table_iterator_nanos = 46,
-    block_seek_nanos = 47,
-    find_table_nanos = 48,
-    bloom_memtable_hit_count = 49,
-    bloom_memtable_miss_count = 50,
-    bloom_sst_hit_count = 51,
-    bloom_sst_miss_count = 52,
-    key_lock_wait_time = 53,
-    key_lock_wait_count = 54,
-    env_new_sequential_file_nanos = 55,
-    env_new_random_access_file_nanos = 56,
-    env_new_writable_file_nanos = 57,
-    env_reuse_writable_file_nanos = 58,
-    env_new_random_rw_file_nanos = 59,
-    env_new_directory_nanos = 60,
-    env_file_exists_nanos = 61,
-    env_get_children_nanos = 62,
-    env_get_children_file_attributes_nanos = 63,
-    env_delete_file_nanos = 64,
-    env_create_dir_nanos = 65,
-    env_create_dir_if_missing_nanos = 66,
-    env_delete_dir_nanos = 67,
-    env_get_file_size_nanos = 68,
-    env_get_file_modification_time_nanos = 69,
-    env_rename_file_nanos = 70,
-    env_link_file_nanos = 71,
-    env_lock_file_nanos = 72,
-    env_unlock_file_nanos = 73,
-    env_new_logger_nanos = 74,
-    get_cpu_nanos = 75,
-    iter_next_cpu_nanos = 76,
-    iter_prev_cpu_nanos = 77,
-    iter_seek_cpu_nanos = 78,
-    encrypt_data_nanos = 79,
-    decrypt_data_nanos = 80,
-    get_from_table_nanos = 81,
-    user_key_return_count = 82,
-    block_cache_miss_count = 83,
-    bloom_filter_full_positive = 84,
-    bloom_filter_useful = 85,
-    bloom_filter_full_true_positive = 86,
-    bytes_read = 87,
-    bytes_written = 88,
-    open_nanos = 89,
-    allocate_nanos = 90,
-    write_nanos = 91,
-    read_nanos = 92,
-    range_sync_nanos = 93,
-    prepare_write_nanos = 94,
-    fsync_nanos = 95,
-    logger_nanos = 96,
-    cpu_read_nanos = 97,
-    cpu_write_nanos = 98,
-    COUNT = 99,
-}
-#[repr(C)]
-pub struct rocksdb_RateLimiter__bindgen_vtable(libc::c_void);
-#[repr(C)]
-#[derive(Debug)]
-pub struct rocksdb_RateLimiter {
-    pub vtable_: *const rocksdb_RateLimiter__bindgen_vtable,
-    pub mode_: rocksdb_RateLimiter_Mode,
+    secondary_cache_hit_count = 10,
+    block_checksum_time = 11,
+    block_decompress_time = 12,
+    get_read_bytes = 13,
+    multiget_read_bytes = 14,
+    iter_read_bytes = 15,
+    internal_key_skipped_count = 16,
+    internal_delete_skipped_count = 17,
+    internal_recent_skipped_count = 18,
+    internal_merge_count = 19,
+    get_snapshot_time = 20,
+    get_from_memtable_time = 21,
+    get_from_memtable_count = 22,
+    get_post_process_time = 23,
+    get_from_output_files_time = 24,
+    seek_on_memtable_time = 25,
+    seek_on_memtable_count = 26,
+    next_on_memtable_count = 27,
+    prev_on_memtable_count = 28,
+    seek_child_seek_time = 29,
+    seek_child_seek_count = 30,
+    seek_min_heap_time = 31,
+    seek_max_heap_time = 32,
+    seek_internal_seek_time = 33,
+    find_next_user_entry_time = 34,
+    write_wal_time = 35,
+    write_memtable_time = 36,
+    write_delay_time = 37,
+    write_scheduling_flushes_compactions_time = 38,
+    write_pre_and_post_process_time = 39,
+    write_thread_wait_nanos = 40,
+    db_mutex_lock_nanos = 41,
+    db_condition_wait_nanos = 42,
+    merge_operator_time_nanos = 43,
+    read_index_block_nanos = 44,
+    read_filter_block_nanos = 45,
+    new_table_block_iter_nanos = 46,
+    new_table_iterator_nanos = 47,
+    block_seek_nanos = 48,
+    find_table_nanos = 49,
+    bloom_memtable_hit_count = 50,
+    bloom_memtable_miss_count = 51,
+    bloom_sst_hit_count = 52,
+    bloom_sst_miss_count = 53,
+    key_lock_wait_time = 54,
+    key_lock_wait_count = 55,
+    env_new_sequential_file_nanos = 56,
+    env_new_random_access_file_nanos = 57,
+    env_new_writable_file_nanos = 58,
+    env_reuse_writable_file_nanos = 59,
+    env_new_random_rw_file_nanos = 60,
+    env_new_directory_nanos = 61,
+    env_file_exists_nanos = 62,
+    env_get_children_nanos = 63,
+    env_get_children_file_attributes_nanos = 64,
+    env_delete_file_nanos = 65,
+    env_create_dir_nanos = 66,
+    env_create_dir_if_missing_nanos = 67,
+    env_delete_dir_nanos = 68,
+    env_get_file_size_nanos = 69,
+    env_get_file_modification_time_nanos = 70,
+    env_rename_file_nanos = 71,
+    env_link_file_nanos = 72,
+    env_lock_file_nanos = 73,
+    env_unlock_file_nanos = 74,
+    env_new_logger_nanos = 75,
+    get_cpu_nanos = 76,
+    iter_next_cpu_nanos = 77,
+    iter_prev_cpu_nanos = 78,
+    iter_seek_cpu_nanos = 79,
+    encrypt_data_nanos = 80,
+    decrypt_data_nanos = 81,
+    get_from_table_nanos = 82,
+    user_key_return_count = 83,
+    block_cache_miss_count = 84,
+    bloom_filter_full_positive = 85,
+    bloom_filter_useful = 86,
+    bloom_filter_full_true_positive = 87,
+    bytes_read = 88,
+    bytes_written = 89,
+    open_nanos = 90,
+    allocate_nanos = 91,
+    write_nanos = 92,
+    read_nanos = 93,
+    range_sync_nanos = 94,
+    prepare_write_nanos = 95,
+    fsync_nanos = 96,
+    logger_nanos = 97,
+    cpu_read_nanos = 98,
+    cpu_write_nanos = 99,
+    COUNT = 100,
 }
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -961,6 +1006,15 @@ pub struct rocksdb_SstFileReader_Rep {
 }
 #[repr(i8)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_ChecksumType {
+    kNoChecksum = 0,
+    kCRC32c = 1,
+    kxxHash = 2,
+    kxxHash64 = 3,
+    kXXH3 = 4,
+}
+#[repr(i8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_BlockBasedTableOptions_IndexType {
     kBinarySearch = 0,
     kHashSearch = 1,
@@ -982,6 +1036,12 @@ pub enum rocksdb_BlockBasedTableOptions_IndexShorteningMode {
 }
 #[repr(i8)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum rocksdb_BlockBasedTableOptions_PrepopulateBlockCache {
+    kDisable = 0,
+    kFlushOnly = 1,
+}
+#[repr(i8)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_EncodingType {
     kPlain = 0,
     kPrefix = 1,
@@ -997,6 +1057,26 @@ pub struct rocksdb_PlainTableOptions {
     pub encoding_type: rocksdb_EncodingType,
     pub full_scan_mode: bool,
     pub store_index_in_file: bool,
+}
+#[repr(C)]
+pub struct rocksdb_BackupEngineReadOnlyBase__bindgen_vtable(libc::c_void);
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_BackupEngineReadOnlyBase {
+    pub vtable_: *const rocksdb_BackupEngineReadOnlyBase__bindgen_vtable,
+}
+#[repr(C)]
+pub struct rocksdb_BackupEngineAppendOnlyBase__bindgen_vtable(libc::c_void);
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_BackupEngineAppendOnlyBase {
+    pub vtable_: *const rocksdb_BackupEngineAppendOnlyBase__bindgen_vtable,
+}
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_BackupEngine {
+    pub _base: rocksdb_BackupEngineReadOnlyBase,
+    pub _base_1: rocksdb_BackupEngineAppendOnlyBase,
 }
 #[repr(C)]
 pub struct rocksdb_Snapshot__bindgen_vtable(libc::c_void);
@@ -1016,6 +1096,11 @@ pub struct rocksdb_WriteBatch_Handler__bindgen_vtable(libc::c_void);
 #[derive(Debug)]
 pub struct rocksdb_WriteBatch_Handler {
     pub vtable_: *const rocksdb_WriteBatch_Handler__bindgen_vtable,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rocksdb_WriteBatch_ProtectionInfo {
+    _unused: [u8; 0],
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -1066,13 +1151,6 @@ pub enum rocksdb_DB_SizeApproximationFlags {
     INCLUDE_MEMTABLES = 1,
     INCLUDE_FILES = 2,
 }
-#[repr(C)]
-pub struct rocksdb_BackupEngine__bindgen_vtable(libc::c_void);
-#[repr(C)]
-#[derive(Debug)]
-pub struct rocksdb_BackupEngine {
-    pub vtable_: *const rocksdb_BackupEngine__bindgen_vtable,
-}
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_titandb_TitanBlobRunMode {
@@ -1081,61 +1159,61 @@ pub enum rocksdb_titandb_TitanBlobRunMode {
     kFallback = 2,
 }
 #[repr(C)]
+#[repr(align(8))]
 #[derive(Debug, Copy, Clone)]
 pub struct rocksdb_titandb_TitanReadOptions {
-    pub _base: rocksdb_ReadOptions,
-    pub key_only: bool,
+    pub _bindgen_opaque_blob: [u64; 17usize],
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_titandb_TickerType {
-    TITAN_NUM_GET = 145,
-    TITAN_NUM_SEEK = 146,
-    TITAN_NUM_NEXT = 147,
-    TITAN_NUM_PREV = 148,
-    TITAN_BLOB_FILE_NUM_KEYS_WRITTEN = 149,
-    TITAN_BLOB_FILE_NUM_KEYS_READ = 150,
-    TITAN_BLOB_FILE_BYTES_WRITTEN = 151,
-    TITAN_BLOB_FILE_BYTES_READ = 152,
-    TITAN_BLOB_FILE_SYNCED = 153,
-    TITAN_GC_NUM_FILES = 154,
-    TITAN_GC_NUM_NEW_FILES = 155,
-    TITAN_GC_NUM_KEYS_OVERWRITTEN = 156,
-    TITAN_GC_NUM_KEYS_RELOCATED = 157,
-    TITAN_GC_BYTES_OVERWRITTEN = 158,
-    TITAN_GC_BYTES_RELOCATED = 159,
-    TITAN_GC_BYTES_WRITTEN = 160,
-    TITAN_GC_BYTES_READ = 161,
-    TITAN_BLOB_CACHE_HIT = 162,
-    TITAN_BLOB_CACHE_MISS = 163,
-    TITAN_GC_NO_NEED = 164,
-    TITAN_GC_REMAIN = 165,
-    TITAN_GC_DISCARDABLE = 166,
-    TITAN_GC_SAMPLE = 167,
-    TITAN_GC_SMALL_FILE = 168,
-    TITAN_GC_FAILURE = 169,
-    TITAN_GC_SUCCESS = 170,
-    TITAN_GC_TRIGGER_NEXT = 171,
-    TITAN_TICKER_ENUM_MAX = 172,
+    TITAN_NUM_GET = 179,
+    TITAN_NUM_SEEK = 180,
+    TITAN_NUM_NEXT = 181,
+    TITAN_NUM_PREV = 182,
+    TITAN_BLOB_FILE_NUM_KEYS_WRITTEN = 183,
+    TITAN_BLOB_FILE_NUM_KEYS_READ = 184,
+    TITAN_BLOB_FILE_BYTES_WRITTEN = 185,
+    TITAN_BLOB_FILE_BYTES_READ = 186,
+    TITAN_BLOB_FILE_SYNCED = 187,
+    TITAN_GC_NUM_FILES = 188,
+    TITAN_GC_NUM_NEW_FILES = 189,
+    TITAN_GC_NUM_KEYS_OVERWRITTEN = 190,
+    TITAN_GC_NUM_KEYS_RELOCATED = 191,
+    TITAN_GC_BYTES_OVERWRITTEN = 192,
+    TITAN_GC_BYTES_RELOCATED = 193,
+    TITAN_GC_BYTES_WRITTEN = 194,
+    TITAN_GC_BYTES_READ = 195,
+    TITAN_BLOB_CACHE_HIT = 196,
+    TITAN_BLOB_CACHE_MISS = 197,
+    TITAN_GC_NO_NEED = 198,
+    TITAN_GC_REMAIN = 199,
+    TITAN_GC_DISCARDABLE = 200,
+    TITAN_GC_SAMPLE = 201,
+    TITAN_GC_SMALL_FILE = 202,
+    TITAN_GC_FAILURE = 203,
+    TITAN_GC_SUCCESS = 204,
+    TITAN_GC_TRIGGER_NEXT = 205,
+    TITAN_TICKER_ENUM_MAX = 206,
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum rocksdb_titandb_HistogramType {
-    TITAN_KEY_SIZE = 49,
-    TITAN_VALUE_SIZE = 50,
-    TITAN_GET_MICROS = 51,
-    TITAN_SEEK_MICROS = 52,
-    TITAN_NEXT_MICROS = 53,
-    TITAN_PREV_MICROS = 54,
-    TITAN_BLOB_FILE_WRITE_MICROS = 55,
-    TITAN_BLOB_FILE_READ_MICROS = 56,
-    TITAN_BLOB_FILE_SYNC_MICROS = 57,
-    TITAN_MANIFEST_FILE_SYNC_MICROS = 58,
-    TITAN_GC_MICROS = 59,
-    TITAN_GC_INPUT_FILE_SIZE = 60,
-    TITAN_GC_OUTPUT_FILE_SIZE = 61,
-    TITAN_ITER_TOUCH_BLOB_FILE_COUNT = 62,
-    TITAN_HISTOGRAM_ENUM_MAX = 63,
+    TITAN_KEY_SIZE = 53,
+    TITAN_VALUE_SIZE = 54,
+    TITAN_GET_MICROS = 55,
+    TITAN_SEEK_MICROS = 56,
+    TITAN_NEXT_MICROS = 57,
+    TITAN_PREV_MICROS = 58,
+    TITAN_BLOB_FILE_WRITE_MICROS = 59,
+    TITAN_BLOB_FILE_READ_MICROS = 60,
+    TITAN_BLOB_FILE_SYNC_MICROS = 61,
+    TITAN_MANIFEST_FILE_SYNC_MICROS = 62,
+    TITAN_GC_MICROS = 63,
+    TITAN_GC_INPUT_FILE_SIZE = 64,
+    TITAN_GC_OUTPUT_FILE_SIZE = 65,
+    TITAN_ITER_TOUCH_BLOB_FILE_COUNT = 66,
+    TITAN_HISTOGRAM_ENUM_MAX = 67,
 }
 #[repr(C)]
 #[derive(Debug)]
@@ -1758,6 +1836,15 @@ extern "C" {
         db: *mut rocksdb_DB,
         options: *const rocksdb_WriteOptions,
         batch: *mut rocksdb_WriteBatch,
+        s: *mut rocksdb_Status,
+    );
+}
+extern "C" {
+    pub fn crocksdb_write_multi_batch(
+        db: *mut rocksdb_DB,
+        options: *const rocksdb_WriteOptions,
+        batches: *mut *mut rocksdb_WriteBatch,
+        batch_size: usize,
         s: *mut rocksdb_Status,
     );
 }
@@ -2534,6 +2621,18 @@ extern "C" {
     pub fn crocksdb_block_based_options_set_read_amp_bytes_per_bit(
         arg1: *mut rocksdb_BlockBasedTableOptions,
         arg2: u32,
+    );
+}
+extern "C" {
+    pub fn crocksdb_block_based_options_set_prepopulate_block_cache(
+        options: *mut rocksdb_BlockBasedTableOptions,
+        v: rocksdb_BlockBasedTableOptions_PrepopulateBlockCache,
+    );
+}
+extern "C" {
+    pub fn crocksdb_block_based_options_set_checksum(
+        options: *mut rocksdb_BlockBasedTableOptions,
+        v: rocksdb_ChecksumType,
     );
 }
 extern "C" {
@@ -3445,7 +3544,10 @@ extern "C" {
     pub fn crocksdb_options_set_enable_pipelined_write(arg1: *mut rocksdb_DBOptions, arg2: bool);
 }
 extern "C" {
-    pub fn crocksdb_options_set_enable_pipelined_commit(opt: *mut rocksdb_DBOptions, v: bool);
+    pub fn crocksdb_options_set_multi_batch_write(opt: *mut rocksdb_DBOptions, v: bool);
+}
+extern "C" {
+    pub fn crocksdb_options_multi_batch_write(opt: *const rocksdb_DBOptions) -> bool;
 }
 extern "C" {
     pub fn crocksdb_options_set_unordered_write(arg1: *mut rocksdb_DBOptions, arg2: bool);
@@ -3906,7 +4008,7 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_filterpolicy_create_bloom_format(
-        bits_per_key: libc::c_int,
+        bits_per_key: f64,
         use_block_based_builder: bool,
     ) -> *mut crocksdb_filterpolicy_t;
 }
@@ -3970,11 +4072,6 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_mergeoperationinput_value_type(
-        arg1: *const rocksdb_MergeOperator_MergeOperationInput,
-    ) -> rocksdb_MergeOperator_MergeValueType;
-}
-extern "C" {
     pub fn crocksdb_mergeoperationinput_existing_value(
         arg1: *const rocksdb_MergeOperator_MergeOperationInput,
         arg2: *mut *const rocksdb_Slice,
@@ -4013,10 +4110,79 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_mergeoperationoutput_set_new_type(
-        arg1: *mut rocksdb_MergeOperator_MergeOperationOutput,
-        arg2: rocksdb_MergeOperator_MergeValueType,
+    pub fn crocksdb_readoptions_set_snapshot(
+        opt: *mut rocksdb_ReadOptions,
+        v: *const rocksdb_Snapshot,
     );
+}
+extern "C" {
+    pub fn crocksdb_readoptions_snapshot(
+        opt: *const rocksdb_ReadOptions,
+    ) -> *const rocksdb_Snapshot;
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_iterate_lower_bound(
+        opt: *mut rocksdb_ReadOptions,
+        v: *const rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_readoptions_iterate_lower_bound(
+        opt: *const rocksdb_ReadOptions,
+    ) -> *const rocksdb_Slice;
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_iterate_upper_bound(
+        opt: *mut rocksdb_ReadOptions,
+        v: *const rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_readoptions_iterate_upper_bound(
+        opt: *const rocksdb_ReadOptions,
+    ) -> *const rocksdb_Slice;
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_readahead_size(opt: *mut rocksdb_ReadOptions, v: usize);
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_max_skippable_internal_keys(
+        opt: *mut rocksdb_ReadOptions,
+        v: u64,
+    );
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_read_tier(opt: *mut rocksdb_ReadOptions, v: rocksdb_ReadTier);
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_verify_checksums(opt: *mut rocksdb_ReadOptions, v: bool);
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_fill_cache(opt: *mut rocksdb_ReadOptions, v: bool);
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_tailing(opt: *mut rocksdb_ReadOptions, v: bool);
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_total_order_seek(opt: *mut rocksdb_ReadOptions, v: bool);
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_auto_prefix_mode(opt: *mut rocksdb_ReadOptions, v: bool);
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_prefix_same_as_start(opt: *mut rocksdb_ReadOptions, v: bool);
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_pin_data(opt: *mut rocksdb_ReadOptions, v: bool);
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_background_purge_on_iterator_cleanup(
+        opt: *mut rocksdb_ReadOptions,
+        v: bool,
+    );
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_ignore_range_deletions(opt: *mut rocksdb_ReadOptions, v: bool);
 }
 extern "C" {
     pub fn crocksdb_readoptions_set_table_filter(
@@ -4032,10 +4198,85 @@ extern "C" {
     );
 }
 extern "C" {
+    pub fn crocksdb_readoptions_set_timestamp(
+        opt: *mut rocksdb_ReadOptions,
+        v: *const rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_iter_start_ts(
+        opt: *mut rocksdb_ReadOptions,
+        v: *const rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_value_size_soft_limit(opt: *mut rocksdb_ReadOptions, v: u64);
+}
+extern "C" {
+    pub fn crocksdb_readoptions_set_adaptive_readahead(opt: *mut rocksdb_ReadOptions, v: bool);
+}
+extern "C" {
     pub fn crocksdb_writeoptions_init(arg1: *mut rocksdb_WriteOptions);
 }
 extern "C" {
     pub fn crocksdb_compactrangeoptions_init(arg1: *mut rocksdb_CompactRangeOptions);
+}
+extern "C" {
+    pub fn crocksdb_compactrangeoptions_inplace_destroy(opt: *mut rocksdb_CompactRangeOptions);
+}
+extern "C" {
+    pub fn crocksdb_compactrangeoptions_set_exclusive_manual_compaction(
+        opt: *mut rocksdb_CompactRangeOptions,
+        v: bool,
+    );
+}
+extern "C" {
+    pub fn crocksdb_compactrangeoptions_set_change_level(
+        opt: *mut rocksdb_CompactRangeOptions,
+        v: bool,
+    );
+}
+extern "C" {
+    pub fn crocksdb_compactrangeoptions_set_target_level(
+        opt: *mut rocksdb_CompactRangeOptions,
+        v: libc::c_int,
+    );
+}
+extern "C" {
+    pub fn crocksdb_compactrangeoptions_set_target_path_id(
+        opt: *mut rocksdb_CompactRangeOptions,
+        v: u32,
+    );
+}
+extern "C" {
+    pub fn crocksdb_compactrangeoptions_set_bottommost_level_compaction(
+        opt: *mut rocksdb_CompactRangeOptions,
+        v: rocksdb_BottommostLevelCompaction,
+    );
+}
+extern "C" {
+    pub fn crocksdb_compactrangeoptions_set_allow_write_stall(
+        opt: *mut rocksdb_CompactRangeOptions,
+        v: bool,
+    );
+}
+extern "C" {
+    pub fn crocksdb_compactrangeoptions_set_max_subcompactions(
+        opt: *mut rocksdb_CompactRangeOptions,
+        v: u32,
+    );
+}
+extern "C" {
+    pub fn crocksdb_compactrangeoptions_set_full_history_ts_low(
+        opt: *mut rocksdb_CompactRangeOptions,
+        v: *const rocksdb_Slice,
+    );
+}
+extern "C" {
+    pub fn crocksdb_compactrangeoptions_set_canceled(
+        opt: *mut rocksdb_CompactRangeOptions,
+        v: bool,
+    );
 }
 extern "C" {
     pub fn crocksdb_flushoptions_init(arg1: *mut rocksdb_FlushOptions);
@@ -4466,14 +4707,6 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_slicetransform_destroy(arg1: *mut crocksdb_slicetransform_t);
-}
-extern "C" {
-    pub fn crocksdb_universal_compaction_options_init(
-        arg1: *mut rocksdb_CompactionOptionsUniversal,
-    );
-}
-extern "C" {
-    pub fn crocksdb_fifo_compaction_options_init(arg1: *mut rocksdb_CompactionOptionsFIFO);
 }
 extern "C" {
     pub fn crocksdb_livefiles_count(arg1: *const crocksdb_livefiles_t) -> usize;
@@ -5595,12 +5828,6 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn ctitandb_options_set_sample_file_size_ratio(
-        options: *mut rocksdb_titandb_TitanCFOptions,
-        ratio: f64,
-    );
-}
-extern "C" {
     pub fn ctitandb_options_set_merge_small_file_threshold(
         options: *mut rocksdb_titandb_TitanCFOptions,
         size: u64,
@@ -5648,12 +5875,6 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn ctitandb_options_set_sample_ratio(
-        options: *mut rocksdb_titandb_TitanCFOptions,
-        ratio: f64,
-    );
-}
-extern "C" {
     pub fn ctitandb_options_set_blob_run_mode(
         options: *mut rocksdb_titandb_TitanCFOptions,
         mode: rocksdb_titandb_TitanBlobRunMode,
@@ -5664,6 +5885,9 @@ extern "C" {
 }
 extern "C" {
     pub fn ctitandb_readoptions_inplace_destroy(arg1: *mut rocksdb_titandb_TitanReadOptions);
+}
+extern "C" {
+    pub fn ctitandb_readoptions_set_key_only(opt: *mut rocksdb_titandb_TitanReadOptions, v: bool);
 }
 extern "C" {
     pub fn ctitandb_create_iterator(
