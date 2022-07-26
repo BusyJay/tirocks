@@ -208,6 +208,14 @@ impl ReadOptions {
         /// changing implementation of prefix extractor.
         total_order_seek: bool
 
+        /// When true, by default use total_order_seek = true, and RocksDB can
+        /// selectively enable prefix seek mode if won't generate a different result
+        /// from total_order_seek, based on seek key, and iterator upper bound.
+        /// Not supported in ROCKSDB_LITE mode, in the way that even with value true
+        /// prefix mode is not used.
+        /// Default: false
+        auto_prefix_mode: bool
+
         /// Enforce that the iterator only iterates over the same prefix as the seek.
         /// This option is effective only for prefix seeks, i.e. prefix_extractor is
         /// non-null for the column family and total_order_seek is false.  Unlike

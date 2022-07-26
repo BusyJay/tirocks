@@ -129,6 +129,10 @@ impl<'a, D: RawDbRef + 'a> Snapshot<'a, D> {
     pub fn iter<'b>(&'b self, opt: &'b mut ReadOptions, cf: &RawCfHandle) -> RawIterator<'b> {
         RawIterator::new(self, opt, cf)
     }
+
+    pub fn db(&self) -> &D {
+        &self.db
+    }
 }
 
 unsafe impl<'a, D: RawDbRef + 'a> Iterable for Snapshot<'a, D> {
