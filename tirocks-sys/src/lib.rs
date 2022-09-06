@@ -186,6 +186,13 @@ impl Drop for rocksdb_Status {
     }
 }
 
+impl Default for rocksdb_HistogramData {
+    #[inline]
+    fn default() -> Self {
+        unsafe { std::mem::zeroed() }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

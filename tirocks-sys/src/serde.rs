@@ -1,7 +1,7 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::str::FromStr;
 use std::marker::PhantomData;
+use std::str::FromStr;
 
 use serde::{de::Visitor, Deserialize, Serialize};
 
@@ -26,7 +26,7 @@ impl<Item> FromStrVisitor<Item> {
     }
 }
 
-impl<'de, Item: FromStr<Err=String>> Visitor<'de> for FromStrVisitor<Item> {
+impl<'de, Item: FromStr<Err = String>> Visitor<'de> for FromStrVisitor<Item> {
     type Value = Item;
 
     #[inline]
@@ -133,7 +133,9 @@ impl<'de> Deserialize<'de> for TitanBlobRunMode {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(FromStrVisitor::<TitanBlobRunMode>::new("\"normal\", \"read-only\", \"fallback\""))
+        deserializer.deserialize_str(FromStrVisitor::<TitanBlobRunMode>::new(
+            "\"normal\", \"read-only\", \"fallback\"",
+        ))
     }
 }
 
@@ -179,7 +181,9 @@ impl<'de> Deserialize<'de> for LogLevel {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(FromStrVisitor::<LogLevel>::new("\"debug\", \"info\", \"warn\", \"error\", \"fatal\""))
+        deserializer.deserialize_str(FromStrVisitor::<LogLevel>::new(
+            "\"debug\", \"info\", \"warn\", \"error\", \"fatal\"",
+        ))
     }
 }
 
@@ -217,7 +221,9 @@ impl<'de> Deserialize<'de> for PrepopulateBlockCache {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(FromStrVisitor::<PrepopulateBlockCache>::new("\"disabled\", \"flush-only\""))
+        deserializer.deserialize_str(FromStrVisitor::<PrepopulateBlockCache>::new(
+            "\"disabled\", \"flush-only\"",
+        ))
     }
 }
 
@@ -261,7 +267,9 @@ impl<'de> Deserialize<'de> for ChecksumType {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(FromStrVisitor::<ChecksumType>::new("\"no\", \"crc32c\", \"xxhash\", \"xxhash64\", \"xxh3\""))
+        deserializer.deserialize_str(FromStrVisitor::<ChecksumType>::new(
+            "\"no\", \"crc32c\", \"xxhash\", \"xxhash64\", \"xxh3\"",
+        ))
     }
 }
 

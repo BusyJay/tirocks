@@ -26,6 +26,9 @@ pub struct EnvOptions {
     ptr: *mut rocksdb_EnvOptions,
 }
 
+unsafe impl Send for EnvOptions {}
+unsafe impl Sync for EnvOptions {}
+
 impl Default for EnvOptions {
     #[inline]
     fn default() -> EnvOptions {

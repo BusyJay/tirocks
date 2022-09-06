@@ -4,11 +4,11 @@ use std::{
     mem::{self, ManuallyDrop},
     ops::{Deref, DerefMut},
     path::Path,
-    ptr::NonNull,
+    ptr::{self, NonNull},
     sync::Arc,
     time::Duration,
 };
-use tirocks_sys::{rocksdb_DBOptions, rocksdb_titandb_TitanDBOptions};
+use tirocks_sys::{rocksdb_DBOptions, rocksdb_Env, rocksdb_titandb_TitanDBOptions};
 
 use crate::{
     env::{
@@ -75,6 +75,19 @@ impl Drop for OwnedRawDbOptions {
 pub struct DbOptions {
     opt: ManuallyDrop<OwnedRawDbOptions>,
     env: Option<Arc<Env>>,
+}
+
+unsafe impl Send for DbOptions {}
+unsafe impl Sync for DbOptions {}
+
+impl DbOptions {
+    /// Should only be used when all pointer fields are null.
+    pub(crate) unsafe fn from_ptr(ptr: *mut rocksdb_DBOptions) -> DbOptions {
+        DbOptions {
+            opt: ManuallyDrop::new(OwnedRawDbOptions::from_ptr(ptr)),
+            env: None,
+        }
+    }
 }
 
 impl Deref for DbOptions {
@@ -159,6 +172,19 @@ impl RawDbOptions {
     pub unsafe fn set_env(&mut self, env: &Env) -> &mut Self {
         tirocks_sys::crocksdb_options_set_env(self.as_mut_ptr(), env.get_ptr());
         self
+    }
+
+    /// Check if the preconfigured env is exact the provided one.
+    ///
+    /// `None` and default value are considered the same.
+    #[inline]
+    pub(crate) fn match_env(&self, env: Option<&Env>) -> bool {
+        unsafe {
+            tirocks_sys::crocksdb_options_match_env(
+                self.as_ptr(),
+                env.map_or_else(ptr::null_mut, |e| e.get_ptr()),
+            )
+        }
     }
 
     simple_access! {
@@ -648,6 +674,18 @@ impl RawDbOptions {
 }
 
 impl DbOptions {
+    #[inline]
+    pub fn from_raw(raw: OwnedRawDbOptions, env: &Option<Arc<Env>>) -> Option<Self> {
+        if !raw.match_env(env.as_deref()) {
+            return None;
+        }
+
+        Some(Self {
+            opt: ManuallyDrop::new(raw),
+            env: env.clone(),
+        })
+    }
+
     /// Same as [`RawDbOptions::set_env`] but manage the lifetime of `env`.
     #[inline]
     pub fn set_env(&mut self, env: Arc<Env>) -> &mut Self {
@@ -696,11 +734,16 @@ impl DerefMut for RawTitanDbOptions {
 }
 
 #[derive(Debug)]
-pub struct OwnedRawTitanDbOptions {
+#[repr(C)]
+pub struct TitanDbOptions {
     ptr: NonNull<RawTitanDbOptions>,
+    env: Option<Arc<Env>>,
 }
 
-impl Drop for OwnedRawTitanDbOptions {
+unsafe impl Send for TitanDbOptions {}
+unsafe impl Sync for TitanDbOptions {}
+
+impl Drop for TitanDbOptions {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -709,7 +752,7 @@ impl Drop for OwnedRawTitanDbOptions {
     }
 }
 
-impl Deref for OwnedRawTitanDbOptions {
+impl Deref for TitanDbOptions {
     type Target = RawTitanDbOptions;
 
     #[inline]
@@ -718,43 +761,47 @@ impl Deref for OwnedRawTitanDbOptions {
     }
 }
 
-impl DerefMut for OwnedRawTitanDbOptions {
+impl DerefMut for TitanDbOptions {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { self.ptr.as_mut() }
     }
 }
 
-impl OwnedRawTitanDbOptions {
+impl TitanDbOptions {
     pub(crate) unsafe fn from_ptr(
         ptr: *mut rocksdb_titandb_TitanDBOptions,
-    ) -> OwnedRawTitanDbOptions {
-        OwnedRawTitanDbOptions {
-            ptr: NonNull::new(ptr as *mut RawTitanDbOptions).unwrap(),
+        env: &Option<Arc<Env>>,
+    ) -> Option<TitanDbOptions> {
+        let ptr = NonNull::new(ptr as *mut RawTitanDbOptions)?;
+        if ptr.as_ref().match_env(env.as_deref()) {
+            Some(TitanDbOptions {
+                ptr,
+                env: env.clone(),
+            })
+        } else {
+            None
         }
     }
-}
 
-#[derive(Debug)]
-#[repr(C)]
-pub struct TitanDbOptions {
-    opt: ManuallyDrop<OwnedRawTitanDbOptions>,
-    env: Option<Arc<Env>>,
-}
-
-impl Deref for TitanDbOptions {
-    type Target = RawTitanDbOptions;
-
+    /// Same as `DbOptions::set_env`.
     #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.opt
+    pub fn set_env(&mut self, env: Arc<Env>) -> &mut Self {
+        unsafe {
+            (**self).set_env(&env);
+        }
+        self.env = Some(env);
+        self
     }
-}
 
-impl DerefMut for TitanDbOptions {
     #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.opt
+    pub fn env(&self) -> Option<&Arc<Env>> {
+        self.env.as_ref()
+    }
+
+    #[inline]
+    pub(crate) fn get_ptr(&self) -> *mut rocksdb_titandb_TitanDBOptions {
+        self.ptr.as_ptr() as _
     }
 }
 
@@ -810,40 +857,11 @@ impl Default for TitanDbOptions {
     #[inline]
     fn default() -> TitanDbOptions {
         unsafe {
-            let ptr = tirocks_sys::ctitandb_dboptions_create();
+            let ptr = tirocks_sys::ctitandb_dboptions_create() as *mut RawTitanDbOptions;
             TitanDbOptions {
-                opt: ManuallyDrop::new(OwnedRawTitanDbOptions::from_ptr(ptr)),
+                ptr: NonNull::new(ptr).unwrap(),
                 env: None,
             }
         }
-    }
-}
-
-impl TitanDbOptions {
-    /// Same as `DbOptions::set_env`.
-    #[inline]
-    pub fn set_env(&mut self, env: Arc<Env>) -> &mut Self {
-        unsafe {
-            (**self).set_env(&env);
-        }
-        self.env = Some(env);
-        self
-    }
-
-    #[inline]
-    pub fn env(&self) -> Option<&Arc<Env>> {
-        self.env.as_ref()
-    }
-
-    #[inline]
-    pub(crate) fn get_ptr(&self) -> *mut rocksdb_titandb_TitanDBOptions {
-        self.opt.ptr.as_ptr() as _
-    }
-}
-
-impl Drop for TitanDbOptions {
-    #[inline]
-    fn drop(&mut self) {
-        unsafe { ManuallyDrop::drop(&mut self.opt) }
     }
 }

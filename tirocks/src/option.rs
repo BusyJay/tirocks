@@ -9,7 +9,7 @@ mod write;
 use std::{
     mem::ManuallyDrop,
     ops::{Deref, DerefMut},
-    ptr,
+    ptr::{self, NonNull},
     sync::Arc,
 };
 
@@ -17,10 +17,7 @@ pub use cf::{
     CfOptions, CompactionPriority, CompactionStyle, FifoCompactionOptions, RawCfOptions,
     RawTitanCfOptions, TitanBlobRunMode, TitanCfOptions, UniversalCompactionOptions,
 };
-pub use db::{
-    DbOptions, OwnedRawDbOptions, OwnedRawTitanDbOptions, RawDbOptions, RawTitanDbOptions,
-    TitanDbOptions,
-};
+pub use db::{DbOptions, OwnedRawDbOptions, RawDbOptions, RawTitanDbOptions, TitanDbOptions};
 pub use flush::{
     BottommostLevelCompaction, CompactRangeOptions, CompactionOptions, FlushOptions,
     IngestExternalFileOptions,
@@ -154,6 +151,9 @@ pub struct Options {
     comparator: Option<Arc<SysComparator>>,
 }
 
+unsafe impl Send for Options {}
+unsafe impl Sync for Options {}
+
 impl Default for Options {
     #[inline]
     fn default() -> Self {
@@ -185,6 +185,26 @@ impl DerefMut for Options {
 }
 
 impl Options {
+    #[inline]
+    pub fn from_raw(
+        raw: RawOptions,
+        env: Option<Arc<Env>>,
+        comparator: Option<Arc<SysComparator>>,
+    ) -> Option<Self> {
+        if !raw.db_options().match_env(env.as_deref()) {
+            return None;
+        }
+        if !raw.cf_options().match_comparator(comparator.as_deref()) {
+            return None;
+        }
+
+        Some(Self {
+            opt: ManuallyDrop::new(raw),
+            env,
+            comparator,
+        })
+    }
+
     /// Same as `DbOptions::set_env`.
     #[inline]
     pub fn set_env(&mut self, env: Arc<Env>) -> &mut Self {
@@ -228,91 +248,91 @@ impl Drop for Options {
     }
 }
 
-#[derive(Debug)]
-pub struct RawTitanOptions {
-    ptr: *mut rocksdb_titandb_TitanOptions,
-}
+#[repr(transparent)]
+pub struct RawTitanOptions(rocksdb_titandb_TitanOptions);
 
 impl RawTitanOptions {
     #[inline]
     pub fn db_options(&self) -> &RawTitanDbOptions {
         unsafe {
-            RawTitanDbOptions::from_ptr(tirocks_sys::ctitandb_options_get_dboptions(self.ptr))
+            RawTitanDbOptions::from_ptr(tirocks_sys::ctitandb_options_get_dboptions(
+                self.as_mut_ptr(),
+            ))
         }
     }
 
     #[inline]
     pub fn db_options_mut(&mut self) -> &mut RawTitanDbOptions {
         unsafe {
-            RawTitanDbOptions::from_ptr_mut(tirocks_sys::ctitandb_options_get_dboptions(self.ptr))
+            RawTitanDbOptions::from_ptr_mut(tirocks_sys::ctitandb_options_get_dboptions(
+                self.as_mut_ptr(),
+            ))
         }
     }
 
     #[inline]
     pub fn cf_options(&self) -> &RawTitanCfOptions {
         unsafe {
-            RawTitanCfOptions::from_ptr(tirocks_sys::ctitandb_options_get_cfoptions(self.ptr))
+            RawTitanCfOptions::from_ptr(tirocks_sys::ctitandb_options_get_cfoptions(
+                self.as_mut_ptr(),
+            ))
         }
     }
 
     #[inline]
     pub fn cf_options_mut(&mut self) -> &mut RawTitanCfOptions {
         unsafe {
-            RawTitanCfOptions::from_ptr_mut(tirocks_sys::ctitandb_options_get_cfoptions(self.ptr))
+            RawTitanCfOptions::from_ptr_mut(tirocks_sys::ctitandb_options_get_cfoptions(
+                self.as_mut_ptr(),
+            ))
         }
     }
 
     #[inline]
-    pub(crate) unsafe fn from_ptr(ptr: *mut rocksdb_titandb_TitanOptions) -> RawTitanOptions {
-        RawTitanOptions { ptr }
+    unsafe fn as_mut_ptr(&self) -> *mut rocksdb_titandb_TitanOptions {
+        self as *const _ as _
     }
-}
 
-impl Drop for RawTitanOptions {
     #[inline]
-    fn drop(&mut self) {
-        unsafe {
-            tirocks_sys::ctitandb_options_destroy(self.ptr);
-        }
+    pub(crate) unsafe fn from_ptr<'a>(ptr: *const rocksdb_titandb_TitanOptions) -> &'a Self {
+        &*(ptr as *const RawTitanOptions)
     }
 }
 
 #[derive(Debug)]
 pub struct TitanOptions {
-    opt: ManuallyDrop<RawTitanOptions>,
+    ptr: NonNull<RawTitanOptions>,
     env: Option<Arc<Env>>,
     comparator: Option<Arc<SysComparator>>,
 }
 
-impl Default for TitanOptions {
-    #[inline]
-    fn default() -> Self {
-        let ptr = unsafe { tirocks_sys::ctitandb_options_create() };
-        Self {
-            opt: ManuallyDrop::new(unsafe { RawTitanOptions::from_ptr(ptr) }),
-            env: None,
-            comparator: None,
-        }
-    }
-}
-
-impl Deref for TitanOptions {
-    type Target = RawTitanOptions;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.opt
-    }
-}
-
-impl DerefMut for TitanOptions {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.opt
-    }
-}
+unsafe impl Send for TitanOptions {}
+unsafe impl Sync for TitanOptions {}
 
 impl TitanOptions {
+    #[inline]
+    pub unsafe fn from_ptr(
+        ptr: *mut rocksdb_titandb_TitanOptions,
+        env: Option<Arc<Env>>,
+        comparator: Option<Arc<SysComparator>>,
+    ) -> Option<Self> {
+        let ptr = NonNull::new(ptr as *mut RawTitanOptions)?;
+        if ptr
+            .as_ref()
+            .cf_options()
+            .match_comparator(comparator.as_deref())
+            && ptr.as_ref().db_options().match_env(env.as_deref())
+        {
+            Some(TitanOptions {
+                ptr,
+                env,
+                comparator,
+            })
+        } else {
+            None
+        }
+    }
+
     /// Same as `DbOptions::set_env`.
     #[inline]
     pub fn set_env(&mut self, env: Arc<Env>) -> &mut Self {
@@ -332,11 +352,53 @@ impl TitanOptions {
         self.comparator = Some(c);
         self
     }
+
+    #[inline]
+    pub fn env(&self) -> Option<&Arc<Env>> {
+        self.env.as_ref()
+    }
+
+    #[inline]
+    pub fn comparator(&self) -> Option<&Arc<SysComparator>> {
+        self.comparator.as_ref()
+    }
 }
 
 impl Drop for TitanOptions {
     #[inline]
     fn drop(&mut self) {
-        unsafe { ManuallyDrop::drop(&mut self.opt) }
+        unsafe {
+            tirocks_sys::ctitandb_options_destroy(self.ptr.as_ptr() as _);
+        }
     }
 }
+
+impl Default for TitanOptions {
+    #[inline]
+    fn default() -> Self {
+        let ptr = unsafe { tirocks_sys::ctitandb_options_create() as *mut RawTitanOptions };
+        Self {
+            ptr: NonNull::new(ptr).unwrap(),
+            env: None,
+            comparator: None,
+        }
+    }
+}
+
+impl Deref for TitanOptions {
+    type Target = RawTitanOptions;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { self.ptr.as_ref() }
+    }
+}
+
+impl DerefMut for TitanOptions {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { self.ptr.as_mut() }
+    }
+}
+
+pub type LatestOptions = (DbOptions, Vec<(String, CfOptions)>);

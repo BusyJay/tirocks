@@ -29,6 +29,7 @@ pub mod statistics;
 pub mod table;
 pub mod table_filter;
 pub mod titan;
+pub mod tool;
 mod util;
 pub mod write_batch;
 

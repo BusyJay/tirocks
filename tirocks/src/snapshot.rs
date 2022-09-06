@@ -4,6 +4,7 @@ use std::{
     marker::PhantomData,
     mem::ManuallyDrop,
     ops::{Deref, DerefMut},
+    sync::Arc,
 };
 
 use tirocks_sys::{rocksdb_Iterator, rocksdb_Snapshot};
@@ -19,6 +20,9 @@ pub struct RawSnapshot<'a> {
     ptr: *const rocksdb_Snapshot,
     _life: PhantomData<&'a ()>,
 }
+
+unsafe impl<'a> Send for RawSnapshot<'a> {}
+unsafe impl<'a> Sync for RawSnapshot<'a> {}
 
 impl<'a> RawSnapshot<'a> {
     #[inline]
@@ -139,6 +143,12 @@ unsafe impl<'a, D: RawDbRef + 'a> Iterable for Snapshot<'a, D> {
     fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawCfHandle) -> *mut rocksdb_Iterator {
         let mut opt = WithSnapOpt::new(opt, &self.snap);
         self.db.with(|d| d.raw_iter(&mut opt, cf))
+    }
+}
+
+unsafe impl<'a, D: RawDbRef + 'a> Iterable for Arc<Snapshot<'a, D>> {
+    fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawCfHandle) -> *mut rocksdb_Iterator {
+        (**self).raw_iter(opt, cf)
     }
 }
 

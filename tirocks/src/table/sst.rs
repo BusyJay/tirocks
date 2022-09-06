@@ -8,13 +8,14 @@ use std::{
 };
 
 use tirocks_sys::{
-    crocksdb_externalsstfileinfo_destroy, r, rocksdb_ExternalSstFileInfo, rocksdb_SstFileReader,
-    rocksdb_SstFileWriter, s,
+    crocksdb_externalsstfileinfo_destroy, r, rocksdb_ExternalSstFileInfo, rocksdb_Iterator,
+    rocksdb_SstFileReader, rocksdb_SstFileWriter, s,
 };
 
 use crate::{
     db::RawCfHandle,
     env::EnvOptions,
+    iterator::SimpleIterable,
     option::{RawOptions, ReadOptions},
     properties::table::{builtin::TableProperties, user::SequenceNumber},
     snapshot::WithSnapOpt,
@@ -113,6 +114,9 @@ impl<'a> Drop for SstFileWriter<'a> {
     }
 }
 
+unsafe impl Send for SstFileWriter<'_> {}
+unsafe impl Sync for SstFileWriter<'_> {}
+
 impl<'a> SstFileWriter<'a> {
     /// Create a writer that writes SST file that will be ingested into specified column family.
     /// `None` means the CF is unknown.
@@ -196,6 +200,9 @@ pub struct SstFileReader<'a> {
     life: PhantomData<&'a ()>,
 }
 
+unsafe impl Send for SstFileReader<'_> {}
+unsafe impl Sync for SstFileReader<'_> {}
+
 impl<'a> Drop for SstFileReader<'a> {
     #[inline]
     fn drop(&mut self) {
@@ -253,5 +260,28 @@ impl<'a> SstFileReader<'a> {
     #[inline]
     pub fn verify_checksum(&mut self) -> Result<()> {
         unsafe { ffi_call!(crocksdb_sstfilereader_verify_checksum(self.ptr)) }
+    }
+
+    #[inline]
+    pub(crate) fn get_ptr(&self) -> *mut rocksdb_SstFileReader {
+        self.ptr
+    }
+}
+
+unsafe impl<'a> SimpleIterable for SstFileReader<'a> {
+    #[inline]
+    fn raw_iter(&self, opt: &mut ReadOptions) -> *mut rocksdb_Iterator {
+        unsafe {
+            tirocks_sys::crocksdb_sstfilereader_new_iterator(self.get_ptr(), opt.get_ptr() as _)
+        }
+    }
+}
+
+unsafe impl<'a> SimpleIterable for &'a SstFileReader<'_> {
+    #[inline]
+    fn raw_iter(&self, opt: &mut ReadOptions) -> *mut rocksdb_Iterator {
+        unsafe {
+            tirocks_sys::crocksdb_sstfilereader_new_iterator(self.get_ptr(), opt.get_ptr() as _)
+        }
     }
 }

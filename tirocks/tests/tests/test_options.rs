@@ -681,7 +681,10 @@ fn test_compact_on_deletion() {
             std::thread::sleep(std::time::Duration::from_millis(100));
         }
     }
-    assert_eq!(db.property(cf, &PropNumFilesAtLevel::new(0)), Ok(Some("0".to_string())));
+    assert_eq!(
+        db.property(cf, &PropNumFilesAtLevel::new(0)),
+        Ok(Some("0".to_string()))
+    );
     assert_eq!(
         db.property(cf, &PropNumFilesAtLevel::new(1)),
         Ok(Some("1".to_string()))

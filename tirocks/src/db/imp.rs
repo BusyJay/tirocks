@@ -4,17 +4,17 @@ use std::ops::Deref;
 use std::path::Path;
 use std::str;
 use std::sync::{Arc, Mutex};
-use tirocks_sys::{r, rocksdb_DB};
+use tirocks_sys::{r, rocksdb_DB, s};
 
 use crate::metadata::{CfMetaData, SizeApproximationOptions};
 use crate::option::{
-    CfOptions, DbOptions, OwnedRawDbOptions, OwnedRawTitanDbOptions, RawCfOptions, RawDbOptions,
-    RawOptions, RawTitanOptions, ReadOptions, TitanCfOptions, WriteOptions,
+    CfOptions, DbOptions, LatestOptions, OwnedRawDbOptions, RawCfOptions, RawDbOptions, RawOptions,
+    RawTitanOptions, ReadOptions, TitanCfOptions, TitanDbOptions, TitanOptions, WriteOptions,
 };
 use crate::properties::table::user::SequenceNumber;
 use crate::util::{self, ffi_call, range_to_rocks, split_pairs, PathToSlice, RustRange};
 use crate::{comparator::SysComparator, env::Env};
-use crate::{Code, PinSlice, RawIterator, Result, Status, WriteBatch};
+use crate::{Code, Options, PinSlice, RawIterator, Result, Status, WriteBatch};
 
 use crate::db::cf::RawCfHandle;
 
@@ -474,7 +474,7 @@ unsafe impl Send for RawDb {}
 #[derive(Debug)]
 pub struct Db {
     ptr: *mut rocksdb_DB,
-    _env: Option<Arc<Env>>,
+    env: Option<Arc<Env>>,
     comparator: Vec<Arc<SysComparator>>,
     handles: Vec<RefCountedCfHandle>,
     is_titan: bool,
@@ -500,7 +500,7 @@ impl Db {
     ) -> Self {
         Self {
             ptr,
-            _env: env,
+            env,
             comparator,
             handles,
             is_titan,
@@ -531,7 +531,7 @@ impl Db {
 
     /// ListColumnFamilies will open the DB specified by argument name and return the list of all
     /// column families in that DB. The ordering of returned column families is unspecified.
-    pub fn list_cfs(db: DbOptions, path: impl AsRef<Path>) -> Result<Vec<String>> {
+    pub fn list_cfs(opt: &RawDbOptions, path: impl AsRef<Path>) -> Result<Vec<String>> {
         let mut convert_s = Status::default();
         let mut names = Vec::new();
         unsafe {
@@ -543,7 +543,7 @@ impl Db {
             };
             let (ctx, fp) = util::wrap_string_receiver(&mut handle);
             ffi_call!(crocksdb_list_column_families(
-                db.get_ptr(),
+                opt.as_ptr(),
                 path.as_ref().path_to_slice(),
                 ctx,
                 Some(fp),
@@ -553,6 +553,52 @@ impl Db {
             return Err(convert_s);
         }
         Ok(names)
+    }
+
+    /// Constructs the LatestOptions by loading the latest RocksDB options
+    /// file stored in the specified rocksdb database.
+    ///
+    /// Note that the all the pointer options (except table_factory) will be
+    /// initialized with the default values.  Developers can further initialize
+    /// them after this function call. Below is an example list of pointer
+    /// options which will be initialized
+    ///  - env
+    ///  - memtable_factory
+    ///  - compaction_filter_factory
+    ///  - prefix_extractor
+    ///  - comparator
+    ///  - merge_operator
+    ///  - compaction_filter
+    pub fn load_latest_options(
+        path: impl AsRef<Path>,
+        env: &Env,
+        ignore_unknown_options: bool,
+    ) -> Result<LatestOptions> {
+        unsafe extern "C" fn desc_receiver(
+            ptr: *mut libc::c_void,
+            name: tirocks_sys::rocksdb_Slice,
+            cf_opt: *mut tirocks_sys::rocksdb_ColumnFamilyOptions,
+        ) {
+            let collector = &mut *(ptr as *mut Vec<(String, CfOptions)>);
+            collector.push((str::from_utf8(s(name)).unwrap().to_string(), unsafe {
+                CfOptions::from_ptr(cf_opt)
+            }));
+        }
+
+        let mut db_opt = std::ptr::null_mut();
+        let mut cf_opts = vec![];
+        unsafe {
+            ffi_call!(crocksdb_load_latest_options(
+                path.as_ref().path_to_slice(),
+                env.get_ptr(),
+                &mut db_opt,
+                &mut cf_opts as *mut _ as _,
+                Some(desc_receiver),
+                ignore_unknown_options,
+            ))?;
+            let db_opt = DbOptions::from_ptr(db_opt);
+            Ok((db_opt, cf_opts))
+        }
     }
 
     /// Create a column_family.
@@ -652,13 +698,54 @@ impl Db {
         None
     }
 
+    fn search_comparator(&self, cf_opt: &RawCfOptions) -> Option<Arc<SysComparator>> {
+        // Usually we don't set customize comparator.
+        if cf_opt.match_comparator(None) {
+            return None;
+        }
+        for c in &self.comparator {
+            if cf_opt.match_comparator(Some(c)) {
+                return Some(c.clone());
+            }
+        }
+        unreachable!("all comparator should be kept");
+    }
+
+    /// Get Options that we use.  During the process of opening the
+    /// column family, the options provided when calling DB::Open() or
+    /// DB::CreateColumnFamily() will have been "sanitized" and transformed
+    /// in an implementation-defined manner.
+    #[inline]
+    pub fn cf_options(&self, cf: &RawCfHandle) -> Options {
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_get_options_cf(self.get_ptr(), cf.get_ptr());
+            let raw = RawOptions::from_ptr(ptr);
+            let comparator = self.search_comparator(raw.cf_options());
+            Options::from_raw(raw, self.env.clone(), comparator).expect("options should match")
+        }
+    }
+
+    #[inline]
+    pub fn db_options(&self) -> DbOptions {
+        unsafe {
+            let ptr = tirocks_sys::crocksdb_get_db_options(self.get_ptr());
+            let raw = OwnedRawDbOptions::from_ptr(ptr);
+            DbOptions::from_raw(raw, &self.env).expect("options should match")
+        }
+    }
+
     // TitanOptions doesn't inherit Options, so we can mix them.
     #[inline]
-    pub fn cf_options_titan(&self, cf: &RawCfHandle) -> Option<RawTitanOptions> {
+    pub fn cf_options_titan(&self, cf: &RawCfHandle) -> Option<TitanOptions> {
         unsafe {
             if self.is_titan {
                 let ptr = tirocks_sys::ctitandb_get_titan_options_cf(self.get_ptr(), cf.get_ptr());
-                Some(RawTitanOptions::from_ptr(ptr))
+                let comparator =
+                    self.search_comparator(RawTitanOptions::from_ptr(ptr).cf_options());
+                Some(unsafe {
+                    TitanOptions::from_ptr(ptr, self.env.clone(), comparator)
+                        .expect("options should match")
+                })
             } else {
                 None
             }
@@ -666,11 +753,13 @@ impl Db {
     }
 
     #[inline]
-    pub fn db_options_titan(&self) -> Option<OwnedRawTitanDbOptions> {
+    pub fn db_options_titan(&self) -> Option<TitanDbOptions> {
         unsafe {
             if self.is_titan {
                 let ptr = tirocks_sys::ctitandb_get_titan_db_options(self.get_ptr());
-                Some(OwnedRawTitanDbOptions::from_ptr(ptr))
+                Some(unsafe {
+                    TitanDbOptions::from_ptr(ptr, &self.env).expect("options should match")
+                })
             } else {
                 None
             }
@@ -754,6 +843,11 @@ impl Db {
                 include_end,
             ))
         }
+    }
+
+    #[inline]
+    pub fn env(&self) -> Option<&Arc<Env>> {
+        self.env.as_ref()
     }
 }
 

@@ -32,6 +32,9 @@ pub struct WriteBatch {
     ptr: *mut rocksdb_WriteBatch,
 }
 
+unsafe impl Send for WriteBatch {}
+unsafe impl Sync for WriteBatch {}
+
 impl Default for WriteBatch {
     #[inline]
     fn default() -> Self {

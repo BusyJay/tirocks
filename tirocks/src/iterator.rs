@@ -4,6 +4,7 @@ use std::{
     marker::PhantomData,
     mem::ManuallyDrop,
     ops::{Deref, DerefMut},
+    sync::Arc,
 };
 
 use tirocks_sys::{r, rocksdb_Iterator, s};
@@ -25,6 +26,15 @@ pub unsafe trait Iterable {
     /// A mutable reference to `ReadOptions` is required to make it possible for setting snapshot
     /// at runtime.
     fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawCfHandle) -> *mut rocksdb_Iterator;
+}
+
+/// Same as [`CfIterable`], but for simple data source that doesn't have a column family.
+pub unsafe trait SimpleIterable {
+    /// Creates a raw iterator.
+    ///
+    /// A mutable reference to `ReadOptions` is required to make it possible for setting snapshot
+    /// at runtime.
+    fn raw_iter(&self, opt: &mut ReadOptions) -> *mut rocksdb_Iterator;
 }
 
 #[repr(transparent)]
@@ -52,6 +62,10 @@ impl<'a> RawIterator<'a> {
 
     pub fn new<I: Iterable>(i: &'a I, opt: &'a mut ReadOptions, cf: &RawCfHandle) -> Self {
         unsafe { Self::from_ptr(i.raw_iter(opt, cf)) }
+    }
+
+    pub fn with_simple<I: SimpleIterable>(i: &'a I, opt: &'a mut ReadOptions) -> Self {
+        unsafe { Self::from_ptr(i.raw_iter(opt)) }
     }
 
     /// An iterator is either positioned at a key/value pair, or
@@ -190,7 +204,7 @@ impl<'a> std::iter::Iterator for RawIterator<'a> {
 unsafe impl<'a> Send for RawIterator<'a> {}
 unsafe impl<'a> Sync for RawIterator<'a> {}
 
-pub struct Iterator<'a, I: Iterable + 'a> {
+pub struct Iterator<'a, I: 'a> {
     iter: ManuallyDrop<RawIterator<'a>>,
     _i: I,
     _read: ReadOptions,
@@ -210,7 +224,21 @@ impl<'a, I: Iterable + 'a> Iterator<'a, I> {
     }
 }
 
-impl<'a, I: Iterable + 'a> Deref for Iterator<'a, I> {
+impl<'a, I: SimpleIterable + 'a> Iterator<'a, I> {
+    #[inline]
+    pub fn with_simple(i: I, mut read: ReadOptions) -> Self {
+        unsafe {
+            let ptr = i.raw_iter(&mut read);
+            Iterator {
+                iter: ManuallyDrop::new(RawIterator::from_ptr(ptr)),
+                _i: i,
+                _read: read,
+            }
+        }
+    }
+}
+
+impl<'a, I: 'a> Deref for Iterator<'a, I> {
     type Target = RawIterator<'a>;
 
     #[inline]
@@ -219,14 +247,14 @@ impl<'a, I: Iterable + 'a> Deref for Iterator<'a, I> {
     }
 }
 
-impl<'a, I: Iterable + 'a> DerefMut for Iterator<'a, I> {
+impl<'a, I: 'a> DerefMut for Iterator<'a, I> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.iter
     }
 }
 
-impl<'a, I: Iterable + 'a> Drop for Iterator<'a, I> {
+impl<'a, I: 'a> Drop for Iterator<'a, I> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -268,7 +296,7 @@ unsafe impl Iterable for Db {
     }
 }
 
-unsafe impl<D: Deref<Target = Db>> Iterable for D {
+unsafe impl Iterable for Arc<Db> {
     #[inline]
     fn raw_iter(&self, opt: &mut ReadOptions, cf: &RawCfHandle) -> *mut rocksdb_Iterator {
         (**self).raw_iter(opt, cf)

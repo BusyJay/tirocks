@@ -12,6 +12,7 @@ encryption = ["tirocks-sys/encryption"]
 jemalloc = ["tirocks-sys/jemalloc"]
 sse = ["tirocks-sys/sse"]
 portable = ["tirocks-sys/portable"]
+serde = ["tirocks-sys/serde"]
 
 [dependencies]
 libc = "0.2.11"

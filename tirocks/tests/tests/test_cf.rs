@@ -29,11 +29,7 @@ pub fn test_cf() {
     let err = builder.open(path.path()).unwrap_err();
     assert_eq!(err.code(), Code::kInvalidArgument);
     let msg = err.message().unwrap().unwrap();
-    assert!(
-        msg.starts_with("Column families not opened:"),
-        "{}",
-        msg
-    );
+    assert!(msg.starts_with("Column families not opened:"), "{}", msg);
 
     // should properly open db when specifying all column families
     let mut builder = MultiCfBuilder::default();

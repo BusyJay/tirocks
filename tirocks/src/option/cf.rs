@@ -4,7 +4,7 @@ use core::slice;
 use std::{
     mem,
     ops::{Deref, DerefMut},
-    str,
+    ptr, str,
     str::Utf8Error,
     sync::Arc,
 };
@@ -17,7 +17,7 @@ use crate::{
     table::SysTableFactory, util::simple_access,
 };
 use tirocks_sys::{
-    r, rocksdb_ColumnFamilyOptions, rocksdb_CompactionOptionsFIFO,
+    crocksdb_comparator_t, r, rocksdb_ColumnFamilyOptions, rocksdb_CompactionOptionsFIFO,
     rocksdb_CompactionOptionsUniversal, rocksdb_CompressionOptions, rocksdb_titandb_TitanCFOptions,
     s,
 };
@@ -97,8 +97,27 @@ impl CompressionOptions {
     ///
     /// Default: false.
     #[inline]
-    pub fn set_enabled(&mut self, enable: bool) -> &mut Self {
+    pub fn set_enable(&mut self, enable: bool) -> &mut Self {
         self.0.enabled = enable;
+        self
+    }
+
+    /// Number of threads for parallel compression.
+    /// Parallel compression is enabled only if threads > 1.
+    /// THE FEATURE IS STILL EXPERIMENTAL
+    ///
+    /// This option is valid only when BlockBasedTable is used.
+    ///
+    /// When parallel compression is enabled, SST size file sizes might be
+    /// more inflated compared to the target size, because more data of unknown
+    /// compressed size is in flight when compression is parallelized. To be
+    /// reasonably accurate, this inflation is also estimated by using historical
+    /// compression ratio and current bytes inflight.
+    ///
+    /// Default: 1.
+    #[inline]
+    pub fn set_parallel_threads(&mut self, parallel: u32) -> &mut Self {
+        self.0.parallel_threads = parallel;
         self
     }
 }
@@ -226,6 +245,9 @@ pub struct CfOptions {
     ptr: *mut rocksdb_ColumnFamilyOptions,
     comparator: Option<Arc<SysComparator>>,
 }
+
+unsafe impl Send for CfOptions {}
+unsafe impl Sync for CfOptions {}
 
 impl Default for CfOptions {
     #[inline]
@@ -573,6 +595,9 @@ impl RawCfOptions {
         /// Default: false
         level_compaction_dynamic_level_bytes: bool
 
+        /// Check [`set_level_compaction_dynamic_level_bytes`]
+        (<get) level_compaction_dynamic_level_bytes: bool
+
         /// Default: 10.
         ///
         /// Dynamically changeable through SetOptions() API
@@ -829,6 +854,19 @@ impl RawCfOptions {
         self
     }
 
+    /// Check if the preconfigured comparator is exact the provided one.
+    ///
+    /// `None` and default value are considered the same.
+    #[inline]
+    pub(crate) fn match_comparator(&self, c: Option<&SysComparator>) -> bool {
+        unsafe {
+            tirocks_sys::crocksdb_options_match_comparator(
+                self.as_ptr(),
+                c.map_or_else(ptr::null_mut, |c| c.get_ptr()),
+            )
+        }
+    }
+
     simple_access! {
         /// REQUIRES: The client must provide a merge operator if Merge operation
         /// needs to be accessed. Calling Merge on a DB without a merge operator
@@ -1017,6 +1055,14 @@ impl RawCfOptions {
 }
 
 impl CfOptions {
+    /// Should only be used when all pointer fields are null.
+    pub(crate) unsafe fn from_ptr(ptr: *mut rocksdb_ColumnFamilyOptions) -> Self {
+        Self {
+            ptr,
+            comparator: None,
+        }
+    }
+
     /// Same as `RawCfOptions::set_comparator` but manages the lifetime of `c`.
     #[inline]
     pub fn set_comparator(&mut self, c: Arc<SysComparator>) -> &mut Self {
@@ -1068,6 +1114,9 @@ pub struct TitanCfOptions {
     ptr: *mut rocksdb_titandb_TitanCFOptions,
     comparator: Option<Arc<SysComparator>>,
 }
+
+unsafe impl Send for TitanCfOptions {}
+unsafe impl Sync for TitanCfOptions {}
 
 impl Deref for TitanCfOptions {
     type Target = RawTitanCfOptions;

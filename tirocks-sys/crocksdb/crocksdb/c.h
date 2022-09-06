@@ -924,6 +924,8 @@ crocksdb_options_set_compaction_filter_factory(
     ColumnFamilyOptions*, crocksdb_compactionfilterfactory_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_comparator(
     ColumnFamilyOptions*, crocksdb_comparator_t*);
+extern C_ROCKSDB_LIBRARY_API bool crocksdb_options_match_comparator(
+    const ColumnFamilyOptions* opt, crocksdb_comparator_t* cmp);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_merge_operator(
     ColumnFamilyOptions*, crocksdb_mergeoperator_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_compression_per_level(
@@ -943,6 +945,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_error_if_exists(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_paranoid_checks(
     DBOptions*, bool);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_env(DBOptions*, Env*);
+extern C_ROCKSDB_LIBRARY_API bool crocksdb_options_match_env(const DBOptions*,
+                                                             Env*);
 extern C_ROCKSDB_LIBRARY_API crocksdb_logger_t* crocksdb_logger_create(
     void* rep, void (*destructor_)(void*), crocksdb_logger_logv_cb logv);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_info_log(
@@ -1025,10 +1029,11 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_sst_partitioner_factory(
     ColumnFamilyOptions*, crocksdb_sst_partitioner_factory_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_statistics(
     DBOptions*, crocksdb_statistics_t*);
-extern C_ROCKSDB_LIBRARY_API unsigned char crocksdb_load_latest_options(
-    const char* dbpath, Env* env, DBOptions* db_options,
-    crocksdb_column_family_descriptor*** cf_descs, size_t* cf_descs_len,
-    unsigned char ignore_unknown_options, Status* s);
+
+typedef void (*CFDescriptorReceiver)(void*, Slice, ColumnFamilyOptions*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_load_latest_options(
+    Slice dbpath, Env* env, DBOptions** db_options, void* cf_opts_context,
+    CFDescriptorReceiver desc_receiver, bool ignore_unknown_options, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_statistics_t*
 crocksdb_statistics_create();
@@ -2223,10 +2228,11 @@ crocksdb_sst_partitioner_factory_create(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_sst_partitioner_factory_destroy(
     crocksdb_sst_partitioner_factory_t* factory);
 
-extern C_ROCKSDB_LIBRARY_API void crocksdb_run_ldb_tool(int argc, char** argv,
-                                                        const Options* opts);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_run_ldb_tool(
+    size_t argc, const char* const* argv, const Options* opts, size_t cf_count,
+    const Slice* cf_names, const ColumnFamilyOptions* const* cf_opts);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_run_sst_dump_tool(
-    int argc, char** argv, const Options* opts);
+    size_t argc, const char* const* argv, const Options* opts);
 
 /* Titan */
 struct ctitandb_blob_index_t {

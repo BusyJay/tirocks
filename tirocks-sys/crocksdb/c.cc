@@ -2204,6 +2204,12 @@ void crocksdb_options_set_comparator(ColumnFamilyOptions* opt,
   opt->comparator = cmp;
 }
 
+bool crocksdb_options_match_comparator(const ColumnFamilyOptions* opt,
+                                       crocksdb_comparator_t* cmp) {
+  return opt->comparator == cmp ||
+         (opt->comparator == BytewiseComparator() && cmp == nullptr);
+}
+
 void crocksdb_options_set_merge_operator(
     ColumnFamilyOptions* opt, crocksdb_mergeoperator_t* merge_operator) {
   opt->merge_operator = merge_operator->rep;
@@ -2227,6 +2233,9 @@ void crocksdb_options_set_paranoid_checks(DBOptions* opt, bool v) {
 }
 
 void crocksdb_options_set_env(DBOptions* opt, Env* env) { opt->env = env; }
+bool crocksdb_options_match_env(const DBOptions* opt, Env* env) {
+  return opt->env == env || (opt->env == Env::Default() && env == nullptr);
+}
 
 crocksdb_logger_t* crocksdb_logger_create(void* rep, void (*destructor_)(void*),
                                           crocksdb_logger_logv_cb logv) {
@@ -2894,27 +2903,26 @@ void crocksdb_options_set_atomic_flush(DBOptions* opt, bool enable) {
   opt->atomic_flush = enable;
 }
 
-unsigned char crocksdb_load_latest_options(
-    const char* dbpath, Env* env, DBOptions* db_options,
-    crocksdb_column_family_descriptor*** cf_descs, size_t* cf_descs_len,
-    unsigned char ignore_unknown_options, Status* s) {
+void crocksdb_load_latest_options(Slice dbpath, Env* env,
+                                  DBOptions** db_options, void* cf_opts_context,
+                                  CFDescriptorReceiver desc_receiver,
+                                  bool ignore_unknown_options, Status* s) {
   std::vector<ColumnFamilyDescriptor> tmp_cf_descs;
-  *s = rocksdb::LoadLatestOptions(dbpath, env, db_options, &tmp_cf_descs,
-                                  ignore_unknown_options);
+  DBOptions db_opt;
+  *s = rocksdb::LoadLatestOptions(dbpath.ToString(), env, &db_opt,
+                                  &tmp_cf_descs, ignore_unknown_options);
 
   if (!s->ok()) {
-    return false;
+    return;
   }
 
-  *cf_descs_len = tmp_cf_descs.size();
-  (*cf_descs) = (crocksdb_column_family_descriptor**)malloc(
-      sizeof(crocksdb_column_family_descriptor*) * (*cf_descs_len));
-  for (std::size_t i = 0; i < *cf_descs_len; ++i) {
-    (*cf_descs)[i] =
-        new crocksdb_column_family_descriptor{std::move(tmp_cf_descs[i])};
+  *db_options = new DBOptions(db_opt);
+  for (size_t i = 0; i < tmp_cf_descs.size(); ++i) {
+    ColumnFamilyOptions* opt = new ColumnFamilyOptions(tmp_cf_descs[i].options);
+    desc_receiver(cf_opts_context, tmp_cf_descs[i].name, opt);
   }
 
-  return true;
+  return;
 }
 
 crocksdb_ratelimiter_t* crocksdb_ratelimiter_create(int64_t rate_bytes_per_sec,
@@ -5122,12 +5130,26 @@ void crocksdb_sst_partitioner_factory_destroy(
 
 /* Tools */
 
-void crocksdb_run_ldb_tool(int argc, char** argv, const Options* opts) {
-  LDBTool().Run(argc, argv, *opts);
+void crocksdb_run_ldb_tool(size_t argc, const char* const* argv,
+                           const Options* opts, size_t cf_count,
+                           const Slice* cf_names,
+                           const ColumnFamilyOptions* const* cf_opts) {
+  std::vector<ColumnFamilyDescriptor> column_families;
+  for (size_t i = 0; i < cf_count; i++) {
+    column_families.push_back(
+        ColumnFamilyDescriptor(cf_names[i].ToString(), *cf_opts[i]));
+  }
+
+  // Bad cast due to bad interface provided by rocksdb. It's cast back to const
+  // later.
+  LDBTool().Run(argc, (char**)argv, *opts, LDBOptions(), &column_families);
 }
 
-void crocksdb_run_sst_dump_tool(int argc, char** argv, const Options* opts) {
-  SSTDumpTool().Run(argc, argv, *opts);
+void crocksdb_run_sst_dump_tool(size_t argc, const char* const* argv,
+                                const Options* opts) {
+  // Bad cast due to bad interface provided by rocksdb. It's cast back to const
+  // later.
+  SSTDumpTool().Run(argc, (char**)argv, *opts);
 }
 
 /* Titan */

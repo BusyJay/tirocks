@@ -3057,6 +3057,12 @@ extern "C" {
     );
 }
 extern "C" {
+    pub fn crocksdb_options_match_comparator(
+        opt: *const rocksdb_ColumnFamilyOptions,
+        cmp: *mut crocksdb_comparator_t,
+    ) -> bool;
+}
+extern "C" {
     pub fn crocksdb_options_set_merge_operator(
         arg1: *mut rocksdb_ColumnFamilyOptions,
         arg2: *mut crocksdb_mergeoperator_t,
@@ -3098,6 +3104,12 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_options_set_env(arg1: *mut rocksdb_DBOptions, arg2: *mut rocksdb_Env);
+}
+extern "C" {
+    pub fn crocksdb_options_match_env(
+        arg1: *const rocksdb_DBOptions,
+        arg2: *mut rocksdb_Env,
+    ) -> bool;
 }
 extern "C" {
     pub fn crocksdb_logger_create(
@@ -3298,16 +3310,23 @@ extern "C" {
         arg2: *mut crocksdb_statistics_t,
     );
 }
+pub type CFDescriptorReceiver = ::std::option::Option<
+    unsafe extern "C" fn(
+        arg1: *mut libc::c_void,
+        arg2: rocksdb_Slice,
+        arg3: *mut rocksdb_ColumnFamilyOptions,
+    ),
+>;
 extern "C" {
     pub fn crocksdb_load_latest_options(
-        dbpath: *const libc::c_char,
+        dbpath: rocksdb_Slice,
         env: *mut rocksdb_Env,
-        db_options: *mut rocksdb_DBOptions,
-        cf_descs: *mut *mut *mut crocksdb_column_family_descriptor,
-        cf_descs_len: *mut usize,
-        ignore_unknown_options: libc::c_uchar,
+        db_options: *mut *mut rocksdb_DBOptions,
+        cf_opts_context: *mut libc::c_void,
+        desc_receiver: CFDescriptorReceiver,
+        ignore_unknown_options: bool,
         s: *mut rocksdb_Status,
-    ) -> libc::c_uchar;
+    );
 }
 extern "C" {
     pub fn crocksdb_statistics_create() -> *mut crocksdb_statistics_t;
@@ -5650,15 +5669,18 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_run_ldb_tool(
-        argc: libc::c_int,
-        argv: *mut *mut libc::c_char,
+        argc: usize,
+        argv: *const *const libc::c_char,
         opts: *const rocksdb_Options,
+        cf_count: usize,
+        cf_names: *const rocksdb_Slice,
+        cf_opts: *const *const rocksdb_ColumnFamilyOptions,
     );
 }
 extern "C" {
     pub fn crocksdb_run_sst_dump_tool(
-        argc: libc::c_int,
-        argv: *mut *mut libc::c_char,
+        argc: usize,
+        argv: *const *const libc::c_char,
         opts: *const rocksdb_Options,
     );
 }
