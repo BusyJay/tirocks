@@ -299,6 +299,9 @@ impl RawCfOptions {
         /// Dynamically changeable through SetOptions() API
         max_write_buffer_number: i32
 
+        /// Check [`set_max_write_buffer_number`]
+        (<get) max_write_buffer_number: i32
+
         /// The minimum number of write buffers that will be merged together
         /// before writing to storage.  If set to 1, then
         /// all write buffers are flushed to L0 as individual files and this increases
@@ -484,12 +487,18 @@ impl RawCfOptions {
         /// Dynamically changeable through SetOptions() API
         level0_slowdown_writes_trigger: i32
 
+        /// Check [`set_level0_slowdown_writes_trigger`]
+        (<get) level0_slowdown_writes_trigger: i32
+
         /// Maximum number of level-0 files.  We stop writes at this point.
         ///
         /// Default: 36
         ///
         /// Dynamically changeable through SetOptions() API
         level0_stop_writes_trigger: i32
+
+        /// Check [`set_level0_stop_writes_trigger`]
+        (<get) level0_stop_writes_trigger: i32
 
         /// Target file size for compaction.
         /// target_file_size_base is per-file size for level-1.
@@ -644,6 +653,9 @@ impl RawCfOptions {
         /// Dynamically changeable through SetOptions() API
         soft_pending_compaction_bytes_limit: u64
 
+        /// Check [`set_soft_pending_compaction_bytes_limit`].
+        (<get) soft_pending_compaction_bytes_limit: u64
+
         /// All writes are stopped if estimated bytes needed to be compaction exceed
         /// this threshold.
         ///
@@ -651,6 +663,9 @@ impl RawCfOptions {
         ///
         /// Dynamically changeable through SetOptions() API
         hard_pending_compaction_bytes_limit: u64
+
+        /// Check [`set_hard_pending_compaction_bytes_limit`].
+        (<get) hard_pending_compaction_bytes_limit: u64
 
         /// The compaction style. Default: kCompactionStyleLevel
         compaction_style: CompactionStyle
@@ -1014,6 +1029,9 @@ impl RawCfOptions {
         ///
         /// Dynamically changeable through SetOptions() API
         disable_auto_compactions: bool
+
+        /// Check [`set_disable_auto_compactions`]
+        (<get) disable_auto_compactions: bool
 
         /// Disable write stall mechanism.
         ///
