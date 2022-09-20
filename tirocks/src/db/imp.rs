@@ -178,26 +178,37 @@ impl RawDb {
     /// Returns OK on success, non-OK on failure.
     /// Note: consider setting options.sync = true.
     #[inline]
-    pub fn write(&self, opt: &WriteOptions, updates: &mut WriteBatch) -> Result<()> {
+    pub fn write(&self, opt: &WriteOptions, updates: &mut WriteBatch) -> Result<SequenceNumber> {
         unsafe {
+            let mut number = 0;
             ffi_call!(crocksdb_write(
                 self.get_ptr(),
                 opt.get_ptr(),
                 updates.as_mut_ptr(),
-            ))
+                &mut number,
+            ))?;
+            Ok(number)
         }
     }
 
     #[inline]
-    pub fn write_multi(&self, opt: &WriteOptions, updates: &mut [&mut WriteBatch]) -> Result<()> {
+    pub fn write_multi(
+        &self,
+        opt: &WriteOptions,
+        updates: &mut [WriteBatch],
+    ) -> Result<SequenceNumber> {
         unsafe {
+            let mut number = 0;
             ffi_call!(crocksdb_write_multi_batch(
                 self.get_ptr(),
                 opt.get_ptr(),
-                // &mut T is the same as *mut T
+                // WriteBatch is transparent, so *mut [WriteBatch] is the same as
+                // *mut [*mut rocksdb_WriteBatch].
                 updates.as_mut_ptr() as _,
                 updates.len(),
-            ))
+                &mut number,
+            ))?;
+            Ok(number)
         }
     }
 

@@ -1037,18 +1037,18 @@ void crocksdb_merge_cf(DB* db, const WriteOptions* options,
 }
 
 void crocksdb_write(DB* db, const WriteOptions* options, WriteBatch* batch,
-                    Status* s) {
-  *s = db->Write(*options, batch);
+                    SequenceNumber* num, Status* s) {
+  *s = db->Write(*options, batch, num);
 }
 
 void crocksdb_write_multi_batch(DB* db, const WriteOptions* options,
                                 WriteBatch** batches, size_t batch_size,
-                                Status* s) {
+                                SequenceNumber* num, Status* s) {
   std::vector<WriteBatch*> ws;
   for (size_t i = 0; i < batch_size; i++) {
     ws.push_back(batches[i]);
   }
-  *s = db->MultiBatchWrite(*options, std::move(ws));
+  *s = db->MultiBatchWrite(*options, std::move(ws), num);
 }
 
 void crocksdb_get(DB* db, const ReadOptions* options, Slice key, void* ctx,

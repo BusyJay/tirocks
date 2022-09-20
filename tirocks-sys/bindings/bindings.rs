@@ -1836,6 +1836,7 @@ extern "C" {
         db: *mut rocksdb_DB,
         options: *const rocksdb_WriteOptions,
         batch: *mut rocksdb_WriteBatch,
+        arg1: *mut rocksdb_SequenceNumber,
         s: *mut rocksdb_Status,
     );
 }
@@ -1845,6 +1846,7 @@ extern "C" {
         options: *const rocksdb_WriteOptions,
         batches: *mut *mut rocksdb_WriteBatch,
         batch_size: usize,
+        arg1: *mut rocksdb_SequenceNumber,
         s: *mut rocksdb_Status,
     );
 }

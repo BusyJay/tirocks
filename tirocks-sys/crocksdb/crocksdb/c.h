@@ -383,10 +383,11 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_merge_cf(
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_write(DB* db,
                                                  const WriteOptions* options,
-                                                 WriteBatch* batch, Status* s);
+                                                 WriteBatch* batch,
+                                                 SequenceNumber*, Status* s);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_write_multi_batch(
     DB* db, const WriteOptions* options, WriteBatch** batches,
-    size_t batch_size, Status* s);
+    size_t batch_size, SequenceNumber*, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_get(DB* db,
                                                const ReadOptions* options,

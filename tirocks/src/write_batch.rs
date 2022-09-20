@@ -28,6 +28,7 @@ use crate::{
 /// non-const method, all threads accessing the same WriteBatch must use
 /// external synchronization.
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct WriteBatch {
     ptr: *mut rocksdb_WriteBatch,
 }
