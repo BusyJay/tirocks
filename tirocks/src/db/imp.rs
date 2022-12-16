@@ -223,6 +223,7 @@ impl RawDb {
                 self.get_ptr(),
                 opt.get_ptr(),
                 updates.as_mut_ptr(),
+                std::ptr::null_mut(),
             ))
         }
     }
@@ -236,7 +237,7 @@ impl RawDb {
     ) -> Result<()> {
         let mut callback = PostWriteCallback::new(&mut callback);
         unsafe {
-            ffi_call!(crocksdb_write_callback(
+            ffi_call!(crocksdb_write(
                 self.get_ptr(),
                 opt.get_ptr(),
                 updates.as_mut_ptr(),
@@ -254,6 +255,27 @@ impl RawDb {
                 // &mut T is the same as *mut T
                 updates.as_mut_ptr() as _,
                 updates.len(),
+                std::ptr::null_mut(),
+            ))
+        }
+    }
+
+    #[inline]
+    pub fn write_multi_callback<F: FnMut(SequenceNumber)>(
+        &self,
+        opt: &WriteOptions,
+        updates: &mut [&mut WriteBatch],
+        mut callback: F,
+    ) -> Result<()> {
+        let mut callback = PostWriteCallback::new(&mut callback);
+        unsafe {
+            ffi_call!(crocksdb_write_multi_batch(
+                self.get_ptr(),
+                opt.get_ptr(),
+                // &mut T is the same as *mut T
+                updates.as_mut_ptr() as _,
+                updates.len(),
+                callback.as_raw_callback(),
             ))
         }
     }

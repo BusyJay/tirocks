@@ -1851,10 +1851,18 @@ extern "C" {
     );
 }
 extern "C" {
+    pub fn crocksdb_simple_post_write_callback_init(
+        callback: *mut SimplePostWriteCallback,
+        state: *mut libc::c_void,
+        cb: on_post_write_callback_cb,
+    );
+}
+extern "C" {
     pub fn crocksdb_write(
         db: *mut rocksdb_DB,
         options: *const rocksdb_WriteOptions,
         batch: *mut rocksdb_WriteBatch,
+        callback: *mut SimplePostWriteCallback,
         s: *mut rocksdb_Status,
     );
 }
@@ -1864,21 +1872,6 @@ extern "C" {
         options: *const rocksdb_WriteOptions,
         batches: *mut *mut rocksdb_WriteBatch,
         batch_size: usize,
-        s: *mut rocksdb_Status,
-    );
-}
-extern "C" {
-    pub fn crocksdb_simple_post_write_callback_init(
-        callback: *mut SimplePostWriteCallback,
-        state: *mut libc::c_void,
-        cb: on_post_write_callback_cb,
-    );
-}
-extern "C" {
-    pub fn crocksdb_write_callback(
-        db: *mut rocksdb_DB,
-        options: *const rocksdb_WriteOptions,
-        batch: *mut rocksdb_WriteBatch,
         callback: *mut SimplePostWriteCallback,
         s: *mut rocksdb_Status,
     );
