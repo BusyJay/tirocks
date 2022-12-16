@@ -820,3 +820,35 @@ impl Deref for Db {
 
 unsafe impl Sync for Db {}
 unsafe impl Send for Db {}
+
+#[cfg(test)]
+mod tests {
+    use crate::db::{DefaultCfOnlyBuilder, OpenOptions};
+
+    use super::*;
+
+    #[test]
+    fn test_basic_db_operations() {
+        let td = tempfile::tempdir().unwrap();
+        let db = DefaultCfOnlyBuilder::default()
+            .set_create_if_missing(true)
+            .open(td.path())
+            .unwrap();
+        let mut opts = WriteOptions::default();
+        opts.set_sync(false);
+        opts.set_disable_wal(true);
+        let mut value = 0;
+        let mut batch = WriteBatch::default();
+        batch.put_default(b"key", b"value").unwrap();
+        db.write_callback(&opts, &mut batch, &mut || {
+            value += 1;
+        })
+        .unwrap();
+        assert_ne!(value, 0);
+        assert_eq!(
+            db.get(&ReadOptions::default(), db.cf("default").unwrap(), b"key")
+                .unwrap(),
+            Some(b"value".to_vec())
+        );
+    }
+}
