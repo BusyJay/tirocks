@@ -83,6 +83,13 @@ using namespace rocksdb::encryption;
 using namespace rocksdb;
 using namespace rocksdb::titandb;
 
+struct SimplePostWriteCallback : public PostWriteCallback {
+  void* state;
+  void (*cb)(void*);
+
+  void Callback() override { cb(state); }
+};
+
 extern "C" {
 
 #include <stdarg.h>
@@ -233,6 +240,8 @@ typedef struct crocksdb_file_system_inspector_t
     crocksdb_file_system_inspector_t;
 
 typedef void (*bytes_receiver_cb)(void*, Slice);
+
+typedef void (*on_post_write_callback_cb)(void*);
 
 /* DB operations */
 
@@ -387,6 +396,13 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_write(DB* db,
 extern C_ROCKSDB_LIBRARY_API void crocksdb_write_multi_batch(
     DB* db, const WriteOptions* options, WriteBatch** batches,
     size_t batch_size, Status* s);
+
+extern C_ROCKSDB_LIBRARY_API void crocksdb_simple_post_write_callback_init(
+    SimplePostWriteCallback* callback, void* state,
+    on_post_write_callback_cb cb);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_write_with_callback(
+    DB* db, const WriteOptions* options, WriteBatch* batch,
+    SimplePostWriteCallback* callback, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_get(DB* db,
                                                const ReadOptions* options,

@@ -153,6 +153,7 @@ using rocksdb::WriteBatch;
 using rocksdb::WriteOptions;
 using rocksdb::WriteStallCondition;
 using rocksdb::WriteStallInfo;
+using rocksdb::PostWriteCallback;
 
 using rocksdb::BlockBasedTableFactory;
 using rocksdb::ColumnFamilyData;
@@ -1039,6 +1040,21 @@ void crocksdb_merge_cf(DB* db, const WriteOptions* options,
 void crocksdb_write(DB* db, const WriteOptions* options, WriteBatch* batch,
                     Status* s) {
   *s = db->Write(*options, batch);
+}
+
+void crocksdb_simple_post_write_callback_init(SimplePostWriteCallback* callback,
+                                              void* state,
+                                              on_post_write_callback_cb cb) {
+  new (callback) SimplePostWriteCallback;
+  callback->state = state;
+  callback->cb = cb;
+}
+
+void crocksdb_write_with_callback(DB* db, const WriteOptions* options,
+                                  WriteBatch* batch,
+                                  SimplePostWriteCallback* callback,
+                                  Status* s) {
+  *s = db->Write(*options, batch, nullptr, callback);
 }
 
 void crocksdb_write_multi_batch(DB* db, const WriteOptions* options,

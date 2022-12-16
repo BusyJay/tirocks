@@ -1,10 +1,12 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
+use libc::c_void;
+use std::mem::MaybeUninit;
 use std::ops::Deref;
 use std::path::Path;
 use std::str;
 use std::sync::{Arc, Mutex};
-use tirocks_sys::{r, rocksdb_DB};
+use tirocks_sys::{r, rocksdb_DB, SimplePostWriteCallback};
 
 use crate::metadata::{CfMetaData, SizeApproximationOptions};
 use crate::option::{
@@ -68,6 +70,40 @@ where
     #[inline]
     fn with<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T {
         DbRef::with(self, |db| unsafe { f(RawDb::from_ptr(db.get_ptr())) })
+    }
+}
+
+struct PostWriteCallback<'a, F: FnMut()> {
+    raw: SimplePostWriteCallback,
+    _callback: &'a mut F,
+}
+
+extern "C" fn on_post_write_callback<F: FnMut()>(ctx: *mut c_void) {
+    unsafe {
+        let ctx = &mut *(ctx as *mut F);
+        ctx();
+    }
+}
+
+impl<'a, F: FnMut()> PostWriteCallback<'a, F> {
+    fn new(callback: &'a mut F) -> Self {
+        let mut raw = MaybeUninit::uninit();
+        assert!(std::mem::size_of::<SimplePostWriteCallback>() >= 8 + 8);
+        unsafe {
+            tirocks_sys::crocksdb_simple_post_write_callback_init(
+                raw.as_mut_ptr(),
+                callback as *mut F as *mut c_void,
+                Some(on_post_write_callback::<F>),
+            );
+            Self {
+                raw: raw.assume_init(),
+                _callback: callback,
+            }
+        }
+    }
+
+    fn as_raw_callback(&mut self) -> *mut SimplePostWriteCallback {
+        &mut self.raw as _
     }
 }
 
@@ -184,6 +220,24 @@ impl RawDb {
                 self.get_ptr(),
                 opt.get_ptr(),
                 updates.as_mut_ptr(),
+            ))
+        }
+    }
+
+    #[inline]
+    pub fn write_with_callback<F: FnMut()>(
+        &self,
+        opt: &WriteOptions,
+        updates: &mut WriteBatch,
+        callback: &mut F,
+    ) -> Result<()> {
+        let mut callback = PostWriteCallback::new(callback);
+        unsafe {
+            ffi_call!(crocksdb_write_with_callback(
+                self.get_ptr(),
+                opt.get_ptr(),
+                updates.as_mut_ptr(),
+                callback.as_raw_callback(),
             ))
         }
     }
@@ -644,12 +698,9 @@ impl Db {
     }
 
     pub(crate) unsafe fn cf_raw(&self, name: &str) -> Option<&RefCountedCfHandle> {
-        for h in &self.handles {
-            if h.name().map_or(false, |n| n == name) {
-                return Some(h);
-            }
-        }
-        None
+        self.handles
+            .iter()
+            .find(|&h| h.name().map_or(false, |n| n == name))
     }
 
     // TitanOptions doesn't inherit Options, so we can mix them.

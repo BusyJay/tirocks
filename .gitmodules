@@ -1,6 +1,8 @@
 [submodule "titan-sys/titan"]
 	path = tirocks-sys/titan
-	url = https://github.com/tikv/titan.git
+	url = https://github.com/tabokie/titan.git
+	branch = 221215-post-write
 [submodule "tirocks-sys/rocksdb"]
 	path = tirocks-sys/rocksdb
-	url = https://github.com/tikv/rocksdb.git
+	url = https://github.com/tabokie/rocksdb.git
+	branch = 221215-post-write

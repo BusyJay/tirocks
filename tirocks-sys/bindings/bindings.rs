@@ -1138,6 +1138,13 @@ pub struct rocksdb_RangePtr {
     pub limit: *const rocksdb_Slice,
 }
 #[repr(C)]
+pub struct rocksdb_PostWriteCallback__bindgen_vtable(libc::c_void);
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_PostWriteCallback {
+    pub vtable_: *const rocksdb_PostWriteCallback__bindgen_vtable,
+}
+#[repr(C)]
 pub struct rocksdb_DB__bindgen_vtable(libc::c_void);
 #[repr(C)]
 #[derive(Debug)]
@@ -1214,6 +1221,13 @@ pub enum rocksdb_titandb_HistogramType {
     TITAN_GC_OUTPUT_FILE_SIZE = 65,
     TITAN_ITER_TOUCH_BLOB_FILE_COUNT = 66,
     TITAN_HISTOGRAM_ENUM_MAX = 67,
+}
+#[repr(C)]
+#[derive(Debug)]
+pub struct SimplePostWriteCallback {
+    pub _base: rocksdb_PostWriteCallback,
+    pub state: *mut libc::c_void,
+    pub cb: ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void)>,
 }
 #[repr(C)]
 #[derive(Debug)]
@@ -1546,6 +1560,8 @@ pub struct crocksdb_file_system_inspector_t {
 }
 pub type bytes_receiver_cb =
     ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: rocksdb_Slice)>;
+pub type on_post_write_callback_cb =
+    ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void)>;
 extern "C" {
     pub fn crocksdb_open(
         options: *const rocksdb_Options,
@@ -1845,6 +1861,22 @@ extern "C" {
         options: *const rocksdb_WriteOptions,
         batches: *mut *mut rocksdb_WriteBatch,
         batch_size: usize,
+        s: *mut rocksdb_Status,
+    );
+}
+extern "C" {
+    pub fn crocksdb_simple_post_write_callback_init(
+        callback: *mut SimplePostWriteCallback,
+        state: *mut libc::c_void,
+        cb: on_post_write_callback_cb,
+    );
+}
+extern "C" {
+    pub fn crocksdb_write_with_callback(
+        db: *mut rocksdb_DB,
+        options: *const rocksdb_WriteOptions,
+        batch: *mut rocksdb_WriteBatch,
+        callback: *mut SimplePostWriteCallback,
         s: *mut rocksdb_Status,
     );
 }
