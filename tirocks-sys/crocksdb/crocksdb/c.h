@@ -85,9 +85,9 @@ using namespace rocksdb::titandb;
 
 struct SimplePostWriteCallback : public PostWriteCallback {
   void* state;
-  void (*cb)(void*);
+  void (*cb)(void*, SequenceNumber);
 
-  void Callback() override { cb(state); }
+  void Callback(SequenceNumber seq) override { cb(state, seq); }
 };
 
 extern "C" {
@@ -241,7 +241,7 @@ typedef struct crocksdb_file_system_inspector_t
 
 typedef void (*bytes_receiver_cb)(void*, Slice);
 
-typedef void (*on_post_write_callback_cb)(void*);
+typedef void (*on_post_write_callback_cb)(void*, SequenceNumber);
 
 /* DB operations */
 

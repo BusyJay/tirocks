@@ -1052,7 +1052,7 @@ void crocksdb_simple_post_write_callback_init(SimplePostWriteCallback* callback,
 void crocksdb_write_callback(DB* db, const WriteOptions* options,
                              WriteBatch* batch,
                              SimplePostWriteCallback* callback, Status* s) {
-  *s = db->Write(*options, batch, nullptr, callback);
+  *s = db->Write(*options, batch, callback);
 }
 
 void crocksdb_write_multi_batch(DB* db, const WriteOptions* options,

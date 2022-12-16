@@ -1227,7 +1227,9 @@ pub enum rocksdb_titandb_HistogramType {
 pub struct SimplePostWriteCallback {
     pub _base: rocksdb_PostWriteCallback,
     pub state: *mut libc::c_void,
-    pub cb: ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void)>,
+    pub cb: ::std::option::Option<
+        unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: rocksdb_SequenceNumber),
+    >,
 }
 #[repr(C)]
 #[derive(Debug)]
@@ -1560,8 +1562,9 @@ pub struct crocksdb_file_system_inspector_t {
 }
 pub type bytes_receiver_cb =
     ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: rocksdb_Slice)>;
-pub type on_post_write_callback_cb =
-    ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void)>;
+pub type on_post_write_callback_cb = ::std::option::Option<
+    unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: rocksdb_SequenceNumber),
+>;
 extern "C" {
     pub fn crocksdb_open(
         options: *const rocksdb_Options,

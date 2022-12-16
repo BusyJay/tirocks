@@ -13,10 +13,9 @@ use crate::option::{
     CfOptions, DbOptions, OwnedRawDbOptions, OwnedRawTitanDbOptions, RawCfOptions, RawDbOptions,
     RawOptions, RawTitanOptions, ReadOptions, TitanCfOptions, WriteOptions,
 };
-use crate::properties::table::user::SequenceNumber;
 use crate::util::{self, ffi_call, range_to_rocks, split_pairs, PathToSlice, RustRange};
 use crate::{comparator::SysComparator, env::Env};
-use crate::{Code, PinSlice, RawIterator, Result, Status, WriteBatch};
+use crate::{Code, PinSlice, RawIterator, Result, SequenceNumber, Status, WriteBatch};
 
 use crate::db::cf::RawCfHandle;
 
@@ -73,19 +72,22 @@ where
     }
 }
 
-struct PostWriteCallback<'a, F: FnMut()> {
+struct PostWriteCallback<'a, F: FnMut(SequenceNumber)> {
     raw: SimplePostWriteCallback,
     _callback: &'a mut F,
 }
 
-extern "C" fn on_post_write_callback<F: FnMut()>(ctx: *mut c_void) {
+extern "C" fn on_post_write_callback<F: FnMut(SequenceNumber)>(
+    ctx: *mut c_void,
+    seq: SequenceNumber,
+) {
     unsafe {
         let ctx = &mut *(ctx as *mut F);
-        ctx();
+        ctx(seq);
     }
 }
 
-impl<'a, F: FnMut()> PostWriteCallback<'a, F> {
+impl<'a, F: FnMut(SequenceNumber)> PostWriteCallback<'a, F> {
     #[inline]
     fn new(callback: &'a mut F) -> Self {
         let mut raw = MaybeUninit::uninit();
@@ -226,7 +228,7 @@ impl RawDb {
     }
 
     #[inline]
-    pub fn write_callback<F: FnMut()>(
+    pub fn write_callback<F: FnMut(SequenceNumber)>(
         &self,
         opt: &WriteOptions,
         updates: &mut WriteBatch,
@@ -837,14 +839,14 @@ mod tests {
         let mut opts = WriteOptions::default();
         opts.set_sync(false);
         opts.set_disable_wal(true);
-        let mut value = 0;
+        let mut value = None;
         let mut batch = WriteBatch::default();
         batch.put_default(b"key", b"value").unwrap();
-        db.write_callback(&opts, &mut batch, &mut || {
-            value += 1;
+        db.write_callback(&opts, &mut batch, &mut |seq| {
+            value = Some(seq as u64);
         })
         .unwrap();
-        assert_ne!(value, 0);
+        assert_ne!(value.unwrap(), 0);
         assert_eq!(
             db.get(&ReadOptions::default(), db.cf("default").unwrap(), b"key")
                 .unwrap(),
