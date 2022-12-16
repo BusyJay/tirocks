@@ -153,7 +153,6 @@ using rocksdb::WriteBatch;
 using rocksdb::WriteOptions;
 using rocksdb::WriteStallCondition;
 using rocksdb::WriteStallInfo;
-using rocksdb::PostWriteCallback;
 
 using rocksdb::BlockBasedTableFactory;
 using rocksdb::ColumnFamilyData;

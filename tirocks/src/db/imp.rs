@@ -86,9 +86,9 @@ extern "C" fn on_post_write_callback<F: FnMut()>(ctx: *mut c_void) {
 }
 
 impl<'a, F: FnMut()> PostWriteCallback<'a, F> {
+    #[inline]
     fn new(callback: &'a mut F) -> Self {
         let mut raw = MaybeUninit::uninit();
-        assert!(std::mem::size_of::<SimplePostWriteCallback>() >= 8 + 8);
         unsafe {
             tirocks_sys::crocksdb_simple_post_write_callback_init(
                 raw.as_mut_ptr(),
@@ -102,6 +102,7 @@ impl<'a, F: FnMut()> PostWriteCallback<'a, F> {
         }
     }
 
+    #[inline]
     fn as_raw_callback(&mut self) -> *mut SimplePostWriteCallback {
         &mut self.raw as _
     }
