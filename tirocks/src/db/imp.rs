@@ -226,15 +226,15 @@ impl RawDb {
     }
 
     #[inline]
-    pub fn write_with_callback<F: FnMut()>(
+    pub fn write_callback<F: FnMut()>(
         &self,
         opt: &WriteOptions,
         updates: &mut WriteBatch,
-        callback: &mut F,
+        mut callback: F,
     ) -> Result<()> {
-        let mut callback = PostWriteCallback::new(callback);
+        let mut callback = PostWriteCallback::new(&mut callback);
         unsafe {
-            ffi_call!(crocksdb_write_with_callback(
+            ffi_call!(crocksdb_write_callback(
                 self.get_ptr(),
                 opt.get_ptr(),
                 updates.as_mut_ptr(),
@@ -701,7 +701,7 @@ impl Db {
     pub(crate) unsafe fn cf_raw(&self, name: &str) -> Option<&RefCountedCfHandle> {
         self.handles
             .iter()
-            .find(|&h| h.name().map_or(false, |n| n == name))
+            .find(|h| h.name().map_or(false, |n| n == name))
     }
 
     // TitanOptions doesn't inherit Options, so we can mix them.

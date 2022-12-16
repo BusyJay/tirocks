@@ -1872,7 +1872,7 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_write_with_callback(
+    pub fn crocksdb_write_callback(
         db: *mut rocksdb_DB,
         options: *const rocksdb_WriteOptions,
         batch: *mut rocksdb_WriteBatch,

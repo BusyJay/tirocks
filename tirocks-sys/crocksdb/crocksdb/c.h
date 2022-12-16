@@ -400,7 +400,7 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_write_multi_batch(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_simple_post_write_callback_init(
     SimplePostWriteCallback* callback, void* state,
     on_post_write_callback_cb cb);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_write_with_callback(
+extern C_ROCKSDB_LIBRARY_API void crocksdb_write_callback(
     DB* db, const WriteOptions* options, WriteBatch* batch,
     SimplePostWriteCallback* callback, Status* s);
 
