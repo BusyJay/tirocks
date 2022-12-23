@@ -39,7 +39,7 @@ fn exec(c: &mut Command) {
 
 fn bindgen() {
     fs::create_dir_all("tirocks-sys/bindings").unwrap();
-    exec(cargo().args(&[
+    exec(cargo().args([
         "build",
         "-p",
         "tirocks-sys",
@@ -58,7 +58,7 @@ fn submodule() {
         let mut remote_changed = false;
         let path = format!("tirocks-sys/{}", submodule);
         if let Ok(repo) = env::var(&format!("{}_REPO", upper)) {
-            exec(cmd("git").args(&[
+            exec(cmd("git").args([
                 "config",
                 "--file=.gitmodules",
                 &format!("submodule.\"{}\".url", path),
@@ -67,7 +67,7 @@ fn submodule() {
             remote_changed = true;
         }
         if let Ok(branch) = env::var(&format!("{}_BRANCH", upper)) {
-            exec(cmd("git").args(&[
+            exec(cmd("git").args([
                 "config",
                 "--file=.gitmodules",
                 &format!("submodule.\"{}\".branch", path),
@@ -76,21 +76,21 @@ fn submodule() {
             remote_changed = true;
         }
         if remote_changed {
-            exec(cmd("git").args(&["submodule", "sync", &path]));
-            exec(cmd("git").args(&["submodule", "update", "--init", "--remote", &path]));
+            exec(cmd("git").args(["submodule", "sync", &path]));
+            exec(cmd("git").args(["submodule", "update", "--init", "--remote", &path]));
         } else {
-            exec(cmd("git").args(&["submodule", "update", "--init", &path]));
+            exec(cmd("git").args(["submodule", "update", "--init", &path]));
         }
     }
 }
 
 fn format() {
-    exec(cmd("clang-format").args(&[
+    exec(cmd("clang-format").args([
         "-i",
         "tirocks-sys/crocksdb/c.cc",
         "tirocks-sys/crocksdb/crocksdb/c.h",
     ]));
-    exec(cargo().args(&["fmt", "--all"]));
+    exec(cargo().args(["fmt", "--all"]));
 }
 
 fn main() {

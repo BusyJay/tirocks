@@ -9,8 +9,7 @@ use tirocks_sys::{
 };
 
 use crate::{
-    properties::{table::builtin::TableProperties, table::user::SequenceNumber},
-    CloneFactory, DefaultFactory,
+    properties::table::builtin::TableProperties, CloneFactory, DefaultFactory, SequenceNumber,
 };
 
 pub type ValueType = tirocks_sys::rocksdb_CompactionFilter_ValueType;

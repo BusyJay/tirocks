@@ -28,6 +28,7 @@ pub mod sst_partitioner;
 pub mod statistics;
 pub mod table;
 pub mod table_filter;
+mod types;
 mod util;
 pub mod write_batch;
 
@@ -38,5 +39,6 @@ pub use option::{CfOptions, DbOptions, Options};
 pub use pin_slice::PinSlice;
 pub use snapshot::{RawSnapshot, Snapshot};
 pub use statistics::Statistics;
+pub use types::*;
 pub use util::{CloneFactory, DefaultFactory, RustRange};
 pub use write_batch::{WriteBatch, WriteBatchIter};

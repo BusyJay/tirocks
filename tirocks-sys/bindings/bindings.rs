@@ -1138,6 +1138,13 @@ pub struct rocksdb_RangePtr {
     pub limit: *const rocksdb_Slice,
 }
 #[repr(C)]
+pub struct rocksdb_PostWriteCallback__bindgen_vtable(libc::c_void);
+#[repr(C)]
+#[derive(Debug)]
+pub struct rocksdb_PostWriteCallback {
+    pub vtable_: *const rocksdb_PostWriteCallback__bindgen_vtable,
+}
+#[repr(C)]
 pub struct rocksdb_DB__bindgen_vtable(libc::c_void);
 #[repr(C)]
 #[derive(Debug)]
@@ -1180,21 +1187,24 @@ pub enum rocksdb_titandb_TickerType {
     TITAN_GC_NUM_NEW_FILES = 189,
     TITAN_GC_NUM_KEYS_OVERWRITTEN = 190,
     TITAN_GC_NUM_KEYS_RELOCATED = 191,
-    TITAN_GC_BYTES_OVERWRITTEN = 192,
-    TITAN_GC_BYTES_RELOCATED = 193,
-    TITAN_GC_BYTES_WRITTEN = 194,
-    TITAN_GC_BYTES_READ = 195,
-    TITAN_BLOB_CACHE_HIT = 196,
-    TITAN_BLOB_CACHE_MISS = 197,
-    TITAN_GC_NO_NEED = 198,
-    TITAN_GC_REMAIN = 199,
+    TITAN_GC_NUM_KEYS_FALLBACK = 192,
+    TITAN_GC_BYTES_OVERWRITTEN = 193,
+    TITAN_GC_BYTES_RELOCATED = 194,
+    TITAN_GC_BYTES_FALLBACK = 195,
+    TITAN_GC_BYTES_WRITTEN = 196,
+    TITAN_GC_BYTES_READ = 197,
+    TITAN_BLOB_CACHE_HIT = 198,
+    TITAN_BLOB_CACHE_MISS = 199,
     TITAN_GC_DISCARDABLE = 200,
-    TITAN_GC_SAMPLE = 201,
-    TITAN_GC_SMALL_FILE = 202,
-    TITAN_GC_FAILURE = 203,
-    TITAN_GC_SUCCESS = 204,
-    TITAN_GC_TRIGGER_NEXT = 205,
-    TITAN_TICKER_ENUM_MAX = 206,
+    TITAN_GC_SMALL_FILE = 201,
+    TITAN_GC_LEVEL_MERGE_MARK = 202,
+    TITAN_GC_LEVEL_MERGE_DELETE = 203,
+    TITAN_GC_NO_NEED = 204,
+    TITAN_GC_REMAIN = 205,
+    TITAN_GC_FAILURE = 206,
+    TITAN_GC_SUCCESS = 207,
+    TITAN_GC_TRIGGER_NEXT = 208,
+    TITAN_TICKER_ENUM_MAX = 209,
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -1214,6 +1224,15 @@ pub enum rocksdb_titandb_HistogramType {
     TITAN_GC_OUTPUT_FILE_SIZE = 65,
     TITAN_ITER_TOUCH_BLOB_FILE_COUNT = 66,
     TITAN_HISTOGRAM_ENUM_MAX = 67,
+}
+#[repr(C)]
+#[derive(Debug)]
+pub struct SimplePostWriteCallback {
+    pub _base: rocksdb_PostWriteCallback,
+    pub state: *mut libc::c_void,
+    pub cb: ::std::option::Option<
+        unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: rocksdb_SequenceNumber),
+    >,
 }
 #[repr(C)]
 #[derive(Debug)]
@@ -1546,6 +1565,9 @@ pub struct crocksdb_file_system_inspector_t {
 }
 pub type bytes_receiver_cb =
     ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: rocksdb_Slice)>;
+pub type on_post_write_callback_cb = ::std::option::Option<
+    unsafe extern "C" fn(arg1: *mut libc::c_void, arg2: rocksdb_SequenceNumber),
+>;
 extern "C" {
     pub fn crocksdb_open(
         options: *const rocksdb_Options,
@@ -1832,10 +1854,18 @@ extern "C" {
     );
 }
 extern "C" {
+    pub fn crocksdb_simple_post_write_callback_init(
+        callback: *mut SimplePostWriteCallback,
+        state: *mut libc::c_void,
+        cb: on_post_write_callback_cb,
+    );
+}
+extern "C" {
     pub fn crocksdb_write(
         db: *mut rocksdb_DB,
         options: *const rocksdb_WriteOptions,
         batch: *mut rocksdb_WriteBatch,
+        callback: *mut SimplePostWriteCallback,
         s: *mut rocksdb_Status,
     );
 }
@@ -1845,6 +1875,7 @@ extern "C" {
         options: *const rocksdb_WriteOptions,
         batches: *mut *mut rocksdb_WriteBatch,
         batch_size: usize,
+        callback: *mut SimplePostWriteCallback,
         s: *mut rocksdb_Status,
     );
 }

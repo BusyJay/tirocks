@@ -83,6 +83,13 @@ using namespace rocksdb::encryption;
 using namespace rocksdb;
 using namespace rocksdb::titandb;
 
+struct SimplePostWriteCallback : public PostWriteCallback {
+  void* state;
+  void (*cb)(void*, SequenceNumber);
+
+  void Callback(SequenceNumber seq) override { cb(state, seq); }
+};
+
 extern "C" {
 
 #include <stdarg.h>
@@ -234,6 +241,8 @@ typedef struct crocksdb_file_system_inspector_t
 
 typedef void (*bytes_receiver_cb)(void*, Slice);
 
+typedef void (*on_post_write_callback_cb)(void*, SequenceNumber);
+
 /* DB operations */
 
 extern C_ROCKSDB_LIBRARY_API DB* crocksdb_open(const Options* options,
@@ -381,12 +390,17 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_merge_cf(
     DB* db, const WriteOptions* options, ColumnFamilyHandle* column_family,
     const char* key, size_t keylen, const char* val, size_t vallen, Status* s);
 
-extern C_ROCKSDB_LIBRARY_API void crocksdb_write(DB* db,
-                                                 const WriteOptions* options,
-                                                 WriteBatch* batch, Status* s);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_simple_post_write_callback_init(
+    SimplePostWriteCallback* callback, void* state,
+    on_post_write_callback_cb cb);
+
+extern C_ROCKSDB_LIBRARY_API void crocksdb_write(
+    DB* db, const WriteOptions* options, WriteBatch* batch,
+    SimplePostWriteCallback* callback, Status* s);
+
 extern C_ROCKSDB_LIBRARY_API void crocksdb_write_multi_batch(
     DB* db, const WriteOptions* options, WriteBatch** batches,
-    size_t batch_size, Status* s);
+    size_t batch_size, SimplePostWriteCallback* callback, Status* s);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_get(DB* db,
                                                const ReadOptions* options,
