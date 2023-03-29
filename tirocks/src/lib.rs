@@ -30,6 +30,7 @@ pub mod table;
 pub mod table_filter;
 pub mod titan;
 pub mod tool;
+mod types;
 mod util;
 pub mod write_batch;
 
@@ -43,4 +44,5 @@ pub use statistics::Statistics;
 pub use util::{
     set_external_sst_file_global_sequence_number, CloneFactory, DefaultFactory, RustRange,
 };
+pub use types::*;
 pub use write_batch::{WriteBatch, WriteBatchIter};

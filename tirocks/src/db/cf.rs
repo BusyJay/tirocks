@@ -75,7 +75,7 @@ impl RefCountedCfHandle {
         } else {
             Ok(())
         };
-        drop(Box::from(self.inner.as_ptr()));
+        drop(Box::from_raw(self.inner.as_ptr()));
         res?;
         Ok(true)
     }

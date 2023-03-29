@@ -262,7 +262,7 @@ pub unsafe fn array_to_rocks_slice<'a>(arr: &'a [&[u8]]) -> Cow<'a, [rocksdb_Sli
     if tirocks_sys::rocks_slice_same_as_rust() {
         Cow::Borrowed(mem::transmute(arr))
     } else {
-        let arr = arr.iter().map(|v| unsafe { r(*v) }).collect();
+        let arr = arr.iter().map(|v| unsafe { r(v) }).collect();
         Cow::Owned(arr)
     }
 }

@@ -9,9 +9,8 @@ use tirocks_sys::{
     rocksdb_UserCollectedProperties, s,
 };
 
-use crate::{Result, Status};
+use crate::{Result, SequenceNumber, Status};
 
-pub type SequenceNumber = tirocks_sys::rocksdb_SequenceNumber;
 pub type EntryType = tirocks_sys::rocksdb_EntryType;
 
 #[derive(Debug)]

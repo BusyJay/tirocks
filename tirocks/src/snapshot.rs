@@ -12,8 +12,7 @@ use tirocks_sys::{rocksdb_Iterator, rocksdb_Snapshot};
 use crate::{
     db::{RawCfHandle, RawDbRef},
     option::ReadOptions,
-    properties::table::user::SequenceNumber,
-    Iterable, PinSlice, RawDb, RawIterator, Result,
+    Iterable, PinSlice, RawDb, RawIterator, Result, SequenceNumber,
 };
 
 pub struct RawSnapshot<'a> {

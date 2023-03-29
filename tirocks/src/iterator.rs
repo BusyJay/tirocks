@@ -10,8 +10,7 @@ use std::{
 use tirocks_sys::{r, rocksdb_Iterator, s};
 
 use crate::{
-    db::RawCfHandle, option::ReadOptions, properties::table::user::SequenceNumber, util::ffi_call,
-    Db, RawDb, Result, Status,
+    db::RawCfHandle, option::ReadOptions, util::ffi_call, Db, RawDb, Result, SequenceNumber, Status,
 };
 
 /// A trait for types that can create a raw iterator.

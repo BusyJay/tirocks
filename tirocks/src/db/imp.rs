@@ -1,20 +1,21 @@
 // Copyright 2022 TiKV Project Authors. Licensed under Apache-2.0.
 
+use libc::c_void;
+use std::mem::MaybeUninit;
 use std::ops::Deref;
 use std::path::Path;
 use std::str;
 use std::sync::{Arc, Mutex};
-use tirocks_sys::{r, rocksdb_DB, s};
+use tirocks_sys::{r, rocksdb_DB, s, SimplePostWriteCallback};
 
 use crate::metadata::{CfMetaData, SizeApproximationOptions};
 use crate::option::{
     CfOptions, DbOptions, LatestOptions, OwnedRawDbOptions, RawCfOptions, RawDbOptions, RawOptions,
     RawTitanOptions, ReadOptions, TitanCfOptions, TitanDbOptions, TitanOptions, WriteOptions,
 };
-use crate::properties::table::user::SequenceNumber;
 use crate::util::{self, ffi_call, range_to_rocks, split_pairs, PathToSlice, RustRange};
 use crate::{comparator::SysComparator, env::Env};
-use crate::{Code, Options, PinSlice, RawIterator, Result, Status, WriteBatch};
+use crate::{Code, Options, PinSlice, RawIterator, Result, SequenceNumber, Status, WriteBatch};
 
 use crate::db::cf::RawCfHandle;
 
@@ -68,6 +69,44 @@ where
     #[inline]
     fn with<T>(&self, f: impl FnOnce(&RawDb) -> T) -> T {
         DbRef::with(self, |db| unsafe { f(RawDb::from_ptr(db.get_ptr())) })
+    }
+}
+
+struct PostWriteCallback<'a, F: FnMut(SequenceNumber)> {
+    raw: SimplePostWriteCallback,
+    _callback: &'a mut F,
+}
+
+extern "C" fn on_post_write_callback<F: FnMut(SequenceNumber)>(
+    ctx: *mut c_void,
+    seq: SequenceNumber,
+) {
+    unsafe {
+        let ctx = &mut *(ctx as *mut F);
+        ctx(seq);
+    }
+}
+
+impl<'a, F: FnMut(SequenceNumber)> PostWriteCallback<'a, F> {
+    #[inline]
+    fn new(callback: &'a mut F) -> Self {
+        let mut raw = MaybeUninit::uninit();
+        unsafe {
+            tirocks_sys::crocksdb_simple_post_write_callback_init(
+                raw.as_mut_ptr(),
+                callback as *mut F as *mut c_void,
+                Some(on_post_write_callback::<F>),
+            );
+            Self {
+                raw: raw.assume_init(),
+                _callback: callback,
+            }
+        }
+    }
+
+    #[inline]
+    fn as_raw_callback(&mut self) -> *mut SimplePostWriteCallback {
+        &mut self.raw as _
     }
 }
 
@@ -178,16 +217,32 @@ impl RawDb {
     /// Returns OK on success, non-OK on failure.
     /// Note: consider setting options.sync = true.
     #[inline]
-    pub fn write(&self, opt: &WriteOptions, updates: &mut WriteBatch) -> Result<SequenceNumber> {
+    pub fn write(&self, opt: &WriteOptions, updates: &mut WriteBatch) -> Result<()> {
         unsafe {
-            let mut number = 0;
             ffi_call!(crocksdb_write(
                 self.get_ptr(),
                 opt.get_ptr(),
                 updates.as_mut_ptr(),
-                &mut number,
-            ))?;
-            Ok(number)
+                std::ptr::null_mut(),
+            ))
+        }
+    }
+
+    #[inline]
+    pub fn write_callback<F: FnMut(SequenceNumber)>(
+        &self,
+        opt: &WriteOptions,
+        updates: &mut WriteBatch,
+        mut callback: F,
+    ) -> Result<()> {
+        let mut callback = PostWriteCallback::new(&mut callback);
+        unsafe {
+            ffi_call!(crocksdb_write(
+                self.get_ptr(),
+                opt.get_ptr(),
+                updates.as_mut_ptr(),
+                callback.as_raw_callback(),
+            ))
         }
     }
 
@@ -196,9 +251,8 @@ impl RawDb {
         &self,
         opt: &WriteOptions,
         updates: &mut [WriteBatch],
-    ) -> Result<SequenceNumber> {
+    ) -> Result<()> {
         unsafe {
-            let mut number = 0;
             ffi_call!(crocksdb_write_multi_batch(
                 self.get_ptr(),
                 opt.get_ptr(),
@@ -206,9 +260,28 @@ impl RawDb {
                 // *mut [*mut rocksdb_WriteBatch].
                 updates.as_mut_ptr() as _,
                 updates.len(),
-                &mut number,
-            ))?;
-            Ok(number)
+                std::ptr::null_mut(),
+            ))
+        }
+    }
+
+    #[inline]
+    pub fn write_multi_callback<F: FnMut(SequenceNumber)>(
+        &self,
+        opt: &WriteOptions,
+        updates: &mut [&mut WriteBatch],
+        mut callback: F,
+    ) -> Result<()> {
+        let mut callback = PostWriteCallback::new(&mut callback);
+        unsafe {
+            ffi_call!(crocksdb_write_multi_batch(
+                self.get_ptr(),
+                opt.get_ptr(),
+                // &mut T is the same as *mut T
+                updates.as_mut_ptr() as _,
+                updates.len(),
+                callback.as_raw_callback(),
+            ))
         }
     }
 
@@ -701,12 +774,9 @@ impl Db {
     }
 
     pub(crate) unsafe fn cf_raw(&self, name: &str) -> Option<&RefCountedCfHandle> {
-        for h in &self.handles {
-            if h.name().map_or(false, |n| n == name) {
-                return Some(h);
-            }
-        }
-        None
+        self.handles
+            .iter()
+            .find(|h| h.name().map_or(false, |n| n == name))
     }
 
     fn search_comparator(&self, cf_opt: &RawCfOptions) -> Option<Arc<SysComparator>> {
@@ -873,3 +943,35 @@ impl Deref for Db {
 
 unsafe impl Sync for Db {}
 unsafe impl Send for Db {}
+
+#[cfg(test)]
+mod tests {
+    use crate::db::{DefaultCfOnlyBuilder, OpenOptions};
+
+    use super::*;
+
+    #[test]
+    fn test_basic_db_operations() {
+        let td = tempfile::tempdir().unwrap();
+        let db = DefaultCfOnlyBuilder::default()
+            .set_create_if_missing(true)
+            .open(td.path())
+            .unwrap();
+        let mut opts = WriteOptions::default();
+        opts.set_sync(false);
+        opts.set_disable_wal(true);
+        let mut value = None;
+        let mut batch = WriteBatch::default();
+        batch.put_default(b"key", b"value").unwrap();
+        db.write_callback(&opts, &mut batch, &mut |seq| {
+            value = Some(seq as u64);
+        })
+        .unwrap();
+        assert_ne!(value.unwrap(), 0);
+        assert_eq!(
+            db.get(&ReadOptions::default(), db.cf("default").unwrap(), b"key")
+                .unwrap(),
+            Some(b"value".to_vec())
+        );
+    }
+}

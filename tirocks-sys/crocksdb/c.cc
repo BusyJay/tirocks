@@ -1036,19 +1036,27 @@ void crocksdb_merge_cf(DB* db, const WriteOptions* options,
                  Slice(val, vallen));
 }
 
+void crocksdb_simple_post_write_callback_init(SimplePostWriteCallback* callback,
+                                              void* state,
+                                              on_post_write_callback_cb cb) {
+  new (callback) SimplePostWriteCallback;
+  callback->state = state;
+  callback->cb = cb;
+}
+
 void crocksdb_write(DB* db, const WriteOptions* options, WriteBatch* batch,
-                    SequenceNumber* num, Status* s) {
-  *s = db->Write(*options, batch, num);
+                    SimplePostWriteCallback* callback, Status* s) {
+  *s = db->Write(*options, batch, callback);
 }
 
 void crocksdb_write_multi_batch(DB* db, const WriteOptions* options,
                                 WriteBatch** batches, size_t batch_size,
-                                SequenceNumber* num, Status* s) {
+                                SimplePostWriteCallback* callback, Status* s) {
   std::vector<WriteBatch*> ws;
   for (size_t i = 0; i < batch_size; i++) {
     ws.push_back(batches[i]);
   }
-  *s = db->MultiBatchWrite(*options, std::move(ws), num);
+  *s = db->MultiBatchWrite(*options, std::move(ws), callback);
 }
 
 void crocksdb_get(DB* db, const ReadOptions* options, Slice key, void* ctx,

@@ -16,7 +16,6 @@ use crate::{
 use super::OwnedSlice;
 
 pub type ReadTier = tirocks_sys::rocksdb_ReadTier;
-pub type SequenceNumber = tirocks_sys::rocksdb_SequenceNumber;
 
 #[derive(Default)]
 struct ReadOptionsStorage {
